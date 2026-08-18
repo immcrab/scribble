@@ -1,0 +1,120 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+}
+
+::selection {
+  background: rgba(59, 130, 246, 0.35);
+}
+
+/* thin, dark, blue-tinted scrollbars */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #2b2f3d transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-thumb {
+  background: #2b2f3d;
+  border-radius: 8px;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: #3b82f6aa;
+}
+
+.glass-panel {
+  background: linear-gradient(180deg, rgba(23, 26, 37, 0.9), rgba(13, 15, 22, 0.9));
+  backdrop-filter: blur(14px);
+}
+
+.prose-scribble {
+  color: theme("colors.slate.200");
+  font-size: 0.95rem;
+  line-height: 1.65;
+}
+.prose-scribble p {
+  margin: 0.5em 0;
+}
+.prose-scribble ul,
+.prose-scribble ol {
+  margin: 0.5em 0;
+  padding-left: 1.4em;
+}
+.prose-scribble li {
+  margin: 0.2em 0;
+}
+.prose-scribble pre {
+  background: #0b0d13;
+  border: 1px solid #20232f;
+  border-radius: 10px;
+  padding: 0.9em 1em;
+  overflow-x: auto;
+  margin: 0.6em 0;
+}
+.prose-scribble code {
+  font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+  font-size: 0.85em;
+}
+.prose-scribble :not(pre) > code {
+  background: #1a1e2b;
+  border: 1px solid #262a38;
+  border-radius: 5px;
+  padding: 0.1em 0.4em;
+  color: #8fb8ff;
+}
+.prose-scribble h1,
+.prose-scribble h2,
+.prose-scribble h3 {
+  font-weight: 600;
+  margin: 0.8em 0 0.3em;
+  color: white;
+}
+.prose-scribble a {
+  color: #5b9bff;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.prose-scribble blockquote {
+  border-left: 2px solid #3b82f6;
+  padding-left: 0.9em;
+  color: theme("colors.slate.400");
+  margin: 0.6em 0;
+}
+.prose-scribble table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 0.6em 0;
+  font-size: 0.85em;
+}
+.prose-scribble th,
+.prose-scribble td {
+  border: 1px solid #20232f;
+  padding: 0.4em 0.7em;
+  text-align: left;
+}
+
+.stream-cursor::after {
+  content: "▍";
+  display: inline-block;
+  margin-left: 1px;
+  color: #5b9bff;
+  animation: blink 1s step-start infinite;
+}
+
+.skeleton-line {
+  background: linear-gradient(90deg, #171a25 25%, #20232f 37%, #171a25 63%);
+  background-size: 400% 100%;
+  animation: shimmer 1.8s linear infinite;
+  border-radius: 6px;
+}
