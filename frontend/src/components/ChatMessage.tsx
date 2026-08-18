@@ -16,7 +16,6 @@ import {
 import type { ChatMessage as ChatMessageType, ToolCallRecord } from "../types";
 import { Markdown } from "../lib/markdown";
 import { ModelIcon } from "./ModelSelector";
-import { CodeArtifact } from "./CodeArtifact";
 import { extractArtifact, isArtifactWorthy } from "../lib/codeArtifact";
 
 const TOOL_STATUS_ICON: Record<ToolCallRecord["status"], typeof Loader2> = {
@@ -138,10 +137,7 @@ export function ChatMessage({
               <span>{message.error}</span>
             </div>
           ) : artifact ? (
-            <>
-              <CodeArtifact artifact={artifact} title={message.model?.displayName ?? "scribble-artifact"} />
-              {artifact.remainingText && <Markdown content={artifact.remainingText} />}
-            </>
+            <Markdown content={artifact.remainingText || "_Built the app — see the panel on the right._"} />
           ) : message.content ? (
             <div className={message.streaming ? "stream-cursor" : ""}>
               <Markdown content={message.content} />

@@ -5,6 +5,8 @@ import { ChatMessage } from "../components/ChatMessage";
 import { Composer } from "../components/Composer";
 import { ModelSelector } from "../components/ModelSelector";
 import { EmptyState } from "../components/EmptyState";
+import { ArtifactWorkspace } from "../components/ArtifactWorkspace";
+import { extractArtifact, isArtifactWorthy } from "../lib/codeArtifact";
 import { runAssistantStream } from "../lib/runStream";
 import { uid } from "../lib/id";
 import type { Attachment, ChatMessage as ChatMessageType } from "../types";
@@ -93,6 +95,15 @@ export function DirectMode({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chat.id]);
 
+  const completedArtifacts = chat.messages
+    .filter((m) => m.role === "assistant" && !m.streaming && m.content)
+    .map((m) => extractArtifact(m.content))
+    .filter((a): a is NonNullable<typeof a> => !!a && isArtifactWorthy(a));
+  const hasWorkspace = completedArtifacts.length > 0;
+  const lastMsg = chat.messages[chat.messages.length - 1];
+  const lastIsStreaming = lastMsg?.role === "assistant" && lastMsg.streaming;
+  const latestArtifact = completedArtifacts[completedArtifacts.length - 1] ?? null;
+
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-center gap-2 border-b border-base-700/60 px-5 py-3">
@@ -103,26 +114,38 @@ export function DirectMode({
         />
       </div>
 
-      {chat.messages.length === 0 ? (
-        <div className="flex-1">
-          <EmptyState onPick={(p) => send(p, [])} />
-        </div>
-      ) : (
-        <div className="flex-1 overflow-y-auto px-4 py-5 sm:px-8">
-          <div className="mx-auto flex max-w-3xl flex-col gap-5">
-            {chat.messages.map((m) => (
-              <ChatMessage
-                key={m.id}
-                message={m}
-                onRegenerate={m.role === "assistant" && !m.streaming ? () => regenerate(m.id) : undefined}
-              />
-            ))}
+      <div className="flex min-h-0 flex-1">
+        <div className={`flex min-h-0 flex-col ${hasWorkspace ? "w-full max-w-md shrink-0 border-r border-base-700/60" : "flex-1"}`}>
+          {chat.messages.length === 0 ? (
+            <div className="flex-1">
+              <EmptyState onPick={(p) => send(p, [])} />
+            </div>
+          ) : (
+            <div className="flex-1 overflow-y-auto px-4 py-5 sm:px-8">
+              <div className={`mx-auto flex flex-col gap-5 ${hasWorkspace ? "" : "max-w-3xl"}`}>
+                {chat.messages.map((m) => (
+                  <ChatMessage
+                    key={m.id}
+                    message={m}
+                    onRegenerate={m.role === "assistant" && !m.streaming ? () => regenerate(m.id) : undefined}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className={`w-full px-4 pb-5 sm:px-8 ${hasWorkspace ? "" : "mx-auto max-w-3xl"}`}>
+            <Composer onSend={send} onStop={stop} generating={generating} />
           </div>
         </div>
-      )}
 
-      <div className="mx-auto w-full max-w-3xl px-4 pb-5 sm:px-8">
-        <Composer onSend={send} onStop={stop} generating={generating} />
+        {hasWorkspace && (
+          <div className="min-w-0 flex-1">
+            <ArtifactWorkspace
+              panes={[{ key: "single", label: model?.displayName ?? "Preview", artifact: latestArtifact, streaming: !!lastIsStreaming }]}
+            />
+          </div>
+        )}
       </div>
     </div>
   );

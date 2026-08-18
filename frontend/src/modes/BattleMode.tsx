@@ -5,6 +5,8 @@ import { ChatMessage } from "../components/ChatMessage";
 import { Composer } from "../components/Composer";
 import { VoteBar } from "../components/VoteBar";
 import { EmptyState } from "../components/EmptyState";
+import { ArtifactWorkspace } from "../components/ArtifactWorkspace";
+import { extractArtifact, isArtifactWorthy } from "../lib/codeArtifact";
 import { runAssistantStream } from "../lib/runStream";
 import { uid } from "../lib/id";
 import type { Attachment, ChatMessage as ChatMessageType, Vote } from "../types";
@@ -118,43 +120,83 @@ export function BattleMode({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chat.id]);
 
+  const artifactFor = (m?: ChatMessageType) =>
+    m && !m.streaming && m.content ? extractArtifact(m.content) : null;
+
+  const hasWorkspace = rounds.some((r) => {
+    const aa = artifactFor(r.a);
+    const bb = artifactFor(r.b);
+    return (aa && isArtifactWorthy(aa)) || (bb && isArtifactWorthy(bb));
+  });
+
+  const lastRoundRevealed = !!lastRound?.a && !!lastRound?.b && !lastRound.a.streaming && !lastRound.b.streaming;
+  const lastArtifactA = artifactFor(lastRound?.a);
+  const lastArtifactB = artifactFor(lastRound?.b);
+
   return (
     <div className="flex h-full flex-col">
-      {chat.messages.length === 0 ? (
-        <div className="flex-1">
-          <EmptyState heading="Battle two anonymous models" onPick={(p) => send(p, [])} />
-        </div>
-      ) : (
-        <div className="flex-1 overflow-y-auto px-4 py-5 sm:px-8">
-          <div className="mx-auto flex max-w-5xl flex-col gap-6">
-            {rounds.map((round, i) => {
-              const isLast = i === rounds.length - 1;
-              const roundRevealed = !!round.a && !!round.b && !round.a.streaming && !round.b.streaming;
-              return (
-                <div key={round.user.id} className="flex flex-col gap-4">
-                  <div className="flex justify-end">
-                    <div className="max-w-[80%]">
-                      <ChatMessage message={round.user} />
+      <div className="flex min-h-0 flex-1">
+        <div className={`flex min-h-0 flex-col ${hasWorkspace ? "w-full max-w-md shrink-0 border-r border-base-700/60" : "flex-1"}`}>
+          {chat.messages.length === 0 ? (
+            <div className="flex-1">
+              <EmptyState heading="Battle two anonymous models" onPick={(p) => send(p, [])} />
+            </div>
+          ) : (
+            <div className="flex-1 overflow-y-auto px-4 py-5 sm:px-8">
+              <div className={`mx-auto flex flex-col gap-6 ${hasWorkspace ? "" : "max-w-5xl"}`}>
+                {rounds.map((round, i) => {
+                  const isLast = i === rounds.length - 1;
+                  const roundRevealed = !!round.a && !!round.b && !round.a.streaming && !round.b.streaming;
+                  return (
+                    <div key={round.user.id} className="flex flex-col gap-4">
+                      <div className="flex justify-end">
+                        <div className="max-w-[80%]">
+                          <ChatMessage message={round.user} />
+                        </div>
+                      </div>
+                      <div className={hasWorkspace ? "flex flex-col gap-4" : "grid grid-cols-1 gap-4 md:grid-cols-2"}>
+                        <div className="min-w-0 rounded-2xl border border-base-700/50 bg-base-900/40 p-3">
+                          {round.a && <ChatMessage message={round.a} hideModelName={!roundRevealed} />}
+                        </div>
+                        <div className="min-w-0 rounded-2xl border border-base-700/50 bg-base-900/40 p-3">
+                          {round.b && <ChatMessage message={round.b} hideModelName={!roundRevealed} />}
+                        </div>
+                      </div>
+                      {isLast && roundRevealed && !hasWorkspace && <VoteBar vote={chat.vote} onVote={vote} />}
                     </div>
-                  </div>
-                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                    <div className="min-w-0 rounded-2xl border border-base-700/50 bg-base-900/40 p-3">
-                      {round.a && <ChatMessage message={round.a} hideModelName={!roundRevealed} />}
-                    </div>
-                    <div className="min-w-0 rounded-2xl border border-base-700/50 bg-base-900/40 p-3">
-                      {round.b && <ChatMessage message={round.b} hideModelName={!roundRevealed} />}
-                    </div>
-                  </div>
-                  {isLast && roundRevealed && <VoteBar vote={chat.vote} onVote={vote} />}
-                </div>
-              );
-            })}
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          <div className={`w-full px-4 pb-5 sm:px-8 ${hasWorkspace ? "" : "mx-auto max-w-5xl"}`}>
+            <Composer onSend={send} onStop={stop} generating={generating} placeholder="Send the same prompt to two anonymous models..." />
           </div>
         </div>
-      )}
 
-      <div className="mx-auto w-full max-w-5xl px-4 pb-5 sm:px-8">
-        <Composer onSend={send} onStop={stop} generating={generating} placeholder="Send the same prompt to two anonymous models..." />
+        {hasWorkspace && (
+          <div className="min-w-0 flex-1">
+            <ArtifactWorkspace
+              panes={[
+                {
+                  key: "a",
+                  label: lastRoundRevealed ? lastRound?.a?.model?.displayName ?? "Option A" : "Option A",
+                  artifact: lastArtifactA,
+                  streaming: !!lastRound?.a?.streaming,
+                },
+                {
+                  key: "b",
+                  label: lastRoundRevealed ? lastRound?.b?.model?.displayName ?? "Option B" : "Option B",
+                  artifact: lastArtifactB,
+                  streaming: !!lastRound?.b?.streaming,
+                },
+              ]}
+              vote={chat.vote}
+              onVote={lastRoundRevealed ? vote : undefined}
+            />
+          </div>
+        )}
       </div>
     </div>
   );
