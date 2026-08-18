@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { Paperclip, ArrowUp, Square, X, FileText } from "lucide-react";
+import { Paperclip, ArrowUp, Square, X, FileText, Code2 } from "lucide-react";
 import type { Attachment } from "../types";
 import { uid } from "../lib/id";
 
@@ -12,7 +12,7 @@ export function Composer({
   placeholder = "Ask anything...",
   autoFocus = false,
 }: {
-  onSend: (text: string, attachments: Attachment[]) => void;
+  onSend: (text: string, attachments: Attachment[], codeMode?: boolean) => void;
   onStop?: () => void;
   generating: boolean;
   placeholder?: string;
@@ -20,6 +20,7 @@ export function Composer({
 }) {
   const [text, setText] = useState("");
   const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [codeMode, setCodeMode] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -42,7 +43,7 @@ export function Composer({
   const submit = () => {
     const trimmed = text.trim();
     if (!trimmed || generating) return;
-    onSend(trimmed, attachments);
+    onSend(trimmed, attachments, codeMode);
     setText("");
     setAttachments([]);
     if (textareaRef.current) textareaRef.current.style.height = "auto";
@@ -112,6 +113,18 @@ export function Composer({
           >
             <Paperclip size={15} />
             <span className="hidden sm:inline">Add files</span>
+          </button>
+          <button
+            onClick={() => setCodeMode((c) => !c)}
+            title="Code — open the preview/code panel as soon as you send"
+            className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-sm transition-colors ${
+              codeMode
+                ? "border-accent-500/50 bg-accent-500/10 text-white"
+                : "border-transparent text-slate-400 hover:bg-base-700/60 hover:text-white"
+            }`}
+          >
+            <Code2 size={15} />
+            <span className="hidden sm:inline">Code</span>
           </button>
         </div>
 

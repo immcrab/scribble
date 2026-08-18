@@ -16,6 +16,7 @@ export interface InitialPrompt {
   chatId: string;
   prompt: string;
   attachments: Attachment[];
+  codeMode?: boolean;
 }
 
 export default function App() {
@@ -28,9 +29,9 @@ export default function App() {
   const [pending, setPending] = useState<InitialPrompt | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const startChat = (prompt: string, attachments: Attachment[]) => {
+  const startChat = (prompt: string, attachments: Attachment[], codeMode?: boolean) => {
     const id = useChatStore.getState().createChat(landingMode);
-    setPending({ chatId: id, prompt, attachments });
+    setPending({ chatId: id, prompt, attachments, codeMode });
   };
 
   const switchMode = (mode: Mode) => {

@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useChatStore } from "../state/chatStore";
 import { ALL_MODELS, findModel } from "../config/models";
 import { ChatMessage } from "../components/ChatMessage";
@@ -44,6 +44,7 @@ export function SideBySideMode({
 }) {
   const chat = useChatStore((s) => s.chats.find((c) => c.id === chatId));
   const { addMessage, setChatModels, maybeAutoTitle, abort } = useChatStore();
+  const [eagerWorkspace, setEagerWorkspace] = useState(false);
 
   if (!chat) return null;
 
@@ -61,7 +62,8 @@ export function SideBySideMode({
       .map((m) => ({ role: m.role as "user" | "assistant", content: m.content }));
   };
 
-  const send = (text: string, attachments: Attachment[]) => {
+  const send = (text: string, attachments: Attachment[], codeMode?: boolean) => {
+    if (codeMode) setEagerWorkspace(true);
     if (!chat.modelAId || !chat.modelBId) {
       setChatModels(chat.id, { modelAId: modelA!.modelId, modelBId: modelB!.modelId });
     }
@@ -109,7 +111,7 @@ export function SideBySideMode({
 
   useEffect(() => {
     if (initialPrompt && chat.messages.length === 0) {
-      send(initialPrompt.prompt, initialPrompt.attachments);
+      send(initialPrompt.prompt, initialPrompt.attachments, initialPrompt.codeMode);
       onConsumeInitial?.();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -118,11 +120,13 @@ export function SideBySideMode({
   const artifactFor = (m?: ChatMessageType) =>
     m && !m.streaming && m.content ? extractArtifact(m.content) : null;
 
-  const hasWorkspace = rounds.some((r) => {
-    const aa = artifactFor(r.a);
-    const bb = artifactFor(r.b);
-    return (aa && isArtifactWorthy(aa)) || (bb && isArtifactWorthy(bb));
-  });
+  const hasWorkspace =
+    eagerWorkspace ||
+    rounds.some((r) => {
+      const aa = artifactFor(r.a);
+      const bb = artifactFor(r.b);
+      return (aa && isArtifactWorthy(aa)) || (bb && isArtifactWorthy(bb));
+    });
 
   const lastArtifactA = artifactFor(lastRound?.a);
   const lastArtifactB = artifactFor(lastRound?.b);

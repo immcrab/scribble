@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useChatStore } from "../state/chatStore";
 import { ALL_MODELS, findModel } from "../config/models";
 import { ChatMessage } from "../components/ChatMessage";
@@ -24,6 +24,7 @@ export function DirectMode({
 }) {
   const chat = useChatStore((s) => s.chats.find((c) => c.id === chatId));
   const { addMessage, setChatModels, maybeAutoTitle, abort, removeMessagesAfter } = useChatStore();
+  const [eagerWorkspace, setEagerWorkspace] = useState(false);
 
   if (!chat) return null;
 
@@ -38,7 +39,8 @@ export function DirectMode({
       .map((m) => ({ role: m.role as "user" | "assistant", content: m.content }));
   };
 
-  const send = (text: string, attachments: Attachment[]) => {
+  const send = (text: string, attachments: Attachment[], codeMode?: boolean) => {
+    if (codeMode) setEagerWorkspace(true);
     const activeModel = model ?? ALL_MODELS[0];
     if (!chat.modelId) setChatModels(chat.id, { modelId: activeModel.modelId });
 
@@ -89,7 +91,7 @@ export function DirectMode({
 
   useEffect(() => {
     if (initialPrompt && chat.messages.length === 0) {
-      send(initialPrompt.prompt, initialPrompt.attachments);
+      send(initialPrompt.prompt, initialPrompt.attachments, initialPrompt.codeMode);
       onConsumeInitial?.();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -99,7 +101,7 @@ export function DirectMode({
     .filter((m) => m.role === "assistant" && !m.streaming && m.content)
     .map((m) => extractArtifact(m.content))
     .filter((a): a is NonNullable<typeof a> => !!a && isArtifactWorthy(a));
-  const hasWorkspace = completedArtifacts.length > 0;
+  const hasWorkspace = completedArtifacts.length > 0 || eagerWorkspace;
   const lastMsg = chat.messages[chat.messages.length - 1];
   const lastIsStreaming = lastMsg?.role === "assistant" && lastMsg.streaming;
   const latestArtifact = completedArtifacts[completedArtifacts.length - 1] ?? null;
