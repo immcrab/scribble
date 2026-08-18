@@ -188,12 +188,14 @@ export function BattleMode({
                 {
                   key: "a",
                   label: lastRoundRevealed ? lastRound?.a?.model?.displayName ?? "Option A" : "Option A",
+                  model: lastRoundRevealed ? lastRound?.a?.model : undefined,
                   artifact: lastArtifactA,
                   streaming: !!lastRound?.a?.streaming,
                 },
                 {
                   key: "b",
                   label: lastRoundRevealed ? lastRound?.b?.model?.displayName ?? "Option B" : "Option B",
+                  model: lastRoundRevealed ? lastRound?.b?.model : undefined,
                   artifact: lastArtifactB,
                   streaming: !!lastRound?.b?.streaming,
                 },

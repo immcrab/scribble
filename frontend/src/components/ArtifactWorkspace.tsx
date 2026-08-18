@@ -12,12 +12,14 @@ import {
   Blocks,
 } from "lucide-react";
 import type { Artifact } from "../lib/codeArtifact";
-import type { Vote } from "../types";
+import type { Vote, ModelDef } from "../types";
 import { Markdown } from "../lib/markdown";
+import { ModelFavicon } from "./ProviderIcon";
 
 export interface WorkspacePane {
   key: "a" | "b" | "single";
   label: string;
+  model?: ModelDef;
   artifact: Artifact | null;
   streaming: boolean;
 }
@@ -91,7 +93,11 @@ export function ArtifactWorkspace({
                 }}
                 className="flex min-w-0 items-center gap-2 text-slate-200"
               >
-                <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${i === activeIndex ? "bg-white" : "bg-base-600"}`} />
+                {p.model ? (
+                  <ModelFavicon model={p.model} size={14} />
+                ) : (
+                  <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${i === activeIndex ? "bg-white" : "bg-base-600"}`} />
+                )}
                 <span className="truncate">{p.label}</span>
               </button>
               {onVote && (

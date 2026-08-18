@@ -30,7 +30,7 @@ export function DirectMode({
 
   if (!chat) return null;
 
-  const model = chat.modelId ? findModel(chat.modelId) : undefined;
+  const model = (chat.modelId ? findModel(chat.modelId) : undefined) ?? ALL_MODELS[0];
   const generating = chat.messages.some((m) => m.streaming);
 
   const buildHistory = (upToId?: string): WireMessage[] => {
@@ -43,7 +43,7 @@ export function DirectMode({
 
   const send = (text: string, attachments: Attachment[], codeMode?: boolean) => {
     if (codeMode || isCodingRequest(text)) setEagerWorkspace(true);
-    const activeModel = model ?? ALL_MODELS[0];
+    const activeModel = model;
     if (!chat.modelId) setChatModels(chat.id, { modelId: activeModel.modelId });
 
     const userMsg: ChatMessageType = {
@@ -146,7 +146,7 @@ export function DirectMode({
         {hasWorkspace && (
           <div className="min-w-0 flex-1">
             <ArtifactWorkspace
-              panes={[{ key: "single", label: model?.displayName ?? "Preview", artifact: latestArtifact, streaming: !!lastIsStreaming }]}
+              panes={[{ key: "single", label: model.displayName, model, artifact: latestArtifact, streaming: !!lastIsStreaming }]}
             />
           </div>
         )}

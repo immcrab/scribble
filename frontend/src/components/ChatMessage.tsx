@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import type { ChatMessage as ChatMessageType, ToolCallRecord } from "../types";
 import { Markdown } from "../lib/markdown";
-import { ModelIcon } from "./ModelSelector";
+import { ModelFavicon } from "./ProviderIcon";
 import { extractArtifact, isArtifactWorthy } from "../lib/codeArtifact";
 
 const TOOL_STATUS_ICON: Record<ToolCallRecord["status"], typeof Loader2> = {
@@ -112,23 +112,26 @@ export function ChatMessage({
     <div className={`group animate-fade-in-up flex gap-3 ${isUser ? "flex-row-reverse" : ""}`}>
       <div
         className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg transition-shadow duration-300 ${
-          isUser ? "bg-base-700 text-slate-300" : "bg-gradient-to-br from-accent-500 to-accent-700 text-base-950"
-        } ${!isUser && message.streaming ? "animate-avatar-glow shadow-glow" : ""}`}
+          isUser
+            ? "bg-base-700 text-slate-300"
+            : "border border-base-700/60 bg-base-900/90 shadow-sm"
+        } ${!isUser && message.streaming ? "animate-avatar-glow shadow-glow border-accent-500/60" : ""}`}
       >
         {isUser ? (
           <User size={14} />
         ) : message.model && !hideModelName ? (
-          <ModelIcon name={message.model.icon} size={14} />
+          <ModelFavicon model={message.model} size={15} />
         ) : (
-          <HelpCircle size={14} />
+          <HelpCircle size={14} className="text-slate-400" />
         )}
       </div>
 
       <div className={`min-w-0 max-w-[80%] ${isUser ? "items-end" : "items-start"} flex flex-col`}>
         {!isUser && (
-          <span className="mb-1 px-1 text-xs font-medium text-slate-500">
-            {hideModelName ? "Anonymous model" : message.model?.displayName ?? "Assistant"}
-          </span>
+          <div className="mb-1 flex items-center gap-1.5 px-1 text-xs font-medium text-slate-400">
+            {message.model && !hideModelName && <ModelFavicon model={message.model} size={12} />}
+            <span>{hideModelName ? "Anonymous model" : message.model?.displayName ?? "Assistant"}</span>
+          </div>
         )}
 
         {message.attachments && message.attachments.length > 0 && (

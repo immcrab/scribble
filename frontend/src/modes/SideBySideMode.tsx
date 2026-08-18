@@ -188,8 +188,8 @@ export function SideBySideMode({
           <div className="min-w-0 flex-1">
             <ArtifactWorkspace
               panes={[
-                { key: "a", label: modelA?.displayName ?? "Model A", artifact: lastArtifactA, streaming: !!lastRound?.a?.streaming },
-                { key: "b", label: modelB?.displayName ?? "Model B", artifact: lastArtifactB, streaming: !!lastRound?.b?.streaming },
+                { key: "a", label: modelA?.displayName ?? "Model A", model: modelA, artifact: lastArtifactA, streaming: !!lastRound?.a?.streaming },
+                { key: "b", label: modelB?.displayName ?? "Model B", model: modelB, artifact: lastArtifactB, streaming: !!lastRound?.b?.streaming },
               ]}
             />
           </div>

@@ -1,13 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, Sparkles, Zap, Wind, Gem, Eye, Check } from "lucide-react";
+import { ChevronDown, Eye, Check, Sparkles } from "lucide-react";
 import type { ModelDef } from "../types";
 import { modelsByProvider, PROVIDER_LABELS } from "../config/models";
+import { ModelFavicon, ProviderFavicon } from "./ProviderIcon";
 
-const ICONS: Record<string, typeof Sparkles> = { Sparkles, Zap, Wind, Gem };
-
-export function ModelIcon({ name, size = 14 }: { name: string; size?: number }) {
-  const Icon = ICONS[name] ?? Sparkles;
-  return <Icon size={size} />;
+export function ModelIcon({ name, model, size = 15 }: { name?: string; model?: ModelDef; size?: number }) {
+  if (model) return <ModelFavicon model={model} size={size} />;
+  return <Sparkles size={size} />;
 }
 
 export function ModelSelector({
@@ -37,7 +36,7 @@ export function ModelSelector({
         onClick={() => setOpen((o) => !o)}
         className="flex items-center gap-2 rounded-lg border border-base-600/60 bg-base-800/60 px-2.5 py-1.5 text-sm text-slate-200 transition-colors hover:border-accent-500/50 hover:bg-base-700/60"
       >
-        {value ? <ModelIcon name={value.icon} /> : <Sparkles size={14} />}
+        <ModelFavicon model={value} size={15} />
         <span className="max-w-[160px] truncate">{value ? value.displayName : "Select model"}</span>
         <ChevronDown size={13} className={`text-slate-500 transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
@@ -49,10 +48,13 @@ export function ModelSelector({
           }`}
         >
           {(Object.keys(grouped) as (keyof typeof grouped)[]).map((provider) => (
-            <div key={provider} className="py-1.5">
-              <p className="px-3.5 pb-1 pt-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                {PROVIDER_LABELS[provider]}
-              </p>
+            <div key={provider} className="py-1.5 border-b border-base-700/40 last:border-b-0">
+              <div className="flex items-center gap-1.5 px-3.5 pb-1 pt-1.5">
+                <ProviderFavicon provider={provider} size={13} />
+                <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                  {PROVIDER_LABELS[provider]}
+                </span>
+              </div>
               {grouped[provider].map((m) => (
                 <button
                   key={m.modelId}
@@ -61,12 +63,16 @@ export function ModelSelector({
                     setOpen(false);
                   }}
                   className={`flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-sm transition-colors hover:bg-base-700/50 ${
-                    value?.modelId === m.modelId ? "bg-accent-500/10 text-white" : "text-slate-300"
+                    value?.modelId === m.modelId ? "bg-accent-500/10 text-white font-medium" : "text-slate-300"
                   }`}
                 >
-                  <ModelIcon name={m.icon} />
+                  <ModelFavicon model={m} size={15} />
                   <span className="min-w-0 flex-1 truncate">{m.displayName}</span>
-                  {m.supportsVision && <Eye size={12} className="shrink-0 text-slate-500" />}
+                  {m.supportsVision && (
+                    <span title="Supports vision">
+                      <Eye size={12} className="shrink-0 text-slate-500" />
+                    </span>
+                  )}
                   {value?.modelId === m.modelId && <Check size={13} className="shrink-0 text-accent-400" />}
                 </button>
               ))}

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Menu } from "lucide-react";
 import { Sidebar } from "./components/Sidebar";
 import { ModeSelector } from "./components/ModeSelector";
@@ -24,21 +24,34 @@ export default function App() {
   const activeChatId = useChatStore((s) => s.activeChatId);
   const activeChat = chats.find((c) => c.id === activeChatId);
 
-  const [landingMode, setLandingMode] = useState<Mode>("battle");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [pending, setPending] = useState<InitialPrompt | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
+  useEffect(() => {
+    if (!activeChat) {
+      if (chats.length > 0) {
+        useChatStore.getState().setActiveChat(chats[0].id);
+      } else {
+        useChatStore.getState().createChat("direct");
+      }
+    }
+  }, [activeChat, chats]);
+
   const startChat = (prompt: string, attachments: Attachment[], codeMode?: boolean) => {
-    const id = useChatStore.getState().createChat(landingMode);
+    const id = useChatStore.getState().createChat("direct");
     setPending({ chatId: id, prompt, attachments, codeMode });
   };
 
   const switchMode = (mode: Mode) => {
-    if (activeChat && mode !== activeChat.mode) {
+    if (activeChat) {
+      if (activeChat.messages.length === 0) {
+        useChatStore.getState().setChatMode(activeChat.id, mode);
+      } else if (mode !== activeChat.mode) {
+        useChatStore.getState().createChat(mode);
+      }
+    } else {
       useChatStore.getState().createChat(mode);
-    } else if (!activeChat) {
-      setLandingMode(mode);
     }
   };
 
@@ -62,7 +75,7 @@ export default function App() {
           >
             <Menu size={19} />
           </button>
-          <ModeSelector mode={activeChat?.mode ?? landingMode} onChange={switchMode} />
+          <ModeSelector mode={activeChat?.mode ?? "direct"} onChange={switchMode} />
         </div>
 
         <div className="min-h-0 flex-1">

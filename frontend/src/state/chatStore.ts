@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import type { Chat, ChatMessage, Mode, Vote } from "../types";
+import { ALL_MODELS } from "../config/models";
 import { loadChats, saveChats, loadSettings, saveSettings, titleFromPrompt } from "../lib/storage";
 import type { ScribbleSettings } from "../lib/storage";
 import { uid } from "../lib/id";
@@ -10,6 +11,34 @@ function debouncedPersist(chats: Chat[]) {
   persistTimer = setTimeout(() => saveChats(chats), 250);
 }
 
+function getDefaultModelPatch(mode: Mode): Partial<Pick<Chat, "modelId" | "modelAId" | "modelBId">> {
+  if (mode === "direct" || mode === "agent") {
+    return { modelId: ALL_MODELS[0]?.modelId };
+  }
+  if (mode === "side-by-side") {
+    return {
+      modelAId: ALL_MODELS[0]?.modelId,
+      modelBId: ALL_MODELS[1]?.modelId ?? ALL_MODELS[0]?.modelId,
+    };
+  }
+  return {};
+}
+
+function createInitialChat(mode: Mode = "direct"): Chat {
+  return {
+    id: uid(),
+    title: "New chat",
+    mode,
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    messages: [],
+    ...getDefaultModelPatch(mode),
+  };
+}
+
+const loadedChats = loadChats();
+const initialChats = loadedChats.length > 0 ? loadedChats : [createInitialChat("direct")];
+
 interface ChatStore {
   chats: Chat[];
   activeChatId: string | null;
@@ -19,7 +48,8 @@ interface ChatStore {
 
   activeChat: () => Chat | undefined;
 
-  createChat: (mode: Mode) => string;
+  createChat: (mode: Mode, modelId?: string) => string;
+  setChatMode: (id: string, mode: Mode) => void;
   setActiveChat: (id: string) => void;
   deleteChat: (id: string) => void;
   renameChat: (id: string, title: string) => void;
@@ -41,15 +71,17 @@ interface ChatStore {
 }
 
 export const useChatStore = create<ChatStore>((set, get) => ({
-  chats: loadChats(),
-  activeChatId: null,
+  chats: initialChats,
+  activeChatId: initialChats[0]?.id ?? null,
   sidebarOpen: true,
   settings: loadSettings(),
   abortControllers: new Map(),
 
   activeChat: () => get().chats.find((c) => c.id === get().activeChatId),
 
-  createChat: (mode) => {
+  createChat: (mode, customModelId) => {
+    const defaults = getDefaultModelPatch(mode);
+    if (customModelId) defaults.modelId = customModelId;
     const chat: Chat = {
       id: uid(),
       title: "New chat",
@@ -57,6 +89,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       createdAt: Date.now(),
       updatedAt: Date.now(),
       messages: [],
+      ...defaults,
     };
     set((s) => {
       const chats = [chat, ...s.chats];
@@ -66,15 +99,41 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     return chat.id;
   },
 
+  setChatMode: (id, mode) => {
+    set((s) => {
+      const defaults = getDefaultModelPatch(mode);
+      const chats = s.chats.map((c) => {
+        if (c.id !== id) return c;
+        return {
+          ...c,
+          mode,
+          modelId: c.modelId ?? defaults.modelId,
+          modelAId: c.modelAId ?? defaults.modelAId,
+          modelBId: c.modelBId ?? defaults.modelBId,
+        };
+      });
+      debouncedPersist(chats);
+      return { chats };
+    });
+  },
+
   setActiveChat: (id) => set({ activeChatId: id }),
 
   deleteChat: (id) => {
     set((s) => {
-      const chats = s.chats.filter((c) => c.id !== id);
-      debouncedPersist(chats);
+      const remaining = s.chats.filter((c) => c.id !== id);
+      if (remaining.length === 0) {
+        const fresh = createInitialChat("direct");
+        debouncedPersist([fresh]);
+        return {
+          chats: [fresh],
+          activeChatId: fresh.id,
+        };
+      }
+      debouncedPersist(remaining);
       return {
-        chats,
-        activeChatId: s.activeChatId === id ? null : s.activeChatId,
+        chats: remaining,
+        activeChatId: s.activeChatId === id ? remaining[0].id : s.activeChatId,
       };
     });
   },
