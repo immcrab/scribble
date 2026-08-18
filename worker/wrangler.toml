@@ -6,7 +6,7 @@ compatibility_date = "2024-11-01"
 # domain. Set with: wrangler secret put ALLOWED_ORIGINS  (or as a plain var
 # below if you don't mind it being public — it's not sensitive).
 [vars]
-ALLOWED_ORIGINS = "http://localhost:5173,https://immcrab.github.io"
+ALLOWED_ORIGINS = "http://localhost:5173,https://immcrab.github.io,https://scribbleai.dev"
 
 # Secrets (never commit real values — set these with `wrangler secret put NAME`):
 #   XKIRO_API_KEY
