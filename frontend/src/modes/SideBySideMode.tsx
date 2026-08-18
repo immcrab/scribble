@@ -6,7 +6,7 @@ import { Composer } from "../components/Composer";
 import { ModelSelector } from "../components/ModelSelector";
 import { EmptyState } from "../components/EmptyState";
 import { ArtifactWorkspace } from "../components/ArtifactWorkspace";
-import { extractArtifact, isArtifactWorthy } from "../lib/codeArtifact";
+import { extractArtifact, isArtifactWorthy, isCodingRequest } from "../lib/codeArtifact";
 import { runAssistantStream } from "../lib/runStream";
 import { uid } from "../lib/id";
 import type { Attachment, ChatMessage as ChatMessageType } from "../types";
@@ -63,7 +63,7 @@ export function SideBySideMode({
   };
 
   const send = (text: string, attachments: Attachment[], codeMode?: boolean) => {
-    if (codeMode) setEagerWorkspace(true);
+    if (codeMode || isCodingRequest(text)) setEagerWorkspace(true);
     if (!chat.modelAId || !chat.modelBId) {
       setChatModels(chat.id, { modelAId: modelA!.modelId, modelBId: modelB!.modelId });
     }

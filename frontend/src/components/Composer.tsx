@@ -68,7 +68,7 @@ export function Composer({
               <FileText size={12} className="text-accent-400" />
               <span className="max-w-[120px] truncate">{a.name}</span>
               <button
-                onClick={() => setAttachments((prev) => prev.filter((x) => x.id !== a.id))}
+                onClick={() => setAttachments((prev) => prev.filter((x) => a.id !== x.id))}
                 className="text-slate-500 hover:text-white"
               >
                 <X size={12} />
@@ -116,7 +116,7 @@ export function Composer({
           </button>
           <button
             onClick={() => setCodeMode((c) => !c)}
-            title="Code — open the preview/code panel as soon as you send"
+            title="Code — force-open the preview panel (also opens automatically for coding requests)"
             className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-sm transition-colors ${
               codeMode
                 ? "border-accent-500/50 bg-accent-500/10 text-white"

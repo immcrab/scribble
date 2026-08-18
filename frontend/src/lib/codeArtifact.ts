@@ -104,3 +104,38 @@ export function isArtifactWorthy(artifact: Artifact): boolean {
   const only = artifact.files[0];
   return !!only && only.content.split("\n").length >= 8;
 }
+
+/**
+ * Heuristic: does this prompt ask the model to *produce* or *generate* code?
+ *
+ * When true the ArtifactWorkspace panel opens automatically the moment the
+ * user hits send — no need to manually toggle the "Code" button first.
+ *
+ * The patterns are deliberately scoped so that common suggestion prompts
+ * (landing-page copy, game ideas, storefront planning, "explain this
+ * function") don't false-positive, while real coding requests like
+ * "write a react app", "build me a python script", "create an api endpoint",
+ * "write html + css", etc. do trigger.
+ */
+const CODING_PATTERNS: RegExp[] = [
+  // Explicit coding terms that almost always relate to producing code
+  /\b(code|coding|programming)\b/i,
+  /\b(debug|debugger|refactor|refactoring)\b/i,
+  /\b(script|algorithm)\b/i,
+  /\b(api|endpoint|sdk)\b/i,
+  /\b(deploy|deployment)\b/i,
+  /\b(frontend|backend|fullstack)\b/i,
+
+  // Programming languages & frameworks (standalone mentions)
+  /\b(html|css|javascript|js|typescript|python|java|golang|rust|ruby|php|swift|kotlin|react|vue|angular|nodejs|express|django|flask|svelte|flutter|sql)\b/i,
+
+  // Action verbs + code-related output nouns: "write/build/create a website"
+  /\b(write|build|create|make|generate)\s+(a|an|the)?\s*(code|script|program|app|application|website|webpage|game|tool|function|class|method|api|bot|automation|component|module|feature)\b/i,
+
+  // Personal requests: "i need a function", "give me a class"
+  /\b(i need|i want|give me)\s+(a|an|the)\s+(function|class|method|script|code|program)\b/i,
+];
+
+export function isCodingRequest(text: string): boolean {
+  return CODING_PATTERNS.some((re) => re.test(text));
+}

@@ -6,7 +6,7 @@ import { Composer } from "../components/Composer";
 import { VoteBar } from "../components/VoteBar";
 import { EmptyState } from "../components/EmptyState";
 import { ArtifactWorkspace } from "../components/ArtifactWorkspace";
-import { extractArtifact, isArtifactWorthy } from "../lib/codeArtifact";
+import { extractArtifact, isArtifactWorthy, isCodingRequest } from "../lib/codeArtifact";
 import { runAssistantStream } from "../lib/runStream";
 import { uid } from "../lib/id";
 import type { Attachment, ChatMessage as ChatMessageType, Vote } from "../types";
@@ -61,7 +61,7 @@ export function BattleMode({
   };
 
   const send = (text: string, attachments: Attachment[], codeMode?: boolean) => {
-    if (codeMode) setEagerWorkspace(true);
+    if (codeMode || isCodingRequest(text)) setEagerWorkspace(true);
     let modelA = chat.modelAId ? findModel(chat.modelAId) : undefined;
     let modelB = chat.modelBId ? findModel(chat.modelBId) : undefined;
     if (!modelA || !modelB) {
