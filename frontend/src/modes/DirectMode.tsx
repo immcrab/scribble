@@ -38,7 +38,11 @@ export function DirectMode({
     return chat.messages
       .slice(0, cutoff)
       .filter((m) => m.role === "user" || m.role === "assistant")
-      .map((m) => ({ role: m.role as "user" | "assistant", content: m.content }));
+      .map((m) => ({
+        role: m.role as "user" | "assistant",
+        content: m.content,
+        attachments: m.attachments?.map((a) => ({ name: a.name, type: a.type, dataUrl: a.dataUrl })),
+      }));
   };
 
   const send = (text: string, attachments: Attachment[], codeMode?: boolean) => {
@@ -66,7 +70,15 @@ export function DirectMode({
     };
     addMessage(chat.id, assistantMsg);
 
-    const history: WireMessage[] = [...buildHistory(), { role: "user", content: text }];
+    const userWireAttachments = attachments.map((a) => ({
+      name: a.name,
+      type: a.type,
+      dataUrl: a.dataUrl,
+    }));
+    const history: WireMessage[] = [
+      ...buildHistory(),
+      { role: "user", content: text, attachments: userWireAttachments },
+    ];
     runAssistantStream({ chatId: chat.id, messageId: assistantMsg.id, model: activeModel, history });
   };
 

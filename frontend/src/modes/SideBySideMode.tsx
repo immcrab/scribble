@@ -61,7 +61,11 @@ export function SideBySideMode({
     return chat.messages
       .slice(0, cutoff)
       .filter((m) => m.role === "user" || m.pane === pane)
-      .map((m) => ({ role: m.role as "user" | "assistant", content: m.content }));
+      .map((m) => ({
+        role: m.role as "user" | "assistant",
+        content: m.content,
+        attachments: m.attachments?.map((a) => ({ name: a.name, type: a.type, dataUrl: a.dataUrl })),
+      }));
   };
 
   const send = (text: string, attachments: Attachment[], codeMode?: boolean) => {
@@ -96,8 +100,19 @@ export function SideBySideMode({
     addMessage(chat.id, aMsg);
     addMessage(chat.id, bMsg);
 
-    const historyA: WireMessage[] = [...buildHistory("a"), { role: "user", content: text }];
-    const historyB: WireMessage[] = [...buildHistory("b"), { role: "user", content: text }];
+    const userWireAttachments = attachments.map((a) => ({
+      name: a.name,
+      type: a.type,
+      dataUrl: a.dataUrl,
+    }));
+    const historyA: WireMessage[] = [
+      ...buildHistory("a"),
+      { role: "user", content: text, attachments: userWireAttachments },
+    ];
+    const historyB: WireMessage[] = [
+      ...buildHistory("b"),
+      { role: "user", content: text, attachments: userWireAttachments },
+    ];
 
     runAssistantStream({ chatId: chat.id, messageId: aMsg.id, model: modelA, history: historyA });
     runAssistantStream({ chatId: chat.id, messageId: bMsg.id, model: modelB, history: historyB });

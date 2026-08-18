@@ -1,9 +1,9 @@
 import { useRef, useState } from "react";
-import { Paperclip, ArrowUp, Square, X, FileText, Code2 } from "lucide-react";
+import { Paperclip, ArrowUp, Square, X, FileText, Code2, Image as ImageIcon } from "lucide-react";
 import type { Attachment } from "../types";
 import { uid } from "../lib/id";
 
-const MAX_FILE_BYTES = 4 * 1024 * 1024;
+const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10MB
 
 export function Composer({
   onSend,
@@ -21,13 +21,15 @@ export function Composer({
   const [text, setText] = useState("");
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [codeMode, setCodeMode] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const handleFiles = async (files: FileList | null) => {
-    if (!files) return;
+  const processFiles = async (fileList: FileList | File[]) => {
+    const files = Array.from(fileList);
+    if (!files.length) return;
     const next: Attachment[] = [];
-    for (const file of Array.from(files)) {
+    for (const file of files) {
       if (file.size > MAX_FILE_BYTES) continue;
       const dataUrl = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
@@ -35,14 +37,68 @@ export function Composer({
         reader.onerror = reject;
         reader.readAsDataURL(file);
       });
-      next.push({ id: uid(), name: file.name, type: file.type, size: file.size, dataUrl });
+      next.push({
+        id: uid(),
+        name: file.name || "Pasted image",
+        type: file.type || "image/png",
+        size: file.size,
+        dataUrl,
+      });
     }
-    setAttachments((prev) => [...prev, ...next]);
+    if (next.length > 0) {
+      setAttachments((prev) => [...prev, ...next]);
+    }
+  };
+
+  const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      processFiles(e.target.files);
+      e.target.value = "";
+    }
+  };
+
+  const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+
+    const files: File[] = [];
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      if (item.kind === "file") {
+        const file = item.getAsFile();
+        if (file) files.push(file);
+      }
+    }
+
+    if (files.length > 0) {
+      processFiles(files);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    if (e.dataTransfer?.files) {
+      processFiles(e.dataTransfer.files);
+    }
   };
 
   const submit = () => {
     const trimmed = text.trim();
-    if (!trimmed || generating) return;
+    if ((!trimmed && attachments.length === 0) || generating) return;
     onSend(trimmed, attachments, codeMode);
     setText("");
     setAttachments([]);
@@ -56,25 +112,61 @@ export function Composer({
     el.style.height = Math.min(el.scrollHeight, 220) + "px";
   };
 
+  const canSubmit = (text.trim().length > 0 || attachments.length > 0) && !generating;
+
   return (
-    <div className="rounded-2xl border border-base-600/60 bg-base-800/70 shadow-panel backdrop-blur-xl transition-colors focus-within:border-accent-500/60 focus-within:shadow-glow">
+    <div
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+      className={`relative rounded-2xl border bg-base-800/70 shadow-panel backdrop-blur-xl transition-all focus-within:border-accent-500/60 focus-within:shadow-glow ${
+        isDragging ? "border-accent-500 bg-accent-500/10" : "border-base-600/60"
+      }`}
+    >
       {attachments.length > 0 && (
-        <div className="flex flex-wrap gap-2 border-b border-base-700/60 px-4 pt-3">
-          {attachments.map((a) => (
-            <div
-              key={a.id}
-              className="flex items-center gap-1.5 rounded-lg border border-base-600/60 bg-base-900/70 px-2 py-1 text-xs text-slate-300"
-            >
-              <FileText size={12} className="text-accent-400" />
-              <span className="max-w-[120px] truncate">{a.name}</span>
-              <button
-                onClick={() => setAttachments((prev) => prev.filter((x) => a.id !== x.id))}
-                className="text-slate-500 hover:text-white"
+        <div className="flex flex-wrap gap-2.5 border-b border-base-700/60 px-4 py-3">
+          {attachments.map((a) => {
+            const isImage = a.type?.startsWith("image/") || a.dataUrl?.startsWith("data:image/");
+            return (
+              <div
+                key={a.id}
+                className="group relative flex items-center gap-2 rounded-xl border border-base-600/70 bg-base-900/80 p-1.5 text-xs text-slate-300 shadow-sm transition-all hover:border-base-500"
               >
-                <X size={12} />
-              </button>
-            </div>
-          ))}
+                {isImage ? (
+                  <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-base-950">
+                    <img src={a.dataUrl} alt={a.name} className="h-full w-full object-cover" />
+                  </div>
+                ) : (
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-base-800 text-accent-400">
+                    <FileText size={16} />
+                  </div>
+                )}
+                <div className="min-w-0 max-w-[130px] pr-5">
+                  <span className="block truncate font-medium text-slate-200">{a.name}</span>
+                  <span className="text-[10px] text-slate-500">
+                    {a.size ? `${(a.size / 1024).toFixed(0)} KB` : isImage ? "Image" : "File"}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setAttachments((prev) => prev.filter((x) => a.id !== x.id))}
+                  className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-base-800/90 text-slate-400 transition-colors hover:bg-red-500/20 hover:text-red-400"
+                  title="Remove attachment"
+                >
+                  <X size={12} />
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {isDragging && (
+        <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-2xl bg-base-950/80 backdrop-blur-sm">
+          <div className="flex items-center gap-2 text-sm font-medium text-accent-400">
+            <ImageIcon size={20} className="animate-bounce" />
+            Drop images or files here to attach
+          </div>
         </div>
       )}
 
@@ -86,6 +178,7 @@ export function Composer({
           setText(e.target.value);
           autoGrow();
         }}
+        onPaste={handlePaste}
         onKeyDown={(e) => {
           if (e.key === "Enter" && !e.shiftKey) {
             e.preventDefault();
@@ -103,18 +196,21 @@ export function Composer({
             ref={fileInputRef}
             type="file"
             multiple
+            accept="image/*,.pdf,.txt,.md,.json,.js,.ts,.jsx,.tsx,.py,.html,.css,.csv"
             className="hidden"
-            onChange={(e) => handleFiles(e.target.files)}
+            onChange={handleFileInput}
           />
           <button
+            type="button"
             onClick={() => fileInputRef.current?.click()}
             className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm text-slate-400 transition-colors hover:bg-base-700/60 hover:text-white"
-            title="Add files"
+            title="Add images or files"
           >
             <Paperclip size={15} />
             <span className="hidden sm:inline">Add files</span>
           </button>
           <button
+            type="button"
             onClick={() => setCodeMode((c) => !c)}
             title="Code — force-open the preview panel (also opens automatically for coding requests)"
             className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-sm transition-colors ${
@@ -130,6 +226,7 @@ export function Composer({
 
         {generating ? (
           <button
+            type="button"
             onClick={onStop}
             className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-200 text-base-950 transition-transform hover:scale-105 hover:bg-slate-300 active:scale-95"
             title="Stop generating"
@@ -138,8 +235,9 @@ export function Composer({
           </button>
         ) : (
           <button
+            type="button"
             onClick={submit}
-            disabled={!text.trim()}
+            disabled={!canSubmit}
             className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent-500 text-base-950 transition-all hover:scale-105 hover:bg-accent-400 active:scale-95 disabled:scale-100 disabled:cursor-not-allowed disabled:bg-base-600 disabled:text-slate-500"
             title="Send"
           >

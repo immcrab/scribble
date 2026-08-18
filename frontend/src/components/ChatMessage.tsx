@@ -135,15 +135,38 @@ export function ChatMessage({
         )}
 
         {message.attachments && message.attachments.length > 0 && (
-          <div className="mb-1.5 flex flex-wrap gap-1.5">
-            {message.attachments.map((a) => (
-              <span
-                key={a.id}
-                className="flex items-center gap-1 rounded-lg border border-base-600/60 bg-base-800/60 px-2 py-1 text-xs text-slate-400"
-              >
-                <FileText size={11} /> {a.name}
-              </span>
-            ))}
+          <div className="mb-2 flex flex-wrap gap-2">
+            {message.attachments.map((a) => {
+              const isImage = a.type?.startsWith("image/") || a.dataUrl?.startsWith("data:image/");
+              if (isImage && a.dataUrl) {
+                return (
+                  <div
+                    key={a.id}
+                    className="group/img relative overflow-hidden rounded-xl border border-base-700/60 bg-base-900/80 shadow-sm"
+                  >
+                    <img
+                      src={a.dataUrl}
+                      alt={a.name}
+                      className="max-h-56 max-w-full rounded-xl object-contain sm:max-h-72"
+                      loading="lazy"
+                    />
+                    {a.name && (
+                      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-base-950/80 to-transparent p-1.5 text-[11px] text-slate-300 opacity-0 transition-opacity group-hover/img:opacity-100 truncate">
+                        {a.name}
+                      </div>
+                    )}
+                  </div>
+                );
+              }
+              return (
+                <span
+                  key={a.id}
+                  className="flex items-center gap-1 rounded-lg border border-base-600/60 bg-base-800/60 px-2.5 py-1 text-xs text-slate-300"
+                >
+                  <FileText size={12} className="text-accent-400" /> {a.name}
+                </span>
+              );
+            })}
           </div>
         )}
 

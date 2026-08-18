@@ -47,6 +47,7 @@ export function saveSettings(settings: ScribbleSettings): void {
 
 export function titleFromPrompt(prompt: string): string {
   const clean = prompt.trim().replace(/\s+/g, " ");
-  if (clean.length <= 48) return clean || "New chat";
+  if (!clean) return "Image chat";
+  if (clean.length <= 48) return clean;
   return clean.slice(0, 48).trimEnd() + "…";
 }

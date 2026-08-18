@@ -38,6 +38,15 @@ export function ModelSelector({
       >
         <ModelFavicon model={value} size={15} />
         <span className="max-w-[160px] truncate">{value ? value.displayName : "Select model"}</span>
+        {value?.supportsVision && (
+          <span
+            title="Supports vision input"
+            className="hidden sm:inline-flex items-center gap-1 rounded border border-sky-500/30 bg-sky-500/15 px-1.5 py-0.5 text-[9px] font-semibold tracking-wide text-sky-400"
+          >
+            <Eye size={9} strokeWidth={2.5} />
+            Vision
+          </span>
+        )}
         <ChevronDown size={13} className={`text-slate-500 transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
 
@@ -69,8 +78,12 @@ export function ModelSelector({
                   <ModelFavicon model={m} size={15} />
                   <span className="min-w-0 flex-1 truncate">{m.displayName}</span>
                   {m.supportsVision && (
-                    <span title="Supports vision">
-                      <Eye size={12} className="shrink-0 text-slate-500" />
+                    <span
+                      title="Supports image and vision input"
+                      className="inline-flex items-center gap-1 rounded border border-sky-500/30 bg-sky-500/15 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-sky-400 shrink-0"
+                    >
+                      <Eye size={10} strokeWidth={2.5} />
+                      <span>Vision</span>
                     </span>
                   )}
                   {value?.modelId === m.modelId && <Check size={13} className="shrink-0 text-accent-400" />}
