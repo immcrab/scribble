@@ -31,17 +31,32 @@ export function Composer({
     const next: Attachment[] = [];
     for (const file of files) {
       if (file.size > MAX_FILE_BYTES) continue;
-      const dataUrl = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
+      const isImage = file.type.startsWith("image/");
+      let dataUrl: string;
+      let storedSize = file.size;
+      let storedType = file.type || "application/octet-stream";
+
+      if (isImage) {
+        // Keep base64 requests small enough for the Worker/provider while
+        // preserving enough detail for vision and OCR.
+        const prepared = await prepareImage(file);
+        dataUrl = prepared.dataUrl;
+        storedSize = prepared.size;
+        storedType = prepared.type;
+      } else {
+        dataUrl = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+      }
+
       next.push({
         id: uid(),
         name: file.name || "Pasted image",
-        type: file.type || "image/png",
-        size: file.size,
+        type: storedType,
+        size: storedSize,
         dataUrl,
       });
     }
@@ -49,6 +64,29 @@ export function Composer({
       setAttachments((prev) => [...prev, ...next]);
     }
   };
+
+  const prepareImage = (file: File): Promise<{ dataUrl: string; type: string; size: number }> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = reject;
+      reader.onload = () => {
+        const image = new Image();
+        image.onerror = reject;
+        image.onload = () => {
+          const maxDimension = 2048;
+          const scale = Math.min(1, maxDimension / Math.max(image.naturalWidth, image.naturalHeight));
+          const canvas = document.createElement("canvas");
+          canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+          canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+          canvas.getContext("2d")?.drawImage(image, 0, 0, canvas.width, canvas.height);
+          const type = file.type === "image/png" ? "image/png" : "image/jpeg";
+          const dataUrl = canvas.toDataURL(type, type === "image/jpeg" ? 0.86 : undefined);
+          resolve({ dataUrl, type, size: Math.ceil((dataUrl.length * 3) / 4) });
+        };
+        image.src = reader.result as string;
+      };
+      reader.readAsDataURL(file);
+    });
 
   const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {

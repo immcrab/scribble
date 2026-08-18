@@ -190,6 +190,8 @@ export const ALL_MODELS: ModelDef[] = [
   ...GEMINI_MODELS,
 ];
 
+export const DEFAULT_MODEL_ID = "qwen/qwen3.5-flash";
+
 export const PROVIDER_LABELS: Record<Provider, string> = {
   xkiro: "xKiro",
   groq: "Groq",
@@ -207,6 +209,10 @@ export function modelsByProvider(): Record<Provider, ModelDef[]> {
 
 export function findModel(modelId: string): ModelDef | undefined {
   return ALL_MODELS.find((m) => m.modelId === modelId);
+}
+
+export function getDefaultModel(): ModelDef {
+  return findModel(DEFAULT_MODEL_ID) ?? ALL_MODELS[0];
 }
 
 export function randomModelPair(): [ModelDef, ModelDef] {

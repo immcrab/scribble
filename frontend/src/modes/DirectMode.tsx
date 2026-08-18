@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useChatStore } from "../state/chatStore";
-import { ALL_MODELS, findModel } from "../config/models";
+import { getDefaultModel, findModel } from "../config/models";
 import { ChatMessage } from "../components/ChatMessage";
 import { Composer } from "../components/Composer";
 import { ModelSelector } from "../components/ModelSelector";
@@ -30,7 +30,7 @@ export function DirectMode({
 
   if (!chat) return null;
 
-  const model = (chat.modelId ? findModel(chat.modelId) : undefined) ?? ALL_MODELS[0];
+  const model = (chat.modelId ? findModel(chat.modelId) : undefined) ?? getDefaultModel();
   const generating = chat.messages.some((m) => m.streaming);
 
   const buildHistory = (upToId?: string): WireMessage[] => {

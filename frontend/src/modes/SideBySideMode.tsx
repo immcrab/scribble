@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useChatStore } from "../state/chatStore";
-import { ALL_MODELS, findModel } from "../config/models";
+import { getDefaultModel, findModel } from "../config/models";
 import { ChatMessage } from "../components/ChatMessage";
 import { Composer } from "../components/Composer";
 import { ModelSelector } from "../components/ModelSelector";
@@ -50,8 +50,8 @@ export function SideBySideMode({
 
   if (!chat) return null;
 
-  const modelA = chat.modelAId ? findModel(chat.modelAId) : ALL_MODELS[0];
-  const modelB = chat.modelBId ? findModel(chat.modelBId) : ALL_MODELS[1];
+  const modelA = chat.modelAId ? findModel(chat.modelAId) : getDefaultModel();
+  const modelB = chat.modelBId ? findModel(chat.modelBId) : getDefaultModel();
   const generating = chat.messages.some((m) => m.streaming);
   const rounds = groupRounds(chat.messages);
   const lastRound = rounds[rounds.length - 1];

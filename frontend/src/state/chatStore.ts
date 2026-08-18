@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import type { Chat, ChatMessage, Mode, Vote } from "../types";
-import { ALL_MODELS } from "../config/models";
+import { getDefaultModel } from "../config/models";
 import { loadChats, saveChats, loadSettings, saveSettings, titleFromPrompt } from "../lib/storage";
 import type { ScribbleSettings } from "../lib/storage";
 import { uid } from "../lib/id";
@@ -13,12 +13,12 @@ function debouncedPersist(chats: Chat[]) {
 
 function getDefaultModelPatch(mode: Mode): Partial<Pick<Chat, "modelId" | "modelAId" | "modelBId">> {
   if (mode === "direct" || mode === "agent") {
-    return { modelId: ALL_MODELS[0]?.modelId };
+    return { modelId: getDefaultModel()?.modelId };
   }
   if (mode === "side-by-side") {
     return {
-      modelAId: ALL_MODELS[0]?.modelId,
-      modelBId: ALL_MODELS[1]?.modelId ?? ALL_MODELS[0]?.modelId,
+      modelAId: getDefaultModel()?.modelId,
+      modelBId: getDefaultModel()?.modelId,
     };
   }
   return {};
