@@ -17,12 +17,15 @@ export default {
           600: "#524d47", // Arena --border-medium
           500: "#68615a", // Arena --neutral-9 (muted)
         },
+        // Monochrome accent — no blue. Mirrors Arena's own minimal look, where
+        // the only real "color" is a bright off-white highlight against the
+        // warm charcoal surfaces; red/emerald stay for error/success only.
         accent: {
-          400: "#4dacff", // Arena --brand-blue-5 (hover)
-          500: "#299bff", // Arena --brand-blue (primary)
-          600: "#077fe9",
-          700: "#0b61ad", // Arena --brand-blue-8
-          glow: "#299bff",
+          400: "#ffffff",
+          500: "#f5f0eb",
+          600: "#d5cdc3",
+          700: "#9c9891",
+          glow: "#f5f0eb",
         },
         slate: {
           100: "#f5f0eb", // Arena --brand-neutral-3 (primary text)
@@ -38,7 +41,7 @@ export default {
         serif: ["'Source Serif 4'", "ui-serif", "Georgia", "serif"],
       },
       boxShadow: {
-        glow: "0 0 0 1px rgba(59,130,246,0.15), 0 8px 30px -8px rgba(59,130,246,0.35)",
+        glow: "0 0 0 1px rgba(245,240,235,0.12), 0 8px 30px -8px rgba(245,240,235,0.25)",
         panel: "0 4px 24px -4px rgba(0,0,0,0.5)",
       },
       keyframes: {

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Copy,
   Check,
@@ -16,6 +16,8 @@ import {
 import type { ChatMessage as ChatMessageType, ToolCallRecord } from "../types";
 import { Markdown } from "../lib/markdown";
 import { ModelIcon } from "./ModelSelector";
+import { CodeArtifact } from "./CodeArtifact";
+import { extractArtifact, isArtifactWorthy } from "../lib/codeArtifact";
 
 const TOOL_STATUS_ICON: Record<ToolCallRecord["status"], typeof Loader2> = {
   pending: Loader2,
@@ -79,11 +81,18 @@ export function ChatMessage({
     setTimeout(() => setCopied(false), 1200);
   };
 
+  // Only parse for a finished message — mid-stream fences are often unbalanced.
+  const artifact = useMemo(() => {
+    if (isUser || message.streaming || !message.content) return null;
+    const parsed = extractArtifact(message.content);
+    return parsed && isArtifactWorthy(parsed) ? parsed : null;
+  }, [isUser, message.streaming, message.content]);
+
   return (
     <div className={`group animate-fade-in-up flex gap-3 ${isUser ? "flex-row-reverse" : ""}`}>
       <div
         className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${
-          isUser ? "bg-base-700 text-slate-300" : "bg-gradient-to-br from-accent-500 to-accent-700 text-white"
+          isUser ? "bg-base-700 text-slate-300" : "bg-gradient-to-br from-accent-500 to-accent-700 text-base-950"
         }`}
       >
         {isUser ? (
@@ -118,7 +127,7 @@ export function ChatMessage({
         <div
           className={`rounded-2xl px-4 py-2.5 ${
             isUser
-              ? "bg-accent-600/90 text-white"
+              ? "bg-accent-600/90 text-base-950"
               : "border border-base-700/60 bg-base-850/70 text-slate-100"
           }`}
         >
@@ -128,6 +137,11 @@ export function ChatMessage({
               <AlertTriangle size={15} className="mt-0.5 shrink-0" />
               <span>{message.error}</span>
             </div>
+          ) : artifact ? (
+            <>
+              <CodeArtifact artifact={artifact} title={message.model?.displayName ?? "scribble-artifact"} />
+              {artifact.remainingText && <Markdown content={artifact.remainingText} />}
+            </>
           ) : message.content ? (
             <div className={message.streaming ? "stream-cursor" : ""}>
               <Markdown content={message.content} />

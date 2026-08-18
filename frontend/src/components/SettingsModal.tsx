@@ -86,7 +86,7 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
           </button>
           <button
             onClick={save}
-            className="rounded-lg bg-accent-500 px-3.5 py-2 text-sm font-medium text-white hover:bg-accent-400"
+            className="rounded-lg bg-accent-500 px-3.5 py-2 text-sm font-medium text-base-950 hover:bg-accent-400"
           >
             Save
           </button>

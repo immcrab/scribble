@@ -13,28 +13,28 @@ body {
 }
 
 ::selection {
-  background: rgba(59, 130, 246, 0.35);
+  background: rgba(245, 240, 235, 0.25);
 }
 
-/* thin, dark, blue-tinted scrollbars */
+/* thin, dark, warm-charcoal scrollbars */
 * {
   scrollbar-width: thin;
-  scrollbar-color: #2b2f3d transparent;
+  scrollbar-color: #524d47 transparent;
 }
 *::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 *::-webkit-scrollbar-thumb {
-  background: #2b2f3d;
+  background: #524d47;
   border-radius: 8px;
 }
 *::-webkit-scrollbar-thumb:hover {
-  background: #3b82f6aa;
+  background: #9c9891;
 }
 
 .glass-panel {
-  background: linear-gradient(180deg, rgba(23, 26, 37, 0.9), rgba(13, 15, 22, 0.9));
+  background: linear-gradient(180deg, rgba(35, 33, 31, 0.92), rgba(27, 26, 24, 0.92));
   backdrop-filter: blur(14px);
 }
 
@@ -55,8 +55,8 @@ body {
   margin: 0.2em 0;
 }
 .prose-scribble pre {
-  background: #0b0d13;
-  border: 1px solid #20232f;
+  background: #1f1d1a;
+  border: 1px solid #413d39;
   border-radius: 10px;
   padding: 0.9em 1em;
   overflow-x: auto;
@@ -67,11 +67,11 @@ body {
   font-size: 0.85em;
 }
 .prose-scribble :not(pre) > code {
-  background: #1a1e2b;
-  border: 1px solid #262a38;
+  background: #2c2925;
+  border: 1px solid #413d39;
   border-radius: 5px;
   padding: 0.1em 0.4em;
-  color: #8fb8ff;
+  color: #f5f0eb;
 }
 .prose-scribble h1,
 .prose-scribble h2,
@@ -81,12 +81,12 @@ body {
   color: white;
 }
 .prose-scribble a {
-  color: #5b9bff;
+  color: #f5f0eb;
   text-decoration: underline;
   text-underline-offset: 2px;
 }
 .prose-scribble blockquote {
-  border-left: 2px solid #3b82f6;
+  border-left: 2px solid #524d47;
   padding-left: 0.9em;
   color: theme("colors.slate.400");
   margin: 0.6em 0;
@@ -99,7 +99,7 @@ body {
 }
 .prose-scribble th,
 .prose-scribble td {
-  border: 1px solid #20232f;
+  border: 1px solid #413d39;
   padding: 0.4em 0.7em;
   text-align: left;
 }
@@ -108,12 +108,12 @@ body {
   content: "▍";
   display: inline-block;
   margin-left: 1px;
-  color: #5b9bff;
+  color: #f5f0eb;
   animation: blink 1s step-start infinite;
 }
 
 .skeleton-line {
-  background: linear-gradient(90deg, #171a25 25%, #20232f 37%, #171a25 63%);
+  background: linear-gradient(90deg, #1f1d1a 25%, #2c2925 37%, #1f1d1a 63%);
   background-size: 400% 100%;
   animation: shimmer 1.8s linear infinite;
   border-radius: 6px;

@@ -9,8 +9,11 @@ import {
   PanelLeftOpen,
   Check,
   X,
+  LogIn,
+  LogOut,
 } from "lucide-react";
 import { useChatStore } from "../state/chatStore";
+import { useAuthStore } from "../state/authStore";
 import type { Mode } from "../types";
 
 const MODE_LABEL: Record<Mode, string> = {
@@ -31,6 +34,7 @@ export function Sidebar({
 }) {
   const { chats, activeChatId, sidebarOpen, toggleSidebar, setActiveChat, deleteChat, renameChat, createChat } =
     useChatStore();
+  const { user, loading: authLoading, signInWithGoogle, signOut } = useAuthStore();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
 
@@ -66,7 +70,7 @@ export function Sidebar({
             {(sidebarOpen || mobileOpen) && (
               <div className="flex items-center gap-2 px-1 animate-fade-in">
                 <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-accent-500 to-accent-700 shadow-glow">
-                  <PenLine size={15} className="text-white" strokeWidth={2.5} />
+                  <PenLine size={15} className="text-base-950" strokeWidth={2.5} />
                 </div>
                 <span className="font-serif text-lg font-semibold tracking-tight text-white">Scribble</span>
               </div>
@@ -174,6 +178,49 @@ export function Sidebar({
           {!sidebarOpen && !mobileOpen && <div className="flex-1" />}
 
           <div className="border-t border-base-700/60 p-3">
+            {!authLoading && (
+              <>
+                {user ? (
+                  <div
+                    className={`group mb-1 flex items-center gap-2 rounded-lg px-2 py-1.5 ${
+                      !sidebarOpen && !mobileOpen && "md:justify-center"
+                    }`}
+                  >
+                    {user.photoURL ? (
+                      <img src={user.photoURL} alt="" className="h-6 w-6 shrink-0 rounded-full" referrerPolicy="no-referrer" />
+                    ) : (
+                      <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-base-700 text-[11px] font-medium text-slate-200">
+                        {(user.displayName ?? user.email ?? "?").charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                    {(sidebarOpen || mobileOpen) && (
+                      <>
+                        <span className="min-w-0 flex-1 truncate text-xs text-slate-300">
+                          {user.email ?? user.displayName}
+                        </span>
+                        <button
+                          onClick={signOut}
+                          title="Sign out"
+                          className="shrink-0 rounded p-1 text-slate-500 opacity-0 hover:bg-base-700 hover:text-white group-hover:opacity-100"
+                        >
+                          <LogOut size={13} />
+                        </button>
+                      </>
+                    )}
+                  </div>
+                ) : (
+                  <button
+                    onClick={signInWithGoogle}
+                    className={`mb-1 flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-400 transition-colors hover:bg-base-800/70 hover:text-white ${
+                      !sidebarOpen && !mobileOpen && "md:justify-center"
+                    }`}
+                  >
+                    <LogIn size={16} />
+                    {(sidebarOpen || mobileOpen) && "Log in with Google"}
+                  </button>
+                )}
+              </>
+            )}
             <button
               onClick={closeOnMobileSelect(onOpenSettings)}
               className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-400 transition-colors hover:bg-base-800/70 hover:text-white ${
