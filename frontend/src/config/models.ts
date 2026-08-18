@@ -4,49 +4,38 @@ import { XKIRO_MODELS } from "./xkiroModels";
 /**
  * Groq models — official free dev tier, OpenAI-compatible endpoint
  * https://api.groq.com/openai/v1/chat/completions
- * Catalog verified against Groq's published free-tier model list. Groq also
- * exposes GET /openai/v1/models if you want to refresh this at runtime.
+ * Verified live against a real Groq free-tier key (Aug 2026) — Groq's
+ * catalog turns over fast, so re-check GET /openai/v1/models periodically.
  */
 const GROQ_MODELS: ModelDef[] = [
   {
     provider: "groq",
-    modelId: "llama-3.3-70b-versatile",
-    displayName: "Llama 3.3 70B",
+    modelId: "groq/compound",
+    displayName: "Compound",
     icon: "Zap",
-    contextLength: 128000,
-    capabilities: ["text", "code"],
+    contextLength: 131072,
+    capabilities: ["text", "reasoning", "code"],
     free: true,
     supportsStreaming: true,
     supportsVision: false,
   },
   {
     provider: "groq",
-    modelId: "llama-3.1-8b-instant",
-    displayName: "Llama 3.1 8B Instant",
+    modelId: "groq/compound-mini",
+    displayName: "Compound Mini",
     icon: "Zap",
-    contextLength: 128000,
-    capabilities: ["text"],
+    contextLength: 131072,
+    capabilities: ["text", "reasoning"],
     free: true,
     supportsStreaming: true,
     supportsVision: false,
-  },
-  {
-    provider: "groq",
-    modelId: "meta-llama/llama-4-scout-17b-16e-instruct",
-    displayName: "Llama 4 Scout",
-    icon: "Zap",
-    contextLength: 128000,
-    capabilities: ["text", "vision"],
-    free: true,
-    supportsStreaming: true,
-    supportsVision: true,
   },
   {
     provider: "groq",
     modelId: "openai/gpt-oss-120b",
     displayName: "GPT-OSS 120B",
     icon: "Zap",
-    contextLength: 128000,
+    contextLength: 131072,
     capabilities: ["text", "reasoning"],
     free: true,
     supportsStreaming: true,
@@ -57,7 +46,7 @@ const GROQ_MODELS: ModelDef[] = [
     modelId: "openai/gpt-oss-20b",
     displayName: "GPT-OSS 20B",
     icon: "Zap",
-    contextLength: 128000,
+    contextLength: 131072,
     capabilities: ["text", "reasoning"],
     free: true,
     supportsStreaming: true,
@@ -65,22 +54,11 @@ const GROQ_MODELS: ModelDef[] = [
   },
   {
     provider: "groq",
-    modelId: "deepseek-r1-distill-llama-70b",
-    displayName: "DeepSeek R1 Distill 70B",
+    modelId: "qwen/qwen3.6-27b",
+    displayName: "Qwen3.6 27B",
     icon: "Zap",
-    contextLength: 128000,
-    capabilities: ["text", "reasoning"],
-    free: true,
-    supportsStreaming: true,
-    supportsVision: false,
-  },
-  {
-    provider: "groq",
-    modelId: "qwen/qwen3-32b",
-    displayName: "Qwen3 32B",
-    icon: "Zap",
-    contextLength: 128000,
-    capabilities: ["text", "code"],
+    contextLength: 131072,
+    capabilities: ["text", "reasoning", "code"],
     free: true,
     supportsStreaming: true,
     supportsVision: false,
@@ -89,8 +67,10 @@ const GROQ_MODELS: ModelDef[] = [
 
 /**
  * Mistral models — La Plateforme free "Experiment" tier (rate-limited, all
- * models available; heavily throttled). Endpoint is OpenAI-compatible:
+ * models available). Endpoint is OpenAI-compatible:
  * https://api.mistral.ai/v1/chat/completions
+ * Verified live against a real Mistral key (Aug 2026) — pixtral/nemo aliases
+ * from earlier catalogs are gone; check GET /v1/models to refresh this.
  */
 const MISTRAL_MODELS: ModelDef[] = [
   {
@@ -117,8 +97,8 @@ const MISTRAL_MODELS: ModelDef[] = [
   },
   {
     provider: "mistral",
-    modelId: "open-mistral-nemo",
-    displayName: "Mistral Nemo",
+    modelId: "ministral-8b-latest",
+    displayName: "Ministral 8B",
     icon: "Wind",
     contextLength: 128000,
     capabilities: ["text"],
@@ -139,26 +119,28 @@ const MISTRAL_MODELS: ModelDef[] = [
   },
   {
     provider: "mistral",
-    modelId: "pixtral-12b-2409",
-    displayName: "Pixtral 12B",
+    modelId: "devstral-latest",
+    displayName: "Devstral",
     icon: "Wind",
     contextLength: 128000,
-    capabilities: ["text", "vision"],
+    capabilities: ["code"],
     free: true,
     supportsStreaming: true,
-    supportsVision: true,
+    supportsVision: false,
   },
 ];
 
 /**
  * Gemini models — official free API tier only (Pro is paid-only as of 2026).
  * https://generativelanguage.googleapis.com/v1beta/models/{model}:streamGenerateContent
+ * Verified live against a real Gemini key (Aug 2026) — 2.5 Flash/Flash-Lite
+ * were retired for new users mid-2026 in favor of the 3.x line below.
  */
 const GEMINI_MODELS: ModelDef[] = [
   {
     provider: "gemini",
-    modelId: "gemini-2.5-flash",
-    displayName: "Gemini 2.5 Flash",
+    modelId: "gemini-3.6-flash",
+    displayName: "Gemini 3.6 Flash",
     icon: "Gem",
     contextLength: 1000000,
     capabilities: ["text", "vision", "code"],
@@ -168,8 +150,8 @@ const GEMINI_MODELS: ModelDef[] = [
   },
   {
     provider: "gemini",
-    modelId: "gemini-2.5-flash-lite",
-    displayName: "Gemini 2.5 Flash-Lite",
+    modelId: "gemini-3.5-flash-lite",
+    displayName: "Gemini 3.5 Flash-Lite",
     icon: "Gem",
     contextLength: 1000000,
     capabilities: ["text", "vision"],
