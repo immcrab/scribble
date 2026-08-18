@@ -5,21 +5,32 @@ export default {
   theme: {
     extend: {
       colors: {
+        // Warm charcoal + blue palette, values pulled directly from Arena.ai's
+        // own CSS custom properties (--background, --card, --border,
+        // --brand-blue, etc.) rather than eyeballed from screenshots.
         base: {
-          950: "#08090d",
-          900: "#0d0f16",
-          850: "#12141d",
-          800: "#171a25",
-          700: "#20232f",
-          600: "#2b2f3d",
-          500: "#3a3f52",
+          950: "#1b1a18", // outer app shell — a shade below Arena's own bg for depth
+          900: "#252523", // Arena --background / --sidebar-background
+          850: "#23211f", // Arena --popover / --sidebar-accent
+          800: "#33302e", // Arena --card / --surface-secondary
+          700: "#413d39", // Arena --border
+          600: "#524d47", // Arena --border-medium
+          500: "#68615a", // Arena --neutral-9 (muted)
         },
         accent: {
-          400: "#5b9bff",
-          500: "#3b82f6",
-          600: "#2563eb",
-          700: "#1d4ed8",
-          glow: "#4f8bff",
+          400: "#4dacff", // Arena --brand-blue-5 (hover)
+          500: "#299bff", // Arena --brand-blue (primary)
+          600: "#077fe9",
+          700: "#0b61ad", // Arena --brand-blue-8
+          glow: "#299bff",
+        },
+        slate: {
+          100: "#f5f0eb", // Arena --brand-neutral-3 (primary text)
+          200: "#e7e1da", // Arena --text-secondary
+          300: "#c7c2bc", // Arena --text-tertiary
+          400: "#9c9891", // Arena --brand-neutral-7
+          500: "#827c73", // Arena --brand-neutral-8
+          600: "#4c4743", // Arena --brand-neutral-10
         },
       },
       fontFamily: {

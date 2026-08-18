@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Menu } from "lucide-react";
 import { Sidebar } from "./components/Sidebar";
 import { ModeSelector } from "./components/ModeSelector";
 import { Composer } from "./components/Composer";
@@ -25,6 +26,7 @@ export default function App() {
   const [landingMode, setLandingMode] = useState<Mode>("battle");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [pending, setPending] = useState<InitialPrompt | null>(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const startChat = (prompt: string, attachments: Attachment[]) => {
     const id = useChatStore.getState().createChat(landingMode);
@@ -44,10 +46,21 @@ export default function App() {
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-base-950">
-      <Sidebar onOpenSettings={() => setSettingsOpen(true)} />
+      <Sidebar
+        onOpenSettings={() => setSettingsOpen(true)}
+        mobileOpen={mobileMenuOpen}
+        onCloseMobile={() => setMobileMenuOpen(false)}
+      />
 
       <div className="flex min-w-0 flex-1 flex-col">
         <div className="flex items-center gap-2 px-4 py-2.5">
+          <button
+            onClick={() => setMobileMenuOpen(true)}
+            className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-base-700/60 hover:text-white md:hidden"
+            title="Open menu"
+          >
+            <Menu size={19} />
+          </button>
           <ModeSelector mode={activeChat?.mode ?? landingMode} onChange={switchMode} />
         </div>
 

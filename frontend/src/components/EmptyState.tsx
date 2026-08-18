@@ -11,7 +11,7 @@ const SUGGESTIONS = [
 export function EmptyState({ heading, onPick }: { heading?: string; onPick: (prompt: string) => void }) {
   return (
     <div className="flex h-full flex-col items-center justify-center px-4 text-center">
-      <h1 className="mb-8 font-serif text-4xl font-medium tracking-tight text-slate-100 sm:text-[2.6rem]">
+      <h1 className="mb-8 font-serif text-4xl font-light tracking-tighter text-slate-100 sm:text-[2.9rem]">
         {heading ?? "What would you like to do?"}
       </h1>
       <div className="grid w-full max-w-2xl grid-cols-1 gap-2.5 sm:grid-cols-2">
