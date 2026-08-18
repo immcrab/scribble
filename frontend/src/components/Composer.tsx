@@ -131,7 +131,7 @@ export function Composer({
         {generating ? (
           <button
             onClick={onStop}
-            className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-200 text-base-950 transition-transform hover:scale-105"
+            className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-200 text-base-950 transition-transform hover:scale-105 hover:bg-slate-300 active:scale-95"
             title="Stop generating"
           >
             <Square size={13} fill="currentColor" />
@@ -140,7 +140,7 @@ export function Composer({
           <button
             onClick={submit}
             disabled={!text.trim()}
-            className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent-500 text-base-950 transition-all hover:scale-105 hover:bg-accent-400 disabled:scale-100 disabled:cursor-not-allowed disabled:bg-base-600 disabled:text-slate-500"
+            className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent-500 text-base-950 transition-all hover:scale-105 hover:bg-accent-400 active:scale-95 disabled:scale-100 disabled:cursor-not-allowed disabled:bg-base-600 disabled:text-slate-500"
             title="Send"
           >
             <ArrowUp size={16} strokeWidth={2.5} />

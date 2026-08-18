@@ -53,9 +53,35 @@ export default {
           "0%": { opacity: 0 },
           "100%": { opacity: 1 },
         },
-        blink: {
-          "0%, 49%": { opacity: 1 },
-          "50%, 100%": { opacity: 0 },
+        // Soft, breathing cursor — gentler than a hard on/off blink so a live
+        // stream feels calm rather than frantic.
+        "cursor-breathe": {
+          "0%, 100%": { opacity: 1 },
+          "50%": { opacity: 0.15 },
+        },
+        // Per-dot pulse for the "Responding…" thinking indicator, staggered via
+        // [animation-delay] on each child.
+        "pulse-dot": {
+          "0%, 100%": { opacity: 0.25, transform: "scale(0.85)" },
+          "50%": { opacity: 1, transform: "scale(1.1)" },
+        },
+        "pulse-dot-a": {
+          "0%, 100%": { opacity: 0.25, transform: "scale(0.85)" },
+          "50%": { opacity: 1, transform: "scale(1.1)" },
+        },
+        "pulse-dot-b": {
+          "0%, 100%": { opacity: 0.25, transform: "scale(0.85)" },
+          "50%": { opacity: 1, transform: "scale(1.1)" },
+        },
+        "pulse-dot-c": {
+          "0%, 100%": { opacity: 0.25, transform: "scale(0.85)" },
+          "50%": { opacity: 1, transform: "scale(1.1)" },
+        },
+        // A soft ripple/glow that radiates from the assistant avatar while a
+        // turn is streaming, signalling "alive" at a glance.
+        "avatar-glow": {
+          "0%, 100%": { boxShadow: "0 0 0 0px rgba(245,240,235,0)" },
+          "50%": { boxShadow: "0 0 0 6px rgba(245,240,235,0.1)" },
         },
         shimmer: {
           "0%": { backgroundPosition: "-200% 0" },
@@ -63,8 +89,14 @@ export default {
         },
       },
       animation: {
-        "fade-in-up": "fade-in-up 0.35s cubic-bezier(0.16, 1, 0.3, 1)",
+        "fade-in-up": "fade-in-up 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
         "fade-in": "fade-in 0.2s ease-out",
+        "cursor-breathe": "cursor-breathe 1.2s ease-in-out infinite",
+        "pulse-dot": "pulse-dot 1.4s ease-in-out 0ms infinite",
+        "pulse-dot-a": "pulse-dot 1.4s ease-in-out 0ms infinite",
+        "pulse-dot-b": "pulse-dot 1.4s ease-in-out 220ms infinite",
+        "pulse-dot-c": "pulse-dot 1.4s ease-in-out 440ms infinite",
+        "avatar-glow": "avatar-glow 2.2s ease-in-out infinite",
         blink: "blink 1s step-start infinite",
         shimmer: "shimmer 1.8s linear infinite",
       },

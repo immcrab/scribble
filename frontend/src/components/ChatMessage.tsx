@@ -62,6 +62,27 @@ function ToolActivity({ toolCalls }: { toolCalls: ToolCallRecord[] }) {
   );
 }
 
+/**
+ * Rendered the instant a streaming turn begins — before the first token has
+ * arrived from the backend. This is the "start spitting out a message before
+ * it's actually even finished" cue: a live breathing cursor plus a "Responding…"
+ * lead-in and a pulsing ellipsis, so the bubble feels alive rather than blank
+ * while the upstream request is still warming up.
+ */
+function StreamingPrelude() {
+  return (
+    <div className="stream-prelude">
+      <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-slate-500" />
+      <span className="prelude-text">Responding…</span>
+      <span className="thinking-dots">
+        <span />
+        <span />
+        <span />
+      </span>
+    </div>
+  );
+}
+
 export function ChatMessage({
   message,
   hideModelName = false,
@@ -90,9 +111,9 @@ export function ChatMessage({
   return (
     <div className={`group animate-fade-in-up flex gap-3 ${isUser ? "flex-row-reverse" : ""}`}>
       <div
-        className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${
+        className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg transition-shadow duration-300 ${
           isUser ? "bg-base-700 text-slate-300" : "bg-gradient-to-br from-accent-500 to-accent-700 text-base-950"
-        }`}
+        } ${!isUser && message.streaming ? "animate-avatar-glow shadow-glow" : ""}`}
       >
         {isUser ? (
           <User size={14} />
@@ -124,11 +145,11 @@ export function ChatMessage({
         )}
 
         <div
-          className={`rounded-2xl px-4 py-2.5 ${
+          className={`rounded-2xl px-4 py-2.5 transition-all duration-200 ${
             isUser
               ? "bg-accent-600/90 text-base-950"
               : "border border-base-700/60 bg-base-850/70 text-slate-100"
-          }`}
+          } ${!isUser && message.streaming ? "border-accent-500/40" : ""}`}
         >
           {message.toolCalls && message.toolCalls.length > 0 && <ToolActivity toolCalls={message.toolCalls} />}
           {message.error ? (
@@ -143,26 +164,22 @@ export function ChatMessage({
               <Markdown content={message.content} />
             </div>
           ) : message.streaming ? (
-            <div className="flex gap-1 py-1">
-              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-slate-500" />
-              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-slate-500 [animation-delay:150ms]" />
-              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-slate-500 [animation-delay:300ms]" />
-            </div>
+            <StreamingPrelude />
           ) : null}
         </div>
 
         {!isUser && !message.streaming && message.content && (
-          <div className="mt-1 flex gap-1 px-1 opacity-0 transition-opacity group-hover:opacity-100 hover:opacity-100">
+          <div className="mt-1 flex gap-1 px-1 opacity-0 transition-opacity duration-200 group-hover:opacity-100 hover:opacity-100">
             <button
               onClick={copy}
-              className="flex items-center gap-1 rounded p-1 text-xs text-slate-500 hover:bg-base-700/60 hover:text-white"
+              className="flex items-center gap-1 rounded p-1 text-xs text-slate-500 transition-colors hover:bg-base-700/60 hover:text-white"
             >
               {copied ? <Check size={12} /> : <Copy size={12} />}
             </button>
             {onRegenerate && (
               <button
                 onClick={onRegenerate}
-                className="flex items-center gap-1 rounded p-1 text-xs text-slate-500 hover:bg-base-700/60 hover:text-white"
+                className="flex items-center gap-1 rounded p-1 text-xs text-slate-500 transition-colors hover:bg-base-700/60 hover:text-white"
               >
                 <RotateCcw size={12} />
               </button>

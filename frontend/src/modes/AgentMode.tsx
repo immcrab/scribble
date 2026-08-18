@@ -9,6 +9,7 @@ import { EmptyState } from "../components/EmptyState";
 import { ArtifactWorkspace } from "../components/ArtifactWorkspace";
 import { extractArtifact, isArtifactWorthy, isCodingRequest } from "../lib/codeArtifact";
 import { runAssistantStream } from "../lib/runStream";
+import { useAutoScroll } from "../lib/useAutoScroll";
 import { uid } from "../lib/id";
 import type { Attachment, ChatMessage as ChatMessageType } from "../types";
 import type { WireMessage } from "../providers";
@@ -41,6 +42,7 @@ export function AgentMode({
   const chat = useChatStore((s) => s.chats.find((c) => c.id === chatId));
   const { addMessage, setChatModels, maybeAutoTitle, abort, removeMessagesAfter } = useChatStore();
   const [eagerWorkspace, setEagerWorkspace] = useState(false);
+  const chatEndRef = useAutoScroll<HTMLDivElement>(chat?.messages ?? []);
 
   if (!chat) return null;
 
@@ -149,7 +151,7 @@ export function AgentMode({
               </div>
             </div>
           ) : (
-            <div className="flex-1 overflow-y-auto px-4 py-5 sm:px-8">
+            <div className="flex-1 overflow-y-auto px-4 py-5 sm:px-8" ref={chatEndRef}>
               <div className={`mx-auto flex flex-col gap-5 ${hasWorkspace ? "" : "max-w-3xl"}`}>
                 {chat.messages.map((m) => (
                   <ChatMessage
