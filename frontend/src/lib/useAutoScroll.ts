@@ -25,8 +25,14 @@ export function useAutoScroll<T extends HTMLElement>(deps: unknown[]) {
     if (atBottom) {
       el.scrollTop = el.scrollHeight;
     }
+    // `deps` is caller-supplied and its length can change (e.g. a growing
+    // messages array) — spreading it directly as the dependency list would
+    // violate React's fixed-length-deps-array rule. Depending on a fixed
+    // 2-tuple (length + last item) instead re-runs on the same conditions
+    // (new message appended, or the last message's reference changing as it
+    // streams in) without that being a variable-length array itself.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, deps);
+  }, [deps.length, deps[deps.length - 1]]);
 
   return ref;
 }

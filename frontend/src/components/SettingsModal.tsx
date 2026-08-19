@@ -119,18 +119,22 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
                     <div className="max-h-64 w-full overflow-y-auto py-1">
                       {ALL_MODELS.map((m) => (
                         <button
-                          key={m.modelId}
+                          key={`${m.provider}:${m.modelId}`}
                           onClick={() => {
                             updateSettings({ defaultModelId: m.modelId });
                             close();
                           }}
                           className={`flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-sm transition-colors hover:bg-base-700/50 ${
-                            defaultModel.modelId === m.modelId ? "bg-accent-500/10 font-medium text-white" : "text-slate-300"
+                            defaultModel.modelId === m.modelId && defaultModel.provider === m.provider
+                              ? "bg-accent-500/10 font-medium text-white"
+                              : "text-slate-300"
                           }`}
                         >
                           <ModelFavicon model={m} size={15} />
                           <span className="min-w-0 flex-1 truncate">{m.displayName}</span>
-                          {defaultModel.modelId === m.modelId && <Check size={13} className="shrink-0 text-accent-400" />}
+                          {defaultModel.modelId === m.modelId && defaultModel.provider === m.provider && (
+                            <Check size={13} className="shrink-0 text-accent-400" />
+                          )}
                         </button>
                       ))}
                     </div>

@@ -6,6 +6,7 @@ import {
   type User,
 } from "firebase/auth";
 import { auth, googleProvider } from "../lib/firebase";
+import { useChatStore } from "./chatStore";
 
 interface AuthStore {
   user: User | null;
@@ -36,4 +37,9 @@ export const useAuthStore = create<AuthStore>((set) => ({
 
 onAuthStateChanged(auth, (user) => {
   useAuthStore.setState({ user, loading: false });
+  if (user) {
+    useChatStore.getState().startCloudSync(user.uid);
+  } else {
+    useChatStore.getState().stopCloudSync();
+  }
 });

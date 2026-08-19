@@ -14,12 +14,15 @@ export interface ScribbleSettings {
   reduceMotion: boolean;
   /** Auto-open the code workspace panel for detected coding requests. */
   autoOpenCode: boolean;
+  /** Set whenever a genuine local edit is made — lets cloud sync pick the newer side on merge. 0 means "never explicitly saved". */
+  updatedAt: number;
 }
 
 const SETTINGS_DEFAULTS: Omit<ScribbleSettings, "workerUrl" | "password"> = {
   sendOnEnter: true,
   reduceMotion: false,
   autoOpenCode: true,
+  updatedAt: 0,
 };
 
 export function loadChats(): Chat[] {
@@ -43,7 +46,7 @@ export function saveChats(chats: Chat[]): void {
 // Optional build-time default so a freshly deployed site works without every
 // visitor manually pasting a Worker URL into Settings. Never used for
 // secrets — only the Worker's public endpoint, which isn't sensitive.
-const DEFAULT_WORKER_URL: string = import.meta.env.VITE_WORKER_URL ?? "";
+const DEFAULT_WORKER_URL: string = import.meta.env.VITE_WORKER_URL ?? "https://scribble-worker.imcrabfr.workers.dev";
 
 export function loadSettings(): ScribbleSettings {
   const base = { workerUrl: DEFAULT_WORKER_URL, password: "", ...SETTINGS_DEFAULTS };

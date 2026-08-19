@@ -3,12 +3,16 @@ import type { Chat, ChatMessage, Mode, Vote } from "../types";
 import { getDefaultModel } from "../config/models";
 import { loadChats, saveChats, loadSettings, saveSettings, titleFromPrompt } from "../lib/storage";
 import type { ScribbleSettings } from "../lib/storage";
+import { startCloudSync, stopCloudSync, pushChatsToCloud, pushSettingsToCloud } from "../lib/cloudSync";
 import { uid } from "../lib/id";
 
 let persistTimer: ReturnType<typeof setTimeout> | null = null;
 function debouncedPersist(chats: Chat[]) {
   if (persistTimer) clearTimeout(persistTimer);
-  persistTimer = setTimeout(() => saveChats(chats), 250);
+  persistTimer = setTimeout(() => {
+    saveChats(chats);
+    pushChatsToCloud(chats);
+  }, 250);
 }
 
 function getDefaultModelPatch(mode: Mode, overrideId?: string): Partial<Pick<Chat, "modelId" | "modelAId" | "modelBId">> {
@@ -68,6 +72,9 @@ interface ChatStore {
   registerAbort: (key: string, controller: AbortController) => void;
   abort: (key: string) => void;
   abortAll: (chatId: string) => void;
+
+  startCloudSync: (uid: string) => void;
+  stopCloudSync: () => void;
 }
 
 export const useChatStore = create<ChatStore>((set, get) => ({
@@ -231,8 +238,9 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 
   updateSettings: (patch) => {
     set((s) => {
-      const settings = { ...s.settings, ...patch };
+      const settings = { ...s.settings, ...patch, updatedAt: Date.now() };
       saveSettings(settings);
+      pushSettingsToCloud(settings);
       return { settings };
     });
   },
@@ -253,4 +261,13 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       }
     }
   },
+
+  startCloudSync: (uid) => {
+    void startCloudSync(
+      uid,
+      () => ({ chats: get().chats, settings: get().settings }),
+      (patch) => set(patch)
+    );
+  },
+  stopCloudSync: () => stopCloudSync(),
 }));
