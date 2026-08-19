@@ -22,6 +22,7 @@ export interface InitialPrompt {
 export default function App() {
   const chats = useChatStore((s) => s.chats);
   const activeChatId = useChatStore((s) => s.activeChatId);
+  const settings = useChatStore((s) => s.settings);
   const activeChat = chats.find((c) => c.id === activeChatId);
 
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -59,7 +60,7 @@ export default function App() {
   const consumeInitial = () => setPending(null);
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-base-950">
+    <div className={`flex h-dvh w-full overflow-hidden bg-base-950 ${settings.reduceMotion ? "motion-reduce-force" : ""}`}>
       <Sidebar
         onOpenSettings={() => setSettingsOpen(true)}
         mobileOpen={mobileMenuOpen}
@@ -85,7 +86,7 @@ export default function App() {
                 <EmptyState onPick={(p) => startChat(p, [])} />
               </div>
               <div className="mx-auto w-full max-w-3xl px-4 pb-8 sm:px-8">
-                <Composer onSend={startChat} generating={false} autoFocus />
+                <Composer onSend={startChat} generating={false} autoFocus sendOnEnter={settings.sendOnEnter} />
               </div>
             </div>
           )}

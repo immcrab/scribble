@@ -46,6 +46,7 @@ export async function* streamChat(params: StreamChatParams): AsyncGenerator<stri
       provider: model.provider,
       model: model.modelId,
       messages,
+      visionCapable: model.supportsVision,
     }),
     signal,
   });

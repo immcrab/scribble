@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import {
   Copy,
   Check,
@@ -16,7 +16,7 @@ import {
 import type { ChatMessage as ChatMessageType, ToolCallRecord } from "../types";
 import { Markdown } from "../lib/markdown";
 import { ModelFavicon } from "./ProviderIcon";
-import { extractArtifact, isArtifactWorthy } from "../lib/codeArtifact";
+import { useLiveArtifact } from "../lib/useLiveArtifact";
 
 const TOOL_STATUS_ICON: Record<ToolCallRecord["status"], typeof Loader2> = {
   pending: Loader2,
@@ -87,10 +87,13 @@ export function ChatMessage({
   message,
   hideModelName = false,
   onRegenerate,
+  suppressCode = false,
 }: {
   message: ChatMessageType;
   hideModelName?: boolean;
   onRegenerate?: () => void;
+  /** True when a parent mode is already routing this message's code into the ArtifactWorkspace panel — keeps raw fences out of the bubble even mid-stream. */
+  suppressCode?: boolean;
 }) {
   const [copied, setCopied] = useState(false);
   const isUser = message.role === "user";
@@ -101,12 +104,13 @@ export function ChatMessage({
     setTimeout(() => setCopied(false), 1200);
   };
 
-  // Only parse for a finished message — mid-stream fences are often unbalanced.
-  const artifact = useMemo(() => {
-    if (isUser || message.streaming || !message.content) return null;
-    const parsed = extractArtifact(message.content);
-    return parsed && isArtifactWorthy(parsed) ? parsed : null;
-  }, [isUser, message.streaming, message.content]);
+  const liveArtifact = useLiveArtifact(isUser ? undefined : message);
+  // Finished artifact-worthy responses always redirect to the panel (as
+  // before). Mid-stream, only redirect when the parent has confirmed this
+  // message is already driving the workspace panel — avoids flashing the
+  // "see the panel" swap for casual one-off code fences that never open one.
+  const artifact = liveArtifact && (!message.streaming || suppressCode) ? liveArtifact : null;
+  const lastFileName = artifact?.files[artifact.files.length - 1]?.name;
 
   return (
     <div className={`group animate-fade-in-up flex gap-3 ${isUser ? "flex-row-reverse" : ""}`}>
@@ -184,13 +188,25 @@ export function ChatMessage({
               <span>{message.error}</span>
             </div>
           ) : artifact ? (
-            <Markdown content={artifact.remainingText || "_Built the app — see the panel on the right._"} />
+            <>
+              {artifact.remainingText && <Markdown content={artifact.remainingText} />}
+              {message.streaming ? (
+                <div className="stream-prelude">
+                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-accent-400" />
+                  <span className="prelude-text">Writing {lastFileName ?? "code"}…</span>
+                </div>
+              ) : (
+                !artifact.remainingText && <Markdown content="_Built the app — see the panel on the right._" />
+              )}
+            </>
           ) : message.content ? (
             <div className={message.streaming ? "stream-cursor" : ""}>
               <Markdown content={message.content} />
             </div>
           ) : message.streaming ? (
             <StreamingPrelude />
+          ) : !isUser ? (
+            <span className="text-sm italic text-slate-500">No response — try regenerating.</span>
           ) : null}
         </div>
 

@@ -6,7 +6,9 @@ import { Composer } from "../components/Composer";
 import { VoteBar } from "../components/VoteBar";
 import { EmptyState } from "../components/EmptyState";
 import { ArtifactWorkspace } from "../components/ArtifactWorkspace";
+import { ChatWorkspaceSplit } from "../components/ChatWorkspaceSplit";
 import { extractArtifact, isArtifactWorthy, isCodingRequest } from "../lib/codeArtifact";
+import { useLiveArtifact } from "../lib/useLiveArtifact";
 import { runAssistantStream } from "../lib/runStream";
 import { useAutoScroll } from "../lib/useAutoScroll";
 import { uid } from "../lib/id";
@@ -44,6 +46,7 @@ export function BattleMode({
   onConsumeInitial?: () => void;
 }) {
   const chat = useChatStore((s) => s.chats.find((c) => c.id === chatId));
+  const settings = useChatStore((s) => s.settings);
   const { addMessage, setChatModels, maybeAutoTitle, abort, setVote } = useChatStore();
   const [eagerWorkspace, setEagerWorkspace] = useState(false);
   const chatEndRef = useAutoScroll<HTMLDivElement>(chat?.messages ?? []);
@@ -67,7 +70,7 @@ export function BattleMode({
   };
 
   const send = (text: string, attachments: Attachment[], codeMode?: boolean) => {
-    if (codeMode || isCodingRequest(text)) setEagerWorkspace(true);
+    if (codeMode || (settings.autoOpenCode && isCodingRequest(text))) setEagerWorkspace(true);
     let modelA = chat.modelAId ? findModel(chat.modelAId) : undefined;
     let modelB = chat.modelBId ? findModel(chat.modelBId) : undefined;
     if (!modelA || !modelB) {
@@ -142,8 +145,13 @@ export function BattleMode({
   const artifactFor = (m?: ChatMessageType) =>
     m && !m.streaming && m.content ? extractArtifact(m.content) : null;
 
+  const liveArtifactA = useLiveArtifact(lastRound?.a?.streaming ? lastRound.a : undefined);
+  const liveArtifactB = useLiveArtifact(lastRound?.b?.streaming ? lastRound.b : undefined);
+
   const hasWorkspace =
     eagerWorkspace ||
+    !!liveArtifactA ||
+    !!liveArtifactB ||
     rounds.some((r) => {
       const aa = artifactFor(r.a);
       const bb = artifactFor(r.b);
@@ -151,76 +159,77 @@ export function BattleMode({
     });
 
   const lastRoundRevealed = !!lastRound?.a && !!lastRound?.b && !lastRound.a.streaming && !lastRound.b.streaming;
-  const lastArtifactA = artifactFor(lastRound?.a);
-  const lastArtifactB = artifactFor(lastRound?.b);
+  const lastArtifactA = liveArtifactA ?? artifactFor(lastRound?.a);
+  const lastArtifactB = liveArtifactB ?? artifactFor(lastRound?.b);
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex min-h-0 flex-1">
-        <div className={`flex min-h-0 flex-col ${hasWorkspace ? "w-full max-w-md shrink-0 border-r border-base-700/60" : "flex-1"}`}>
-          {chat.messages.length === 0 ? (
-            <div className="flex-1">
-              <EmptyState heading="Battle two anonymous models" onPick={(p) => send(p, [])} />
-            </div>
-          ) : (
-            <div className="flex-1 overflow-y-auto px-4 py-5 sm:px-8" ref={chatEndRef}>
-              <div className={`mx-auto flex flex-col gap-6 ${hasWorkspace ? "" : "max-w-5xl"}`}>
-                {rounds.map((round, i) => {
-                  const isLast = i === rounds.length - 1;
-                  const roundRevealed = !!round.a && !!round.b && !round.a.streaming && !round.b.streaming;
-                  return (
-                    <div key={round.user.id} className="flex flex-col gap-4">
-                      <div className="flex justify-end">
-                        <div className="max-w-[80%]">
-                          <ChatMessage message={round.user} />
-                        </div>
-                      </div>
-                      <div className={hasWorkspace ? "flex flex-col gap-4" : "grid grid-cols-1 gap-4 md:grid-cols-2"}>
-                        <div className="min-w-0 rounded-2xl border border-base-700/50 bg-base-900/40 p-3">
-                          {round.a && <ChatMessage message={round.a} hideModelName={!roundRevealed} />}
-                        </div>
-                        <div className="min-w-0 rounded-2xl border border-base-700/50 bg-base-900/40 p-3">
-                          {round.b && <ChatMessage message={round.b} hideModelName={!roundRevealed} />}
-                        </div>
-                      </div>
-                      {isLast && roundRevealed && !hasWorkspace && <VoteBar vote={chat.vote} onVote={vote} />}
-                    </div>
-                  );
-                })}
+      <ChatWorkspaceSplit
+        hasWorkspace={hasWorkspace}
+        workspaceStreaming={!!lastRound?.a?.streaming || !!lastRound?.b?.streaming}
+        chat={
+          <>
+            {chat.messages.length === 0 ? (
+              <div className="flex-1">
+                <EmptyState heading="Battle two anonymous models" onPick={(p) => send(p, [])} />
               </div>
+            ) : (
+              <div className="flex-1 overflow-y-auto px-4 py-5 sm:px-8" ref={chatEndRef}>
+                <div className={`mx-auto flex flex-col gap-6 ${hasWorkspace ? "" : "max-w-5xl"}`}>
+                  {rounds.map((round, i) => {
+                    const isLast = i === rounds.length - 1;
+                    const roundRevealed = !!round.a && !!round.b && !round.a.streaming && !round.b.streaming;
+                    return (
+                      <div key={round.user.id} className="flex flex-col gap-4">
+                        <div className="flex justify-end">
+                          <div className="max-w-[80%]">
+                            <ChatMessage message={round.user} />
+                          </div>
+                        </div>
+                        <div className={hasWorkspace ? "flex flex-col gap-4" : "grid grid-cols-1 gap-4 md:grid-cols-2"}>
+                          <div className="min-w-0 rounded-2xl border border-base-700/50 bg-base-900/40 p-3">
+                            {round.a && <ChatMessage message={round.a} hideModelName={!roundRevealed} suppressCode={hasWorkspace} />}
+                          </div>
+                          <div className="min-w-0 rounded-2xl border border-base-700/50 bg-base-900/40 p-3">
+                            {round.b && <ChatMessage message={round.b} hideModelName={!roundRevealed} suppressCode={hasWorkspace} />}
+                          </div>
+                        </div>
+                        {isLast && roundRevealed && !hasWorkspace && <VoteBar vote={chat.vote} onVote={vote} />}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            <div className={`w-full px-4 pb-[calc(1.25rem+env(safe-area-inset-bottom))] sm:px-8 ${hasWorkspace ? "" : "mx-auto max-w-5xl"}`}>
+              <Composer onSend={send} onStop={stop} generating={generating} placeholder="Send the same prompt to two anonymous models..." sendOnEnter={settings.sendOnEnter} />
             </div>
-          )}
-
-          <div className={`w-full px-4 pb-5 sm:px-8 ${hasWorkspace ? "" : "mx-auto max-w-5xl"}`}>
-            <Composer onSend={send} onStop={stop} generating={generating} placeholder="Send the same prompt to two anonymous models..." />
-          </div>
-        </div>
-
-        {hasWorkspace && (
-          <div className="min-w-0 flex-1">
-            <ArtifactWorkspace
-              panes={[
-                {
-                  key: "a",
-                  label: lastRoundRevealed ? lastRound?.a?.model?.displayName ?? "Option A" : "Option A",
-                  model: lastRoundRevealed ? lastRound?.a?.model : undefined,
-                  artifact: lastArtifactA,
-                  streaming: !!lastRound?.a?.streaming,
-                },
-                {
-                  key: "b",
-                  label: lastRoundRevealed ? lastRound?.b?.model?.displayName ?? "Option B" : "Option B",
-                  model: lastRoundRevealed ? lastRound?.b?.model : undefined,
-                  artifact: lastArtifactB,
-                  streaming: !!lastRound?.b?.streaming,
-                },
-              ]}
-              vote={chat.vote}
-              onVote={lastRoundRevealed ? vote : undefined}
-            />
-          </div>
-        )}
-      </div>
+          </>
+        }
+        workspace={
+          <ArtifactWorkspace
+            panes={[
+              {
+                key: "a",
+                label: lastRoundRevealed ? lastRound?.a?.model?.displayName ?? "Option A" : "Option A",
+                model: lastRoundRevealed ? lastRound?.a?.model : undefined,
+                artifact: lastArtifactA,
+                streaming: !!lastRound?.a?.streaming,
+              },
+              {
+                key: "b",
+                label: lastRoundRevealed ? lastRound?.b?.model?.displayName ?? "Option B" : "Option B",
+                model: lastRoundRevealed ? lastRound?.b?.model : undefined,
+                artifact: lastArtifactB,
+                streaming: !!lastRound?.b?.streaming,
+              },
+            ]}
+            vote={chat.vote}
+            onVote={lastRoundRevealed ? vote : undefined}
+          />
+        }
+      />
     </div>
   );
 }

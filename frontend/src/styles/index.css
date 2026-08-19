@@ -215,3 +215,21 @@ html {
   }
 }
 
+/* Same treatment as the prefers-reduced-motion block above, but driven by the
+   in-app Settings toggle so it works regardless of the OS-level preference. */
+.motion-reduce-force,
+.motion-reduce-force * {
+  scroll-behavior: auto !important;
+}
+.motion-reduce-force .stream-cursor::after,
+.motion-reduce-force .thinking-dots span,
+.motion-reduce-force .stream-prelude .prelude-text {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  opacity: 1;
+}
+.motion-reduce-force [class*="animate-"] {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+}
+

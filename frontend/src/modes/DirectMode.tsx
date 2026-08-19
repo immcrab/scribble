@@ -6,7 +6,9 @@ import { Composer } from "../components/Composer";
 import { ModelSelector } from "../components/ModelSelector";
 import { EmptyState } from "../components/EmptyState";
 import { ArtifactWorkspace } from "../components/ArtifactWorkspace";
+import { ChatWorkspaceSplit } from "../components/ChatWorkspaceSplit";
 import { extractArtifact, isArtifactWorthy, isCodingRequest } from "../lib/codeArtifact";
+import { useLiveArtifact } from "../lib/useLiveArtifact";
 import { runAssistantStream } from "../lib/runStream";
 import { useAutoScroll } from "../lib/useAutoScroll";
 import { uid } from "../lib/id";
@@ -24,6 +26,7 @@ export function DirectMode({
   onConsumeInitial?: () => void;
 }) {
   const chat = useChatStore((s) => s.chats.find((c) => c.id === chatId));
+  const settings = useChatStore((s) => s.settings);
   const { addMessage, setChatModels, maybeAutoTitle, abort, removeMessagesAfter } = useChatStore();
   const [eagerWorkspace, setEagerWorkspace] = useState(false);
   const chatEndRef = useAutoScroll<HTMLDivElement>(chat?.messages ?? []);
@@ -46,7 +49,7 @@ export function DirectMode({
   };
 
   const send = (text: string, attachments: Attachment[], codeMode?: boolean) => {
-    if (codeMode || isCodingRequest(text)) setEagerWorkspace(true);
+    if (codeMode || (settings.autoOpenCode && isCodingRequest(text))) setEagerWorkspace(true);
     const activeModel = model;
     if (!chat.modelId) setChatModels(chat.id, { modelId: activeModel.modelId });
 
@@ -115,10 +118,11 @@ export function DirectMode({
     .filter((m) => m.role === "assistant" && !m.streaming && m.content)
     .map((m) => extractArtifact(m.content))
     .filter((a): a is NonNullable<typeof a> => !!a && isArtifactWorthy(a));
-  const hasWorkspace = completedArtifacts.length > 0 || eagerWorkspace;
   const lastMsg = chat.messages[chat.messages.length - 1];
   const lastIsStreaming = lastMsg?.role === "assistant" && lastMsg.streaming;
-  const latestArtifact = completedArtifacts[completedArtifacts.length - 1] ?? null;
+  const liveArtifact = useLiveArtifact(lastIsStreaming ? lastMsg : undefined);
+  const hasWorkspace = completedArtifacts.length > 0 || eagerWorkspace || !!liveArtifact;
+  const latestArtifact = liveArtifact ?? completedArtifacts[completedArtifacts.length - 1] ?? null;
 
   return (
     <div className="flex h-full flex-col">
@@ -130,39 +134,41 @@ export function DirectMode({
         />
       </div>
 
-      <div className="flex min-h-0 flex-1">
-        <div className={`flex min-h-0 flex-col ${hasWorkspace ? "w-full max-w-md shrink-0 border-r border-base-700/60" : "flex-1"}`}>
-          {chat.messages.length === 0 ? (
-            <div className="flex-1">
-              <EmptyState onPick={(p) => send(p, [])} />
-            </div>
-          ) : (
-            <div className="flex-1 overflow-y-auto px-4 py-5 sm:px-8" ref={chatEndRef}>
-              <div className={`mx-auto flex flex-col gap-5 ${hasWorkspace ? "" : "max-w-3xl"}`}>
-                {chat.messages.map((m) => (
-                  <ChatMessage
-                    key={m.id}
-                    message={m}
-                    onRegenerate={m.role === "assistant" && !m.streaming ? () => regenerate(m.id) : undefined}
-                  />
-                ))}
+      <ChatWorkspaceSplit
+        hasWorkspace={hasWorkspace}
+        workspaceStreaming={!!lastIsStreaming}
+        chat={
+          <>
+            {chat.messages.length === 0 ? (
+              <div className="flex-1">
+                <EmptyState onPick={(p) => send(p, [])} />
               </div>
+            ) : (
+              <div className="flex-1 overflow-y-auto px-4 py-5 sm:px-8" ref={chatEndRef}>
+                <div className={`mx-auto flex flex-col gap-5 ${hasWorkspace ? "" : "max-w-3xl"}`}>
+                  {chat.messages.map((m) => (
+                    <ChatMessage
+                      key={m.id}
+                      message={m}
+                      suppressCode={hasWorkspace}
+                      onRegenerate={m.role === "assistant" && !m.streaming ? () => regenerate(m.id) : undefined}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className={`w-full px-4 pb-[calc(1.25rem+env(safe-area-inset-bottom))] sm:px-8 ${hasWorkspace ? "" : "mx-auto max-w-3xl"}`}>
+              <Composer onSend={send} onStop={stop} generating={generating} model={model} sendOnEnter={settings.sendOnEnter} />
             </div>
-          )}
-
-          <div className={`w-full px-4 pb-5 sm:px-8 ${hasWorkspace ? "" : "mx-auto max-w-3xl"}`}>
-            <Composer onSend={send} onStop={stop} generating={generating} />
-          </div>
-        </div>
-
-        {hasWorkspace && (
-          <div className="min-w-0 flex-1">
-            <ArtifactWorkspace
-              panes={[{ key: "single", label: model.displayName, model, artifact: latestArtifact, streaming: !!lastIsStreaming }]}
-            />
-          </div>
-        )}
-      </div>
+          </>
+        }
+        workspace={
+          <ArtifactWorkspace
+            panes={[{ key: "single", label: model.displayName, model, artifact: latestArtifact, streaming: !!lastIsStreaming }]}
+          />
+        }
+      />
     </div>
   );
 }

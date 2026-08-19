@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
-import { Paperclip, ArrowUp, Square, X, FileText, Code2, Image as ImageIcon } from "lucide-react";
-import type { Attachment } from "../types";
+import { Paperclip, ArrowUp, Square, X, FileText, Code2, Image as ImageIcon, AlertTriangle } from "lucide-react";
+import type { Attachment, ModelDef } from "../types";
 import { uid } from "../lib/id";
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10MB
@@ -11,12 +11,18 @@ export function Composer({
   generating,
   placeholder = "Ask anything...",
   autoFocus = false,
+  model,
+  sendOnEnter = true,
 }: {
   onSend: (text: string, attachments: Attachment[], codeMode?: boolean) => void;
   onStop?: () => void;
   generating: boolean;
   placeholder?: string;
   autoFocus?: boolean;
+  /** Active model (or, in Battle mode, undefined since models aren't picked pre-send) — gates the vision warning below. */
+  model?: ModelDef;
+  /** When false, Enter inserts a newline and Ctrl/Cmd+Enter sends instead. */
+  sendOnEnter?: boolean;
 }) {
   const [text, setText] = useState("");
   const [attachments, setAttachments] = useState<Attachment[]>([]);
@@ -152,6 +158,9 @@ export function Composer({
 
   const canSubmit = (text.trim().length > 0 || attachments.length > 0) && !generating;
 
+  const hasImageAttachment = attachments.some((a) => a.type?.startsWith("image/") || a.dataUrl?.startsWith("data:image/"));
+  const showVisionWarning = hasImageAttachment && model && !model.supportsVision;
+
   return (
     <div
       onDragOver={handleDragOver}
@@ -199,6 +208,16 @@ export function Composer({
         </div>
       )}
 
+      {showVisionWarning && (
+        <div className="flex items-start gap-2 border-b border-amber-500/20 bg-amber-500/10 px-4 py-2 text-xs text-amber-300">
+          <AlertTriangle size={13} className="mt-0.5 shrink-0" />
+          <span>
+            <strong className="font-medium">{model!.displayName}</strong> can't see images — switch to a vision model
+            (look for the <span className="whitespace-nowrap">"Vision"</span> badge) to have it look at what you attached.
+          </span>
+        </div>
+      )}
+
       {isDragging && (
         <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-2xl bg-base-950/80 backdrop-blur-sm">
           <div className="flex items-center gap-2 text-sm font-medium text-accent-400">
@@ -218,10 +237,11 @@ export function Composer({
         }}
         onPaste={handlePaste}
         onKeyDown={(e) => {
-          if (e.key === "Enter" && !e.shiftKey) {
-            e.preventDefault();
-            submit();
-          }
+          if (e.key !== "Enter" || e.shiftKey) return;
+          const wantsSend = sendOnEnter ? !(e.metaKey || e.ctrlKey) : e.metaKey || e.ctrlKey;
+          if (!wantsSend) return;
+          e.preventDefault();
+          submit();
         }}
         placeholder={placeholder}
         rows={1}

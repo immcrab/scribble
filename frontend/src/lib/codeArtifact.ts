@@ -102,7 +102,50 @@ export function isArtifactWorthy(artifact: Artifact): boolean {
   if (artifact.previewHtml) return true;
   if (artifact.files.length > 1) return true;
   const only = artifact.files[0];
-  return !!only && only.content.split("\n").length >= 8;
+  if (!only) return false;
+  // Web languages already got a low bar via previewHtml above; for everything
+  // else (Python, Go, SQL, ...) open the panel for anything past a one-liner
+  // so short functions/scripts land in the workspace instead of the bubble.
+  return only.content.split("\n").length >= 4;
+}
+
+/**
+ * Lenient variant of extractArtifact for content that's still streaming in —
+ * i.e. may end mid code-fence. Closed fences are parsed exactly like
+ * extractArtifact; a single trailing *unterminated* fence (the block
+ * currently being written) is treated as one more in-progress file so the
+ * ArtifactWorkspace panel can render code live, token by token, instead of
+ * only once the whole message has finished.
+ */
+export function extractPartialArtifact(content: string): Artifact | null {
+  const closedFenceCount = (content.match(/```/g) ?? []).length;
+  const hasOpenTrailingFence = closedFenceCount % 2 === 1;
+
+  if (!hasOpenTrailingFence) {
+    return extractArtifact(content);
+  }
+
+  const lastFenceStart = content.lastIndexOf("```");
+  // Everything before the trailing open fence has a balanced (even) fence
+  // count, so it parses cleanly as ordinary closed content.
+  const closedPortion = content.slice(0, lastFenceStart);
+  const trailing = content.slice(lastFenceStart);
+  const trailingMatch = trailing.match(/```([a-zA-Z0-9]*)\n?([\s\S]*)$/);
+
+  const base = extractArtifact(closedPortion);
+  const files = base?.files.slice() ?? [];
+  const remainingText = (base?.remainingText ?? closedPortion).trim();
+
+  if (trailingMatch) {
+    const lang = (trailingMatch[1] || "text").toLowerCase();
+    const code = trailingMatch[2] ?? "";
+    if (code.trim().length > 0 || files.length === 0) {
+      files.push({ name: `file.${extFor(lang)}`, language: lang, content: code });
+    }
+  }
+
+  if (files.length === 0) return null;
+  return { files, previewHtml: undefined, remainingText };
 }
 
 /**

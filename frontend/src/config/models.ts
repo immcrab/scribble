@@ -211,8 +211,8 @@ export function findModel(modelId: string): ModelDef | undefined {
   return ALL_MODELS.find((m) => m.modelId === modelId);
 }
 
-export function getDefaultModel(): ModelDef {
-  return findModel(DEFAULT_MODEL_ID) ?? ALL_MODELS[0];
+export function getDefaultModel(overrideId?: string): ModelDef {
+  return (overrideId ? findModel(overrideId) : undefined) ?? findModel(DEFAULT_MODEL_ID) ?? ALL_MODELS[0];
 }
 
 export function randomModelPair(): [ModelDef, ModelDef] {

@@ -1,0 +1,17 @@
+{
+  "name": "Scribble — AI Playground",
+  "short_name": "Scribble",
+  "description": "Battle, compare, and chat with AI models.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1b1a18",
+  "theme_color": "#1b1a18",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

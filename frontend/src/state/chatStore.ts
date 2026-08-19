@@ -11,14 +11,14 @@ function debouncedPersist(chats: Chat[]) {
   persistTimer = setTimeout(() => saveChats(chats), 250);
 }
 
-function getDefaultModelPatch(mode: Mode): Partial<Pick<Chat, "modelId" | "modelAId" | "modelBId">> {
+function getDefaultModelPatch(mode: Mode, overrideId?: string): Partial<Pick<Chat, "modelId" | "modelAId" | "modelBId">> {
   if (mode === "direct" || mode === "agent") {
-    return { modelId: getDefaultModel()?.modelId };
+    return { modelId: getDefaultModel(overrideId)?.modelId };
   }
   if (mode === "side-by-side") {
     return {
-      modelAId: getDefaultModel()?.modelId,
-      modelBId: getDefaultModel()?.modelId,
+      modelAId: getDefaultModel(overrideId)?.modelId,
+      modelBId: getDefaultModel(overrideId)?.modelId,
     };
   }
   return {};
@@ -32,7 +32,7 @@ function createInitialChat(mode: Mode = "direct"): Chat {
     createdAt: Date.now(),
     updatedAt: Date.now(),
     messages: [],
-    ...getDefaultModelPatch(mode),
+    ...getDefaultModelPatch(mode, loadSettings().defaultModelId),
   };
 }
 
@@ -80,7 +80,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   activeChat: () => get().chats.find((c) => c.id === get().activeChatId),
 
   createChat: (mode, customModelId) => {
-    const defaults = getDefaultModelPatch(mode);
+    const defaults = getDefaultModelPatch(mode, get().settings.defaultModelId);
     if (customModelId) defaults.modelId = customModelId;
     const chat: Chat = {
       id: uid(),
@@ -101,7 +101,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 
   setChatMode: (id, mode) => {
     set((s) => {
-      const defaults = getDefaultModelPatch(mode);
+      const defaults = getDefaultModelPatch(mode, s.settings.defaultModelId);
       const chats = s.chats.map((c) => {
         if (c.id !== id) return c;
         return {

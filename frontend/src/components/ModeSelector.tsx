@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from "react";
 import { Swords, Bot, Columns2, MessageCircle, ChevronDown } from "lucide-react";
 import type { Mode } from "../types";
+import { Dropdown } from "./Dropdown";
 
 const MODES: { id: Mode; label: string; desc: string; icon: typeof Swords }[] = [
   { id: "battle", label: "Battle Mode", desc: "Battle 2 anonymous models", icon: Swords },
@@ -10,37 +10,30 @@ const MODES: { id: Mode; label: string; desc: string; icon: typeof Swords }[] = 
 ];
 
 export function ModeSelector({ mode, onChange }: { mode: Mode; onChange: (m: Mode) => void }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
   const current = MODES.find((m) => m.id === mode)!;
 
-  useEffect(() => {
-    const onClick = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener("mousedown", onClick);
-    return () => document.removeEventListener("mousedown", onClick);
-  }, []);
-
   return (
-    <div ref={ref} className="relative">
-      <button
-        onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-2 rounded-lg border border-transparent px-2.5 py-1.5 text-sm font-medium text-slate-200 transition-colors hover:border-base-600 hover:bg-base-800/70"
-      >
-        <current.icon size={16} className="text-accent-400" />
-        {current.label}
-        <ChevronDown size={14} className={`text-slate-500 transition-transform ${open ? "rotate-180" : ""}`} />
-      </button>
-
-      {open && (
-        <div className="absolute left-0 top-full z-30 mt-2 w-72 origin-top-left animate-fade-in-up overflow-hidden rounded-xl border border-base-600/70 bg-base-850/95 shadow-panel backdrop-blur-xl">
+    <Dropdown
+      menuClassName="w-72 max-w-[calc(100vw-2rem)] overflow-hidden"
+      trigger={({ open, toggle }) => (
+        <button
+          onClick={toggle}
+          className="flex items-center gap-2 rounded-lg border border-transparent px-2.5 py-1.5 text-sm font-medium text-slate-200 transition-colors hover:border-base-600 hover:bg-base-800/70"
+        >
+          <current.icon size={16} className="text-accent-400" />
+          {current.label}
+          <ChevronDown size={14} className={`text-slate-500 transition-transform ${open ? "rotate-180" : ""}`} />
+        </button>
+      )}
+    >
+      {({ close }) => (
+        <>
           {MODES.map((m) => (
             <button
               key={m.id}
               onClick={() => {
                 onChange(m.id);
-                setOpen(false);
+                close();
               }}
               className={`flex w-full items-start gap-3 px-3.5 py-3 text-left transition-colors ${
                 m.id === mode ? "bg-accent-500/10" : "hover:bg-base-700/50"
@@ -55,8 +48,8 @@ export function ModeSelector({ mode, onChange }: { mode: Mode; onChange: (m: Mod
               </span>
             </button>
           ))}
-        </div>
+        </>
       )}
-    </div>
+    </Dropdown>
   );
 }
