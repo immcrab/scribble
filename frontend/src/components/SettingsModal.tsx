@@ -165,16 +165,26 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
           </div>
         </div>
 
-        <div className="mt-6 flex justify-end gap-2">
-          <button onClick={onClose} className="rounded-lg px-3.5 py-2 text-sm text-slate-400 hover:text-white">
-            Cancel
-          </button>
-          <button
-            onClick={save}
-            className="rounded-lg bg-accent-500 px-3.5 py-2 text-sm font-medium text-base-950 hover:bg-accent-400"
-          >
-            Save
-          </button>
+        <div className="mt-6 flex items-center justify-between gap-2">
+          <div className="flex gap-3 text-xs text-slate-500">
+            <a href="/privacy.html" target="_blank" rel="noopener noreferrer" className="hover:text-slate-300 hover:underline">
+              Privacy
+            </a>
+            <a href="/terms.html" target="_blank" rel="noopener noreferrer" className="hover:text-slate-300 hover:underline">
+              Terms
+            </a>
+          </div>
+          <div className="flex gap-2">
+            <button onClick={onClose} className="rounded-lg px-3.5 py-2 text-sm text-slate-400 hover:text-white">
+              Cancel
+            </button>
+            <button
+              onClick={save}
+              className="rounded-lg bg-accent-500 px-3.5 py-2 text-sm font-medium text-base-950 hover:bg-accent-400"
+            >
+              Save
+            </button>
+          </div>
         </div>
       </div>
     </div>
