@@ -250,7 +250,7 @@ export function getDefaultModel(overrideId?: string): ModelDef {
 }
 
 export function randomModelPair(): [ModelDef, ModelDef] {
-  const pool = allModels().filter((m) => m.free && m.supportsStreaming);
+  const pool = allModels().filter((m) => m.free && m.supportsStreaming && !m.knownBroken);
   const a = pool[Math.floor(Math.random() * pool.length)];
   let b = pool[Math.floor(Math.random() * pool.length)];
   let guard = 0;

@@ -15,17 +15,54 @@ import type { ModelDef } from "../types";
  * (that endpoint lists the full catalog, not just what's free — you still
  * have to test individual models to know which are actually unlocked).
  *
- * REMOVED 2026-08-20: all nine `qwen/*` entries (qwen3.8-max, qwen3.6-max-preview,
- * qwen3.6-plus, qwen3.6-27b, qwen3.6-35b-a3b, qwen3.5-plus, qwen3.5-flash,
- * qwen3.5-omni-flash, qwen3-coder-plus). xKiro's Qwen route is currently
- * returning a 200 SSE stream with `data: {"error":"A server error occurred.
- * Please try again."}` for every one of them — confirmed on every Qwen model
- * id, none of xKiro's other models (Mistral/MiMo/MiniMax/DeepSeek) affected,
- * so this is an outage on xKiro's Qwen backend, not our adapter. Re-add once
- * `curl https://api.xkiro.com/v1/chat/completions -d '{"model":"qwen/qwen3.5-flash",...}'`
- * returns real content again.
+ * QWEN OUTAGE (still open as of 2026-08-20, re-tested — not fixed): xKiro's
+ * Qwen route 200s an SSE stream with `data: {"error":"A server error
+ * occurred. Please try again."}` for every `qwen/*` model. Confirmed on all
+ * nine Qwen ids; every other xKiro model (Mistral/MiMo/MiniMax/DeepSeek) is
+ * unaffected — this is an outage on xKiro's Qwen backend, not our adapter.
+ * The three kept below (`knownBroken` set) are the ones actually wanted in
+ * the selector; the other six Qwen ids stay out until asked for. To clear a
+ * `knownBroken` flag once fixed: `curl https://api.xkiro.com/v1/chat/completions
+ * -d '{"model":"qwen/<id>",...}'` and confirm it streams real content, then
+ * delete that model's `knownBroken` line.
  */
 export const XKIRO_MODELS: ModelDef[] = [
+  {
+    provider: "xkiro",
+    modelId: "qwen/qwen3.8-max",
+    displayName: "Qwen3.8 Max",
+    icon: "Sparkles",
+    contextLength: 1000000,
+    capabilities: ["text", "reasoning", "vision"],
+    free: true,
+    supportsStreaming: true,
+    supportsVision: true,
+    knownBroken: "xKiro's Qwen backend is erroring on every request (server-side outage, since ~Aug 2026) — this may fail. Retry later.",
+  },
+  {
+    provider: "xkiro",
+    modelId: "qwen/qwen3.5-flash",
+    displayName: "Qwen3.5 Flash",
+    icon: "Sparkles",
+    contextLength: 1000000,
+    capabilities: ["text", "vision"],
+    free: true,
+    supportsStreaming: true,
+    supportsVision: true,
+    knownBroken: "xKiro's Qwen backend is erroring on every request (server-side outage, since ~Aug 2026) — this may fail. Retry later.",
+  },
+  {
+    provider: "xkiro",
+    modelId: "qwen/qwen3-coder-plus",
+    displayName: "Qwen3 Coder Plus",
+    icon: "Sparkles",
+    contextLength: 128000,
+    capabilities: ["text", "code", "vision"],
+    free: true,
+    supportsStreaming: true,
+    supportsVision: false,
+    knownBroken: "xKiro's Qwen backend is erroring on every request (server-side outage, since ~Aug 2026) — this may fail. Retry later.",
+  },
   {
     provider: "xkiro",
     modelId: "mistralai/mistral-small-2603",

@@ -18,6 +18,10 @@ export interface ModelDef {
   supportsStreaming: boolean;
   supportsVision: boolean;
   description?: string;
+  /** Set when this model is confirmed to be failing upstream (e.g. an outage on the
+   * provider's end). Still fully selectable — this only drives a warning badge in the
+   * selector — clear it once the model is re-verified working. */
+  knownBroken?: string;
   /** Added by the user via Settings rather than curated in config/*.ts — shows a delete affordance. */
   isCustom?: boolean;
   /** Only set when provider === "custom" — id of the CustomProvider (settings.customProviders) that owns this model. */

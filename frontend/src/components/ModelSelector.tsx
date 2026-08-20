@@ -1,4 +1,4 @@
-import { ChevronDown, Eye, Check, Sparkles, Lock } from "lucide-react";
+import { ChevronDown, Eye, Check, Sparkles, Lock, TriangleAlert } from "lucide-react";
 import type { ModelDef } from "../types";
 import { modelsByProvider, PROVIDER_LABELS, isModelGated } from "../config/models";
 import { ModelFavicon, ProviderFavicon } from "./ProviderIcon";
@@ -34,6 +34,11 @@ export function ModelSelector({
         >
           <ModelFavicon model={value} size={15} />
           <span className="max-w-[160px] truncate">{value ? value.displayName : "Select model"}</span>
+          {value?.knownBroken && (
+            <span title={value.knownBroken} className="inline-flex shrink-0 items-center text-amber-400">
+              <TriangleAlert size={12} strokeWidth={2.5} />
+            </span>
+          )}
           {value?.supportsVision && (
             <span
               title="Supports vision input"
@@ -76,6 +81,15 @@ export function ModelSelector({
                   >
                     <ModelFavicon model={m} size={15} />
                     <span className="min-w-0 flex-1 truncate">{m.displayName}</span>
+                    {m.knownBroken && (
+                      <span
+                        title={m.knownBroken}
+                        className="inline-flex items-center gap-1 rounded border border-amber-500/30 bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-amber-400 shrink-0"
+                      >
+                        <TriangleAlert size={10} strokeWidth={2.5} />
+                        <span>Down</span>
+                      </span>
+                    )}
                     {m.supportsVision && (
                       <span
                         title="Supports image and vision input"
