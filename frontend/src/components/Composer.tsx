@@ -36,6 +36,7 @@ export function Composer({
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [codeMode, setCodeMode] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [rejectedFiles, setRejectedFiles] = useState<string[]>([]);
   const [recording, setRecording] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -47,8 +48,12 @@ export function Composer({
     const files = Array.from(fileList);
     if (!files.length) return;
     const next: Attachment[] = [];
+    const tooBig: string[] = [];
     for (const file of files) {
-      if (file.size > MAX_FILE_BYTES) continue;
+      if (file.size > MAX_FILE_BYTES) {
+        tooBig.push(file.name || "file");
+        continue;
+      }
       const isImage = file.type.startsWith("image/");
       let dataUrl: string;
       let storedSize = file.size;
@@ -81,6 +86,7 @@ export function Composer({
     if (next.length > 0) {
       setAttachments((prev) => [...prev, ...next]);
     }
+    setRejectedFiles(tooBig);
   };
 
   const prepareImage = (file: File): Promise<{ dataUrl: string; type: string; size: number }> =>
@@ -256,6 +262,24 @@ export function Composer({
               </div>
             );
           })}
+        </div>
+      )}
+
+      {rejectedFiles.length > 0 && (
+        <div className="flex items-start gap-2 border-b border-red-500/20 bg-red-500/10 px-4 py-2 text-xs text-red-300">
+          <AlertTriangle size={13} className="mt-0.5 shrink-0" />
+          <span className="flex-1">
+            <strong className="font-medium">{rejectedFiles.join(", ")}</strong>{" "}
+            {rejectedFiles.length === 1 ? "wasn't" : "weren't"} attached — over the {(MAX_FILE_BYTES / 1024 / 1024).toFixed(0)}MB limit.
+          </span>
+          <button
+            type="button"
+            onClick={() => setRejectedFiles([])}
+            className="shrink-0 text-red-400/70 hover:text-red-300"
+            title="Dismiss"
+          >
+            <X size={13} />
+          </button>
         </div>
       )}
 
