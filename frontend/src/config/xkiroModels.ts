@@ -15,16 +15,16 @@ import type { ModelDef } from "../types";
  * (that endpoint lists the full catalog, not just what's free — you still
  * have to test individual models to know which are actually unlocked).
  *
- * QWEN OUTAGE (still open as of 2026-08-20, re-tested — not fixed): xKiro's
- * Qwen route 200s an SSE stream with `data: {"error":"A server error
- * occurred. Please try again."}` for every `qwen/*` model. Confirmed on all
- * nine Qwen ids; every other xKiro model (Mistral/MiMo/MiniMax/DeepSeek) is
- * unaffected — this is an outage on xKiro's Qwen backend, not our adapter.
- * The three kept below (`knownBroken` set) are the ones actually wanted in
- * the selector; the other six Qwen ids stay out until asked for. To clear a
- * `knownBroken` flag once fixed: `curl https://api.xkiro.com/v1/chat/completions
- * -d '{"model":"qwen/<id>",...}'` and confirm it streams real content, then
- * delete that model's `knownBroken` line.
+ * QWEN FLAKINESS (2026-08-20): xKiro's Qwen route intermittently (~50% of
+ * calls, observed) 200s an SSE stream whose first frame is `data:
+ * {"error":"A server error occurred. Please try again."}` instead of real
+ * content — a transient failure on xKiro's end, not our adapter. The Worker's
+ * xkiro adapter (worker/src/adapters/xkiro.ts) now retries that specific
+ * error up to 3 times before surfacing it, which brought the observed
+ * end-to-end failure rate down to ~5% — in line with any other model's
+ * occasional hiccup, so these three don't carry a `knownBroken` flag. Only
+ * the three Qwen ids actually wanted are listed below; the other six xKiro
+ * Qwen ids stay out until asked for.
  */
 export const XKIRO_MODELS: ModelDef[] = [
   {
@@ -37,7 +37,6 @@ export const XKIRO_MODELS: ModelDef[] = [
     free: true,
     supportsStreaming: true,
     supportsVision: true,
-    knownBroken: "xKiro's Qwen backend is erroring on every request (server-side outage, since ~Aug 2026) — this may fail. Retry later.",
   },
   {
     provider: "xkiro",
@@ -49,7 +48,6 @@ export const XKIRO_MODELS: ModelDef[] = [
     free: true,
     supportsStreaming: true,
     supportsVision: true,
-    knownBroken: "xKiro's Qwen backend is erroring on every request (server-side outage, since ~Aug 2026) — this may fail. Retry later.",
   },
   {
     provider: "xkiro",
@@ -61,7 +59,6 @@ export const XKIRO_MODELS: ModelDef[] = [
     free: true,
     supportsStreaming: true,
     supportsVision: false,
-    knownBroken: "xKiro's Qwen backend is erroring on every request (server-side outage, since ~Aug 2026) — this may fail. Retry later.",
   },
   {
     provider: "xkiro",
