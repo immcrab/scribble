@@ -47,7 +47,7 @@ export function SideBySideMode({
 }) {
   const chat = useChatStore((s) => s.chats.find((c) => c.id === chatId));
   const settings = useChatStore((s) => s.settings);
-  const { addMessage, setChatModels, maybeAutoTitle, abort } = useChatStore();
+  const { addMessage, setChatModels, maybeAutoTitle, abort, removeMessagesAfter } = useChatStore();
   const [eagerWorkspace, setEagerWorkspace] = useState(false);
   const chatEndRef = useAutoScroll<HTMLDivElement>(chat?.messages ?? []);
 
@@ -129,6 +129,76 @@ export function SideBySideMode({
 
   const locked = chat.messages.length > 0;
 
+  /** Resend a user message to both models. */
+  const resendUser = (userId: string) => {
+    const userMsg = chat.messages.find((m) => m.id === userId);
+    if (!userMsg || !modelA || !modelB) return;
+    removeMessagesAfter(chat.id, userId);
+    const aMsg: ChatMessageType = {
+      id: uid(),
+      role: "assistant",
+      content: "",
+      createdAt: Date.now(),
+      model: modelA,
+      pane: "a",
+      streaming: true,
+    };
+    const bMsg: ChatMessageType = {
+      id: uid(),
+      role: "assistant",
+      content: "",
+      createdAt: Date.now(),
+      model: modelB,
+      pane: "b",
+      streaming: true,
+    };
+    addMessage(chat.id, aMsg);
+    addMessage(chat.id, bMsg);
+    const userWireAttachments = userMsg.attachments?.map((a) => ({
+      name: a.name,
+      type: a.type,
+      dataUrl: a.dataUrl,
+    })) ?? [];
+    const historyA: WireMessage[] = [
+      ...buildHistory("a", userId),
+      { role: "user", content: userMsg.content, attachments: userWireAttachments },
+    ];
+    const historyB: WireMessage[] = [
+      ...buildHistory("b", userId),
+      { role: "user", content: userMsg.content, attachments: userWireAttachments },
+    ];
+    runAssistantStream({ chatId: chat.id, messageId: aMsg.id, model: modelA, history: historyA });
+    runAssistantStream({ chatId: chat.id, messageId: bMsg.id, model: modelB, history: historyB });
+  };
+
+  /** Regenerate just one pane for the current round. */
+  const regeneratePane = (pane: "a" | "b") => {
+    if (!lastRound || !lastRound.user || generating) return;
+    const old = pane === "a" ? lastRound.a : lastRound.b;
+    if (!old || !old.model) return;
+    removeMessagesAfter(chat.id, old.id);
+    const newMsg: ChatMessageType = {
+      id: uid(),
+      role: "assistant",
+      content: "",
+      createdAt: Date.now(),
+      model: old.model,
+      pane,
+      streaming: true,
+    };
+    addMessage(chat.id, newMsg);
+    const userWireAttachments = lastRound.user.attachments?.map((a) => ({
+      name: a.name,
+      type: a.type,
+      dataUrl: a.dataUrl,
+    })) ?? [];
+    const history: WireMessage[] = [
+      ...buildHistory(pane, old.id),
+      { role: "user", content: lastRound.user.content, attachments: userWireAttachments },
+    ];
+    runAssistantStream({ chatId: chat.id, messageId: newMsg.id, model: old.model, history });
+  };
+
   useEffect(() => {
     if (initialPrompt && chat.messages.length === 0) {
       send(initialPrompt.prompt, initialPrompt.attachments, initialPrompt.codeMode);
@@ -184,23 +254,42 @@ export function SideBySideMode({
             ) : (
               <div className="flex-1 overflow-y-auto px-4 py-5 sm:px-8" ref={chatEndRef}>
                 <div className={`mx-auto flex flex-col gap-6 ${hasWorkspace ? "" : "max-w-5xl"}`}>
-                  {rounds.map((round) => (
-                    <div key={round.user.id} className="flex flex-col gap-4">
-                      <div className="flex justify-end">
-                        <div className="max-w-[80%]">
-                          <ChatMessage message={round.user} />
+                  {rounds.map((round, i) => {
+                    const isLast = i === rounds.length - 1;
+                    const roundRevealed = !!round.a && !!round.b && !round.a.streaming && !round.b.streaming;
+                    return (
+                      <div key={round.user.id} className="flex flex-col gap-4">
+                        <div className="flex justify-end">
+                          <div className="max-w-[80%]">
+                            <ChatMessage
+                              message={round.user}
+                              onRegenerate={() => resendUser(round.user.id)}
+                            />
+                          </div>
+                        </div>
+                        <div className={hasWorkspace ? "flex flex-col gap-4" : "grid grid-cols-1 gap-4 md:grid-cols-2"}>
+                          <div className="min-w-0 rounded-2xl border border-base-700/50 bg-base-900/40 p-3">
+                            {round.a && (
+                              <ChatMessage
+                                message={round.a}
+                                suppressCode={hasWorkspace}
+                                onRegenerate={roundRevealed && isLast ? () => regeneratePane("a") : undefined}
+                              />
+                            )}
+                          </div>
+                          <div className="min-w-0 rounded-2xl border border-base-700/50 bg-base-900/40 p-3">
+                            {round.b && (
+                              <ChatMessage
+                                message={round.b}
+                                suppressCode={hasWorkspace}
+                                onRegenerate={roundRevealed && isLast ? () => regeneratePane("b") : undefined}
+                              />
+                            )}
+                          </div>
                         </div>
                       </div>
-                      <div className={hasWorkspace ? "flex flex-col gap-4" : "grid grid-cols-1 gap-4 md:grid-cols-2"}>
-                        <div className="min-w-0 rounded-2xl border border-base-700/50 bg-base-900/40 p-3">
-                          {round.a && <ChatMessage message={round.a} suppressCode={hasWorkspace} />}
-                        </div>
-                        <div className="min-w-0 rounded-2xl border border-base-700/50 bg-base-900/40 p-3">
-                          {round.b && <ChatMessage message={round.b} suppressCode={hasWorkspace} />}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}

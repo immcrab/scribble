@@ -6,6 +6,10 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
  * pickers) — previously each one hand-rolled its own ref + mousedown
  * listener. Trigger and menu content stay fully custom via render props;
  * this just owns the interaction mechanics and the consistent panel chrome.
+ *
+ * Uses `pointerdown` (not just `mousedown`) so it fires immediately on
+ * touch devices — `mousedown` is delayed ~300ms on mobile, which made
+ * dropdowns feel sluggish and caused phantom clicks.
  */
 export function Dropdown({
   trigger,
@@ -23,16 +27,17 @@ export function Dropdown({
 
   useEffect(() => {
     if (!open) return;
-    const onClick = (e: MouseEvent) => {
+    const onPointerDown = (e: PointerEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
     };
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setOpen(false);
     };
-    document.addEventListener("mousedown", onClick);
+    // `pointerdown` covers mouse, touch, and pen — fires instantly on touch.
+    document.addEventListener("pointerdown", onPointerDown);
     document.addEventListener("keydown", onKey);
     return () => {
-      document.removeEventListener("mousedown", onClick);
+      document.removeEventListener("pointerdown", onPointerDown);
       document.removeEventListener("keydown", onKey);
     };
   }, [open]);

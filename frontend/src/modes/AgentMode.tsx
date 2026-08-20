@@ -43,7 +43,7 @@ export function AgentMode({
 }) {
   const chat = useChatStore((s) => s.chats.find((c) => c.id === chatId));
   const settings = useChatStore((s) => s.settings);
-  const { addMessage, setChatModels, maybeAutoTitle, abort, removeMessagesAfter } = useChatStore();
+  const { addMessage, setChatModels, maybeAutoTitle, abort, removeMessagesAfter, updateMessage } = useChatStore();
   const [eagerWorkspace, setEagerWorkspace] = useState(false);
   const chatEndRef = useAutoScroll<HTMLDivElement>(chat?.messages ?? []);
 
@@ -96,10 +96,35 @@ export function AgentMode({
     runAssistantStream({ chatId: chat.id, messageId: assistantMsg.id, model: activeModel, history });
   };
 
-  const regenerate = (assistantId: string) => {
-    if (!model) return;
+  const regenerate = (assistantId: string, withModelId?: string) => {
+    const runModel = (withModelId && findModel(withModelId)) || model;
+    if (!runModel) return;
     const history = buildHistory(assistantId);
     removeMessagesAfter(chat.id, assistantId);
+    const newAssistant: ChatMessageType = {
+      id: uid(),
+      role: "assistant",
+      content: "",
+      createdAt: Date.now(),
+      model: runModel,
+      streaming: true,
+      toolCalls: [],
+    };
+    addMessage(chat.id, newAssistant);
+    runAssistantStream({ chatId: chat.id, messageId: newAssistant.id, model: runModel, history });
+  };
+
+  /** Edit a user message in-place and stream a fresh reply. */
+  const editMessage = (messageId: string, newText: string) => {
+    const msg = chat.messages.find((m) => m.id === messageId);
+    if (!msg || msg.role !== "user") return;
+    updateMessage(chat.id, messageId, { content: newText });
+    const nextIdx = chat.messages.findIndex((m) => m.id === messageId) + 1;
+    if (nextIdx < chat.messages.length) {
+      const nextMsg = chat.messages[nextIdx];
+      if (nextMsg.role === "assistant") removeMessagesAfter(chat.id, nextMsg.id);
+    }
+    const history = buildHistory(messageId);
     const newAssistant: ChatMessageType = {
       id: uid(),
       role: "assistant",
@@ -178,6 +203,10 @@ export function AgentMode({
                       message={m}
                       suppressCode={hasWorkspace}
                       onRegenerate={m.role === "assistant" && !m.streaming ? () => regenerate(m.id) : undefined}
+                      onRegenerateWith={
+                        m.role === "assistant" && !m.streaming ? (modelId) => regenerate(m.id, modelId) : undefined
+                      }
+                      onEdit={m.role === "user" && !m.streaming ? (newText) => editMessage(m.id, newText) : undefined}
                     />
                   ))}
                 </div>

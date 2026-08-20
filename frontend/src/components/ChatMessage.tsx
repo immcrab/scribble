@@ -3,6 +3,8 @@ import {
   Copy,
   Check,
   RotateCcw,
+  ChevronDown,
+  Edit3,
   User,
   HelpCircle,
   FileText,
@@ -12,11 +14,64 @@ import {
   Loader2,
   CheckCircle2,
   XCircle,
+  Send,
+  X,
 } from "lucide-react";
 import type { ChatMessage as ChatMessageType, ToolCallRecord } from "../types";
 import { Markdown } from "../lib/markdown";
-import { ModelFavicon } from "./ProviderIcon";
+import { ModelFavicon, ProviderFavicon } from "./ProviderIcon";
 import { useLiveArtifact } from "../lib/useLiveArtifact";
+import { modelsByProvider, PROVIDER_LABELS } from "../config/models";
+import { Dropdown } from "./Dropdown";
+
+/** Small chevron-trigger dropdown next to Regenerate — lets you re-run the
+ * same turn against a different model instead of the one that answered. */
+function RegenerateWithMenu({ onPick }: { onPick: (modelId: string) => void }) {
+  const grouped = modelsByProvider();
+  return (
+    <Dropdown
+      align="right"
+      menuClassName="max-h-80 w-72"
+      trigger={({ toggle }) => (
+        <button
+          onClick={toggle}
+          className="message-action-btn flex items-center justify-center rounded p-1.5 text-xs text-slate-500 transition-colors hover:bg-base-700/60 hover:text-white"
+          title="Regenerate with a different model"
+        >
+          <ChevronDown size={13} />
+        </button>
+      )}
+    >
+      {({ close }) => (
+        <>
+          {(Object.keys(grouped) as (keyof typeof grouped)[]).map((provider) => (
+            <div key={provider} className="py-1.5 border-b border-base-700/40 last:border-b-0">
+              <div className="flex items-center gap-1.5 px-3.5 pb-1 pt-1.5">
+                <ProviderFavicon provider={provider} size={13} />
+                <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                  {PROVIDER_LABELS[provider]}
+                </span>
+              </div>
+              {grouped[provider].map((m) => (
+                <button
+                  key={m.modelId}
+                  onClick={() => {
+                    onPick(m.modelId);
+                    close();
+                  }}
+                  className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-sm text-slate-300 transition-colors hover:bg-base-700/50"
+                >
+                  <ModelFavicon model={m} size={15} />
+                  <span className="min-w-0 flex-1 truncate">{m.displayName}</span>
+                </button>
+              ))}
+            </div>
+          ))}
+        </>
+      )}
+    </Dropdown>
+  );
+}
 
 const TOOL_STATUS_ICON: Record<ToolCallRecord["status"], typeof Loader2> = {
   pending: Loader2,
@@ -87,15 +142,24 @@ export function ChatMessage({
   message,
   hideModelName = false,
   onRegenerate,
+  onRegenerateWith,
+  onEdit,
   suppressCode = false,
 }: {
   message: ChatMessageType;
   hideModelName?: boolean;
+  /** Resend the message with the same model. */
   onRegenerate?: () => void;
+  /** Resend the message with a different model — omit to hide the model-picker chevron. */
+  onRegenerateWith?: (modelId: string) => void;
+  /** Edit & resend a user message. */
+  onEdit?: (newText: string) => void;
   /** True when a parent mode is already routing this message's code into the ArtifactWorkspace panel — keeps raw fences out of the bubble even mid-stream. */
   suppressCode?: boolean;
 }) {
   const [copied, setCopied] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState("");
   const isUser = message.role === "user";
 
   const copy = async () => {
@@ -112,10 +176,26 @@ export function ChatMessage({
   const artifact = liveArtifact && (!message.streaming || suppressCode) ? liveArtifact : null;
   const lastFileName = artifact?.files[artifact.files.length - 1]?.name;
 
+  const startEdit = () => {
+    setDraft(message.content);
+    setEditing(true);
+  };
+  const cancelEdit = () => {
+    setEditing(false);
+    setDraft("");
+  };
+  const confirmEdit = () => {
+    const trimmed = draft.trim();
+    if (!trimmed) return;
+    onEdit?.(trimmed);
+    setEditing(false);
+    setDraft("");
+  };
+
   return (
     <div className={`group animate-fade-in-up flex gap-3 ${isUser ? "flex-row-reverse" : ""}`}>
       <div
-        className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg transition-shadow duration-300 ${
+        className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg transition-transform duration-300 ${
           isUser
             ? "bg-base-700 text-slate-300"
             : "border border-base-700/60 bg-base-900/90 shadow-sm"
@@ -130,7 +210,7 @@ export function ChatMessage({
         )}
       </div>
 
-      <div className={`min-w-0 max-w-[80%] ${isUser ? "items-end" : "items-start"} flex flex-col`}>
+      <div className={`min-w-0 flex-1 ${isUser ? "items-end" : "items-start"} flex flex-col`}>
         {!isUser && (
           <div className="mb-1 flex items-center gap-1.5 px-1 text-xs font-medium text-slate-400">
             {message.model && !hideModelName && <ModelFavicon model={message.model} size={12} />}
@@ -165,7 +245,7 @@ export function ChatMessage({
               return (
                 <span
                   key={a.id}
-                  className="flex items-center gap-1 rounded-lg border border-base-600/60 bg-base-800/60 px-2.5 py-1 text-xs text-slate-300"
+                  className="flex items-center gap-1 rounded-lg border border-base-600/60 bg-base-800/60 px-2.5 py-1.5 text-xs text-slate-300"
                 >
                   <FileText size={12} className="text-accent-400" /> {a.name}
                 </span>
@@ -174,6 +254,7 @@ export function ChatMessage({
           </div>
         )}
 
+        {/* Message bubble — always editable/visible, never suppressed by hover */}
         <div
           className={`rounded-2xl px-4 py-2.5 transition-all duration-200 ${
             isUser
@@ -186,6 +267,36 @@ export function ChatMessage({
             <div className="flex items-start gap-2 text-sm text-red-400">
               <AlertTriangle size={15} className="mt-0.5 shrink-0" />
               <span>{message.error}</span>
+            </div>
+          ) : editing ? (
+            // Inline editor for user messages
+            <div className="flex flex-col gap-2">
+              <textarea
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                rows={3}
+                className="w-full resize-y overflow-y-auto rounded-lg bg-base-950 px-2.5 py-1.5 text-sm text-slate-100 outline-none ring-1 ring-accent-500 placeholder-slate-500"
+                placeholder="Edit your message…"
+                autoFocus
+              />
+              <div className="flex gap-1.5 justify-end">
+                <button
+                  onClick={cancelEdit}
+                  className="message-action-btn flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs text-slate-400 transition-colors hover:bg-base-700/60 hover:text-white"
+                  title="Cancel edit"
+                >
+                  <X size={13} />
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmEdit}
+                  className="message-action-btn flex items-center gap-1 rounded-lg bg-accent-500 px-2.5 py-1.5 text-xs font-medium text-base-950 transition-colors hover:bg-accent-400"
+                  title="Send edited message"
+                >
+                  <Send size={13} />
+                  Send
+                </button>
+              </div>
             </div>
           ) : artifact ? (
             <>
@@ -210,20 +321,49 @@ export function ChatMessage({
           ) : null}
         </div>
 
+        {/* Action buttons — always visible on touch devices via CSS (see index.css),
+            shown on hover for mouse. Made large enough for tappable use. */}
         {!isUser && !message.streaming && message.content && (
-          <div className="mt-1 flex gap-1 px-1 opacity-0 transition-opacity duration-200 group-hover:opacity-100 hover:opacity-100">
+          <div className="mt-1 flex gap-1 px-1 opacity-0 transition-opacity duration-200 group-hover:opacity-100 hover:opacity-100 sm:group-hover:opacity-100">
             <button
               onClick={copy}
-              className="flex items-center gap-1 rounded p-1 text-xs text-slate-500 transition-colors hover:bg-base-700/60 hover:text-white"
+              className="message-action-btn flex items-center gap-1 rounded p-1.5 text-xs text-slate-500 transition-colors hover:bg-base-700/60 hover:text-white"
+              title="Copy"
             >
-              {copied ? <Check size={12} /> : <Copy size={12} />}
+              {copied ? <Check size={13} /> : <Copy size={13} />}
             </button>
             {onRegenerate && (
               <button
                 onClick={onRegenerate}
-                className="flex items-center gap-1 rounded p-1 text-xs text-slate-500 transition-colors hover:bg-base-700/60 hover:text-white"
+                className="message-action-btn flex items-center gap-1 rounded p-1.5 text-xs text-slate-500 transition-colors hover:bg-base-700/60 hover:text-white"
+                title="Regenerate"
               >
-                <RotateCcw size={12} />
+                <RotateCcw size={13} />
+              </button>
+            )}
+            {onRegenerateWith && <RegenerateWithMenu onPick={onRegenerateWith} />}
+          </div>
+        )}
+
+        {/* Edit button for user messages — always tappable on touch */}
+        {isUser && !message.streaming && (
+          <div className="mt-1 flex gap-1 px-1 opacity-0 transition-opacity duration-200 group-hover:opacity-100 hover:opacity-100 sm:group-hover:opacity-100">
+            {onEdit && (
+              <button
+                onClick={startEdit}
+                className="message-action-btn flex items-center gap-1 rounded p-1.5 text-xs text-slate-500 transition-colors hover:bg-base-700/60 hover:text-white"
+                title="Edit message"
+              >
+                <Edit3 size={13} />
+              </button>
+            )}
+            {onRegenerate && (
+              <button
+                onClick={onRegenerate}
+                className="message-action-btn flex items-center gap-1 rounded p-1.5 text-xs text-slate-500 transition-colors hover:bg-base-700/60 hover:text-white"
+                title="Resend"
+              >
+                <Send size={13} />
               </button>
             )}
           </div>

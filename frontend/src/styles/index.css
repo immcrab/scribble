@@ -57,10 +57,11 @@ body {
 .prose-scribble pre {
   background: #1f1d1a;
   border: 1px solid #413d39;
-  border-radius: 10px;
+  border-radius: 0 0 10px 10px;
+  border-top: none;
   padding: 0.9em 1em;
   overflow-x: auto;
-  margin: 0.6em 0;
+  margin: 0;
 }
 .prose-scribble code {
   font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
@@ -104,8 +105,63 @@ body {
   text-align: left;
 }
 
+/* Code-block-wrapper: the header (lang + copy button) above each pre block. */
+.code-block-wrapper {
+  margin: 0.6em 0;
+}
+
 html {
   scroll-behavior: smooth;
+}
+
+/* ─── Mobile touch-target improvements ─────────────────────────── */
+
+/* Ensure interactive elements meet the 44×44px minimum touch target size
+   recommended by WCAG/Apple Human Interface Guidelines. We expand the
+   hit area visually via padding rather than min-size on every button,
+   but this base rule guarantees the *clickable* area is always large
+   enough even on the smallest touch target. */
+@supports (touch-action: manipulation) {
+  button,
+  [role="button"],
+  select,
+  input[type="checkbox"],
+  input[type="radio"] {
+    touch-action: manipulation;
+  }
+}
+
+/* On touch devices, show hover-triggered action buttons immediately so
+   users don't need a "long press then tap" dance to reveal copy/retry. */
+@media (hover: none) and (pointer: coarse) {
+  .group:hover .group-hover\:opacity-100,
+  .group-hover\:opacity-100 {
+    opacity: 1 !important;
+  }
+
+  /* Make sure action icon buttons inside message bubbles have enough
+     padding to be tappable without hitting the bubble edge. */
+  .message-action-btn {
+    min-width: 36px;
+    min-height: 36px;
+  }
+}
+
+/* Prevent accidental double-tap zoom on form controls and buttons */
+input,
+textarea,
+button,
+select {
+  font-size: 16px; /* prevents iOS from zooming when these get focused */
+}
+
+/* Better mobile scrolling feel */
+@media (hover: none) and (pointer: coarse) {
+  ::-webkit-scrollbar {
+    /* show slightly wider scrollbar for easier grabbing on touch */
+    width: 12px;
+    height: 12px;
+  }
 }
 
 /* Breathing, gently glowing cursor that latches onto the tail of streamed
@@ -178,8 +234,12 @@ html {
   font-size: 0.8rem;
   letter-spacing: 0.03em;
   opacity: 0.8;
+  animation: prelude-pulse 2s ease-in-out infinite;
 }
-
+@keyframes prelude-pulse {
+  0%, 100% { opacity: 0.8; }
+  50% { opacity: 0.4; }
+}
 
 .skeleton-line {
   background: linear-gradient(90deg, #1f1d1a 25%, #2c2925 37%, #1f1d1a 63%);
@@ -233,3 +293,51 @@ html {
   animation-iteration-count: 1 !important;
 }
 
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* ─── PWA Install Prompt styles ─────────────────────────────── */
+
+/* ─── Modal backdrop (reused for any future modals) ─────── */
+.pwa-install-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(4px);
+}
+.pwa-install-panel {
+  position: fixed;
+  bottom: env(safe-area-inset-bottom, 0);
+  left: 1rem;
+  right: 1rem;
+  margin: 0 auto;
+  max-width: 420px;
+  background: theme("colors.base.850");
+  border: 1px solid theme("colors.base.700");
+  border-radius: 1.25rem;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+}

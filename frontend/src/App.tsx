@@ -5,6 +5,7 @@ import { ModeSelector } from "./components/ModeSelector";
 import { Composer } from "./components/Composer";
 import { EmptyState } from "./components/EmptyState";
 import { SettingsModal } from "./components/SettingsModal";
+import { PWAInstallPrompt } from "./components/PWAInstallPrompt";
 import { DirectMode } from "./modes/DirectMode";
 import { BattleMode } from "./modes/BattleMode";
 import { SideBySideMode } from "./modes/SideBySideMode";
@@ -71,7 +72,7 @@ export default function App() {
         <div className="flex items-center gap-2 px-4 py-2.5">
           <button
             onClick={() => setMobileMenuOpen(true)}
-            className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-base-700/60 hover:text-white md:hidden"
+            className="flex h-11 w-11 items-center justify-center rounded-xl text-slate-400 transition-colors hover:bg-base-700/60 hover:text-white md:hidden sm:h-auto sm:w-auto sm:rounded-lg sm:p-2"
             title="Open menu"
           >
             <Menu size={19} />
@@ -125,6 +126,7 @@ export default function App() {
         </div>
       </div>
 
+      <PWAInstallPrompt />
       {settingsOpen && <SettingsModal onClose={() => setSettingsOpen(false)} />}
     </div>
   );

@@ -1,9 +1,17 @@
 import { useRef, useState } from "react";
-import { Paperclip, ArrowUp, Square, X, FileText, Code2, Image as ImageIcon, AlertTriangle } from "lucide-react";
+import { Paperclip, ArrowUp, Square, X, FileText, Code2, Image as ImageIcon, AlertTriangle, Mic } from "lucide-react";
 import type { Attachment, ModelDef } from "../types";
 import { uid } from "../lib/id";
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10MB
+
+/** Chrome/Safari/Edge expose speech recognition under a vendor-prefixed
+ * global — Firefox has none, so this is undefined there and the mic button
+ * just doesn't render. */
+function getSpeechRecognitionCtor(): any {
+  if (typeof window === "undefined") return null;
+  return (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition || null;
+}
 
 export function Composer({
   onSend,
@@ -28,8 +36,12 @@ export function Composer({
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [codeMode, setCodeMode] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [recording, setRecording] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const recognitionRef = useRef<any>(null);
+  const dictationBaseRef = useRef("");
+  const speechSupported = !!getSpeechRecognitionCtor();
 
   const processFiles = async (fileList: FileList | File[]) => {
     const files = Array.from(fileList);
@@ -143,6 +155,7 @@ export function Composer({
   const submit = () => {
     const trimmed = text.trim();
     if ((!trimmed && attachments.length === 0) || generating) return;
+    recognitionRef.current?.stop();
     onSend(trimmed, attachments, codeMode);
     setText("");
     setAttachments([]);
@@ -154,6 +167,44 @@ export function Composer({
     if (!el) return;
     el.style.height = "auto";
     el.style.height = Math.min(el.scrollHeight, 220) + "px";
+  };
+
+  /** Dictate into the composer via the browser's speech-recognition API.
+   * Interim results replace themselves in place as they firm up; final
+   * results are appended ahead of whatever was already typed. */
+  const toggleRecording = () => {
+    if (recording) {
+      recognitionRef.current?.stop();
+      return;
+    }
+    const SpeechRecognition = getSpeechRecognitionCtor();
+    if (!SpeechRecognition) return;
+
+    dictationBaseRef.current = text;
+    const recognition = new SpeechRecognition();
+    recognition.lang = navigator.language || "en-US";
+    recognition.continuous = true;
+    recognition.interimResults = true;
+
+    recognition.onresult = (e: any) => {
+      let finalChunk = "";
+      let interimChunk = "";
+      for (let i = 0; i < e.results.length; i++) {
+        const chunk = e.results[i][0].transcript;
+        if (e.results[i].isFinal) finalChunk += chunk;
+        else interimChunk += chunk;
+      }
+      const base = dictationBaseRef.current;
+      const sep = base && !/\s$/.test(base) ? " " : "";
+      setText(base + sep + finalChunk + interimChunk);
+      requestAnimationFrame(autoGrow);
+    };
+    recognition.onerror = () => setRecording(false);
+    recognition.onend = () => setRecording(false);
+
+    recognitionRef.current = recognition;
+    recognition.start();
+    setRecording(true);
   };
 
   const canSubmit = (text.trim().length > 0 || attachments.length > 0) && !generating;
@@ -245,6 +296,8 @@ export function Composer({
         }}
         placeholder={placeholder}
         rows={1}
+        inputMode="text"
+        enterKeyHint={sendOnEnter ? "send" : "enter"}
         className="max-h-[220px] w-full resize-none bg-transparent px-4 py-4 text-[15px] text-slate-100 placeholder-slate-500 outline-none"
       />
 
@@ -261,42 +314,57 @@ export function Composer({
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm text-slate-400 transition-colors hover:bg-base-700/60 hover:text-white"
+            className="flex h-11 w-11 items-center justify-center rounded-xl bg-base-800/60 text-slate-400 transition-colors hover:bg-base-700/60 hover:text-white sm:h-auto sm:w-auto sm:rounded-lg sm:px-2.5 sm:py-1.5"
             title="Add images or files"
           >
-            <Paperclip size={15} />
+            <Paperclip size={18} />
             <span className="hidden sm:inline">Add files</span>
           </button>
           <button
             type="button"
             onClick={() => setCodeMode((c) => !c)}
             title="Code — force-open the preview panel (also opens automatically for coding requests)"
-            className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-sm transition-colors ${
+            className={`flex h-11 w-11 items-center justify-center rounded-xl border text-slate-400 transition-colors sm:h-auto sm:w-auto sm:rounded-lg sm:border-transparent ${
               codeMode
-                ? "border-accent-500/50 bg-accent-500/10 text-white"
-                : "border-transparent text-slate-400 hover:bg-base-700/60 hover:text-white"
+                ? "border-accent-500/50 bg-accent-500/10 text-white sm:border-transparent"
+                : "border-transparent hover:bg-base-700/60 hover:text-white"
             }`}
           >
-            <Code2 size={15} />
+            <Code2 size={18} />
             <span className="hidden sm:inline">Code</span>
           </button>
+          {speechSupported && (
+            <button
+              type="button"
+              onClick={toggleRecording}
+              title={recording ? "Stop dictating" : "Dictate with your voice"}
+              className={`flex h-11 w-11 items-center justify-center rounded-xl border text-slate-400 transition-colors sm:h-auto sm:w-auto sm:rounded-lg sm:border-transparent ${
+                recording
+                  ? "border-red-500/50 bg-red-500/10 text-red-400 animate-pulse"
+                  : "border-transparent hover:bg-base-700/60 hover:text-white"
+              }`}
+            >
+              <Mic size={18} />
+              <span className="hidden sm:inline">{recording ? "Listening…" : "Voice"}</span>
+            </button>
+          )}
         </div>
 
         {generating ? (
           <button
             type="button"
             onClick={onStop}
-            className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-200 text-base-950 transition-transform hover:scale-105 hover:bg-slate-300 active:scale-95"
+            className="flex h-11 w-11 items-center justify-center rounded-full bg-slate-200 text-base-950 transition-transform hover:scale-105 hover:bg-slate-300 active:scale-95"
             title="Stop generating"
           >
-            <Square size={13} fill="currentColor" />
+            <Square size={14} fill="currentColor" />
           </button>
         ) : (
           <button
             type="button"
             onClick={submit}
             disabled={!canSubmit}
-            className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent-500 text-base-950 transition-all hover:scale-105 hover:bg-accent-400 active:scale-95 disabled:scale-100 disabled:cursor-not-allowed disabled:bg-base-600 disabled:text-slate-500"
+            className="flex h-11 w-11 items-center justify-center rounded-xl bg-accent-500 text-base-950 transition-all hover:scale-105 hover:bg-accent-400 active:scale-95 disabled:scale-100 disabled:cursor-not-allowed disabled:bg-base-600 disabled:text-slate-500 sm:h-8 sm:w-8 sm:rounded-lg"
             title="Send"
           >
             <ArrowUp size={16} strokeWidth={2.5} />

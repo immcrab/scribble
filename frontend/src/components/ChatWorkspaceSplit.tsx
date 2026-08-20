@@ -27,19 +27,19 @@ export function ChatWorkspaceSplit({
         <div className="flex shrink-0 items-center gap-1 border-b border-base-700/60 bg-base-900/40 p-1.5 md:hidden">
           <button
             onClick={() => setMobilePane("chat")}
-            className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg py-1.5 text-xs font-medium transition-colors ${
-              mobilePane === "chat" ? "bg-base-700 text-white" : "text-slate-400"
+            className={`flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2.5 text-sm font-medium transition-colors ${
+              mobilePane === "chat" ? "bg-base-700 text-white" : "text-slate-400 hover:bg-base-800/60 hover:text-slate-200"
             }`}
           >
-            <MessageSquare size={13} /> Chat
+            <MessageSquare size={16} /> Chat
           </button>
           <button
             onClick={() => setMobilePane("code")}
-            className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg py-1.5 text-xs font-medium transition-colors ${
-              mobilePane === "code" ? "bg-base-700 text-white" : "text-slate-400"
+            className={`flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2.5 text-sm font-medium transition-colors ${
+              mobilePane === "code" ? "bg-base-700 text-white" : "text-slate-400 hover:bg-base-800/60 hover:text-slate-200"
             }`}
           >
-            <Code2 size={13} /> Code
+            <Code2 size={16} /> Code
             {workspaceStreaming && <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-accent-400" />}
           </button>
         </div>
