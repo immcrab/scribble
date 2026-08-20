@@ -14,6 +14,7 @@ import {
   Search,
   Download as ExportIcon,
 } from "lucide-react";
+import { LogoMark } from "./Logo";
 import { useChatStore } from "../state/chatStore";
 import { useAuthStore } from "../state/authStore";
 import { ExportChat } from "./ExportChat";
@@ -96,7 +97,7 @@ export function Sidebar({
             {(sidebarOpen || mobileOpen) && (
               <div className="flex items-center gap-2 px-1 animate-fade-in">
                 <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-accent-500 to-accent-700 shadow-glow">
-                  <PenLine size={15} className="text-base-950" strokeWidth={2.5} />
+                  <LogoMark size={15} className="text-base-950" />
                 </div>
                 <span className="font-serif text-lg font-semibold tracking-tight text-white">Scribble</span>
               </div>
