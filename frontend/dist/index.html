@@ -1,14 +1,32 @@
 <!doctype html>
 <html lang="en">
   <head>
+    <!-- GitHub Pages has no server-side routing, so 404.html redirects any deep link
+         (e.g. /c/{id}) here as a "?/c/{id}" query string. Restore the real path before
+         the app boots so client-side routing (see src/lib/router.ts) sees it. Must stay
+         in sync with the matching script in public/404.html. -->
+    <script>
+      (function (l) {
+        if (l.search[1] === "/") {
+          var decoded = l.search
+            .slice(1)
+            .split("&")
+            .map(function (s) {
+              return s.replace(/~and~/g, "&");
+            })
+            .join("?");
+          window.history.replaceState(null, "", l.pathname.slice(0, -1) + decoded + l.hash);
+        }
+      })(window.location);
+    </script>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=yes, maximum-scale=5, minimum-scale=1" />
     <title>Scribble — AI Playground</title>
     <meta name="description" content="Scribble: battle, compare, and chat with AI models." />
-    <link rel="icon" type="image/svg+xml" href="/scribble/favicon.svg" />
-    <link rel="apple-touch-icon" href="/scribble/favicon.svg" />
-    <link rel="mask-icon" href="/scribble/favicon.svg" color="#f5f0eb" />
-    <link rel="manifest" href="/scribble/manifest.webmanifest" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/favicon.svg" />
+    <link rel="mask-icon" href="/favicon.svg" color="#f5f0eb" />
+    <link rel="manifest" href="/manifest.webmanifest" />
     <meta name="theme-color" content="#1b1a18" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -16,8 +34,8 @@
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,300;8..60,500;8..60,600&display=swap"
       rel="stylesheet"
     />
-    <script type="module" crossorigin src="/scribble/assets/index-IbyA0SbW.js"></script>
-    <link rel="stylesheet" crossorigin href="/scribble/assets/index-Bz3Zaynh.css">
+    <script type="module" crossorigin src="/assets/index-By8bKdLW.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-Bz3Zaynh.css">
   </head>
   <body class="bg-base-950 text-slate-100 antialiased">
     <div id="root"></div>
