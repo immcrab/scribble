@@ -214,6 +214,35 @@ export function pushChatsPublic(chats: Chat[]): void {
 
 /** Looks up a shared chat by id for an unauthenticated visitor. Returns null if it
  * doesn't exist, the database isn't reachable, or the payload is malformed. */
+/**
+ * Deletes a chat from RTDB immediately, bypassing the debounced push and the
+ * merge-by-id logic that would otherwise resurrect it from a stale remote or
+ * other-tab copy. Also removes its public share link, which pushChatsPublic
+ * never cleans up since it only ever writes chats that still exist.
+ */
+export function deleteChatFromCloud(chatId: string, remainingChats: Chat[]): void {
+  const db = getRtdb();
+  if (!db) return;
+
+  const publicTimer = publicPushTimers.get(chatId);
+  if (publicTimer) {
+    clearTimeout(publicTimer);
+    publicPushTimers.delete(chatId);
+  }
+  lastPublicJson.delete(chatId);
+  dbSet(ref(db, `publicChats/${chatId}`), null).catch(() => {});
+
+  if (!activeUid) return;
+  const uid = activeUid;
+  if (chatsPushTimer) {
+    clearTimeout(chatsPushTimer);
+    chatsPushTimer = null;
+  }
+  const json = JSON.stringify(remainingChats);
+  lastChatsJson = json;
+  dbSet(ref(db, `users/${uid}/chatsJson`), json).catch(() => {});
+}
+
 export async function fetchPublicChat(id: string): Promise<Chat | null> {
   const db = getRtdb();
   if (!db) return null;

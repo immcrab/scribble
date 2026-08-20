@@ -3,7 +3,7 @@ import type { Chat, ChatMessage, Mode, Vote } from "../types";
 import { getDefaultModel, setCustomModels } from "../config/models";
 import { loadChats, saveChats, loadSettings, saveSettings, titleFromPrompt } from "../lib/storage";
 import type { ScribbleSettings } from "../lib/storage";
-import { startCloudSync, stopCloudSync, pushChatsToCloud, pushChatsPublic, pushSettingsToCloud } from "../lib/cloudSync";
+import { startCloudSync, stopCloudSync, pushChatsToCloud, pushChatsPublic, pushSettingsToCloud, deleteChatFromCloud } from "../lib/cloudSync";
 import { generateChatTitle } from "../lib/workerClient";
 import { uid } from "../lib/id";
 
@@ -138,13 +138,15 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       const remaining = s.chats.filter((c) => c.id !== id);
       if (remaining.length === 0) {
         const fresh = createInitialChat("direct");
-        debouncedPersist([fresh]);
+        saveChats([fresh]);
+        deleteChatFromCloud(id, [fresh]);
         return {
           chats: [fresh],
           activeChatId: fresh.id,
         };
       }
-      debouncedPersist(remaining);
+      saveChats(remaining);
+      deleteChatFromCloud(id, remaining);
       return {
         chats: remaining,
         activeChatId: s.activeChatId === id ? remaining[0].id : s.activeChatId,
