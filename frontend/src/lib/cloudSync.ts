@@ -161,6 +161,7 @@ export function pushChatsToCloud(chats: Chat[]): void {
   const uid = activeUid;
   if (chatsPushTimer) clearTimeout(chatsPushTimer);
   chatsPushTimer = setTimeout(() => {
+    if (activeUid !== uid) return; // signed out (or switched accounts) before this fired
     lastChatsJson = json;
     dbSet(ref(db, `users/${uid}/chatsJson`), json).catch(() => {});
   }, 2000);
@@ -175,6 +176,7 @@ export function pushSettingsToCloud(settings: ScribbleSettings): void {
   const uid = activeUid;
   if (settingsPushTimer) clearTimeout(settingsPushTimer);
   settingsPushTimer = setTimeout(() => {
+    if (activeUid !== uid) return; // signed out (or switched accounts) before this fired
     lastSettingsJson = json;
     dbSet(ref(db, `users/${uid}/settingsJson`), json).catch(() => {});
   }, 2000);

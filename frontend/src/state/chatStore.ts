@@ -61,11 +61,13 @@ interface ChatStore {
   deleteChat: (id: string) => void;
   renameChat: (id: string, title: string) => void;
   setChatModels: (id: string, patch: Partial<Pick<Chat, "modelId" | "modelAId" | "modelBId">>) => void;
+  patchChat: (id: string, patch: Partial<Chat>) => void;
   maybeAutoTitle: (id: string, prompt: string) => void;
 
   addMessage: (chatId: string, message: ChatMessage) => void;
   updateMessage: (chatId: string, messageId: string, patch: Partial<ChatMessage>) => void;
   appendMessageContent: (chatId: string, messageId: string, delta: string) => void;
+  appendMessageReasoning: (chatId: string, messageId: string, delta: string) => void;
   removeMessagesAfter: (chatId: string, messageId: string) => void;
   setVote: (chatId: string, vote: Vote) => void;
 
@@ -164,6 +166,14 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     });
   },
 
+  patchChat: (id, patch) => {
+    set((s) => {
+      const chats = s.chats.map((c) => (c.id === id ? { ...c, ...patch } : c));
+      debouncedPersist(chats);
+      return { chats };
+    });
+  },
+
   maybeAutoTitle: (id, prompt) => {
     const chat = get().chats.find((c) => c.id === id);
     if (chat && chat.messages.length <= 1) {
@@ -207,6 +217,23 @@ export const useChatStore = create<ChatStore>((set, get) => ({
               ...c,
               messages: c.messages.map((m) =>
                 m.id === messageId ? { ...m, content: m.content + delta } : m
+              ),
+            }
+          : c
+      );
+      debouncedPersist(chats);
+      return { chats };
+    });
+  },
+
+  appendMessageReasoning: (chatId, messageId, delta) => {
+    set((s) => {
+      const chats = s.chats.map((c) =>
+        c.id === chatId
+          ? {
+              ...c,
+              messages: c.messages.map((m) =>
+                m.id === messageId ? { ...m, reasoning: (m.reasoning ?? "") + delta } : m
               ),
             }
           : c

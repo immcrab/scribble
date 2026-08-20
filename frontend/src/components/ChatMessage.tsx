@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Copy,
   Check,
@@ -16,18 +16,23 @@ import {
   XCircle,
   Send,
   X,
+  Lock,
+  Brain,
 } from "lucide-react";
 import type { ChatMessage as ChatMessageType, ToolCallRecord } from "../types";
 import { Markdown } from "../lib/markdown";
 import { ModelFavicon, ProviderFavicon } from "./ProviderIcon";
 import { useLiveArtifact } from "../lib/useLiveArtifact";
-import { modelsByProvider, PROVIDER_LABELS } from "../config/models";
+import { modelsByProvider, PROVIDER_LABELS, isModelGated } from "../config/models";
+import { useAuthStore } from "../state/authStore";
 import { Dropdown } from "./Dropdown";
 
 /** Small chevron-trigger dropdown next to Regenerate — lets you re-run the
  * same turn against a different model instead of the one that answered. */
 function RegenerateWithMenu({ onPick }: { onPick: (modelId: string) => void }) {
   const grouped = modelsByProvider();
+  const user = useAuthStore((s) => s.user);
+  const signInWithGoogle = useAuthStore((s) => s.signInWithGoogle);
   return (
     <Dropdown
       align="right"
@@ -52,19 +57,27 @@ function RegenerateWithMenu({ onPick }: { onPick: (modelId: string) => void }) {
                   {PROVIDER_LABELS[provider]}
                 </span>
               </div>
-              {grouped[provider].map((m) => (
-                <button
-                  key={m.modelId}
-                  onClick={() => {
-                    onPick(m.modelId);
-                    close();
-                  }}
-                  className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-sm text-slate-300 transition-colors hover:bg-base-700/50"
-                >
-                  <ModelFavicon model={m} size={15} />
-                  <span className="min-w-0 flex-1 truncate">{m.displayName}</span>
-                </button>
-              ))}
+              {grouped[provider].map((m) => {
+                const locked = isModelGated(m) && !user;
+                return (
+                  <button
+                    key={m.modelId}
+                    onClick={() => {
+                      if (locked) {
+                        signInWithGoogle();
+                        return;
+                      }
+                      onPick(m.modelId);
+                      close();
+                    }}
+                    className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-sm text-slate-300 transition-colors hover:bg-base-700/50"
+                  >
+                    <ModelFavicon model={m} size={15} />
+                    <span className="min-w-0 flex-1 truncate">{m.displayName}</span>
+                    {locked && <Lock size={12} className="shrink-0 text-slate-500" />}
+                  </button>
+                );
+              })}
             </div>
           ))}
         </>
@@ -117,23 +130,70 @@ function ToolActivity({ toolCalls }: { toolCalls: ToolCallRecord[] }) {
   );
 }
 
+/** Ticks once a second while `active`, so a live "Thinking for Ns" label stays
+ * current without re-rendering the whole message tree on every token. */
+function useElapsedSeconds(active: boolean, startedAt: number | undefined, frozenMs: number | undefined): number {
+  const [, tick] = useState(0);
+  useEffect(() => {
+    if (!active || !startedAt) return;
+    const id = setInterval(() => tick((n) => n + 1), 1000);
+    return () => clearInterval(id);
+  }, [active, startedAt]);
+  if (frozenMs !== undefined) return Math.max(1, Math.round(frozenMs / 1000));
+  if (!startedAt) return 0;
+  return Math.max(0, Math.round((Date.now() - startedAt) / 1000));
+}
+
 /**
- * Rendered the instant a streaming turn begins — before the first token has
- * arrived from the backend. This is the "start spitting out a message before
- * it's actually even finished" cue: a live breathing cursor plus a "Responding…"
- * lead-in and a pulsing ellipsis, so the bubble feels alive rather than blank
- * while the upstream request is still warming up.
+ * Rendered the instant a streaming turn begins — before the first real content
+ * token has arrived. Shows a live "Thinking for Ns…" timer (ticking off
+ * message.thinkingStartedAt) with a shimmering label, plus — for models that
+ * stream a separate reasoning/thinking channel (see worker/src/adapters) — a
+ * live-updating panel of that reasoning text. Once content starts arriving or
+ * the turn ends, this collapses into a small "Thought for Xs" chip that
+ * expands to show the full reasoning on demand.
  */
-function StreamingPrelude() {
+function ThinkingBlock({ message }: { message: ChatMessageType }) {
+  const [expanded, setExpanded] = useState(false);
+  const isThinking = !!message.streaming && !message.content;
+  const hasReasoning = !!message.reasoning && message.reasoning.trim().length > 0;
+  const seconds = useElapsedSeconds(isThinking, message.thinkingStartedAt, isThinking ? undefined : message.thinkingMs);
+
+  if (!isThinking && !hasReasoning) return null;
+
+  if (isThinking) {
+    return (
+      <div className="mb-2">
+        <div className="stream-prelude">
+          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-slate-500" />
+          <span className="thinking-label animate-thinking-shimmer">
+            {seconds > 0 ? `Thinking for ${seconds}s…` : "Thinking…"}
+          </span>
+        </div>
+        {hasReasoning && (
+          <div className="mt-1.5 max-h-32 overflow-y-auto rounded-lg border border-base-700/40 bg-base-900/40 px-3 py-2 text-xs italic leading-relaxed text-slate-500 whitespace-pre-wrap">
+            {message.reasoning}
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
-    <div className="stream-prelude">
-      <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-slate-500" />
-      <span className="prelude-text">Responding…</span>
-      <span className="thinking-dots">
-        <span />
-        <span />
-        <span />
-      </span>
+    <div className="mb-2 overflow-hidden rounded-xl border border-base-700/60 bg-base-900/50">
+      <button
+        onClick={() => setExpanded((o) => !o)}
+        className="flex w-full items-center gap-1.5 px-3 py-2 text-left text-xs font-medium text-slate-400 hover:text-slate-200"
+      >
+        <ChevronRight size={12} className={`transition-transform ${expanded ? "rotate-90" : ""}`} />
+        <Brain size={12} />
+        Thought for {seconds}s
+      </button>
+      {expanded && (
+        <div className="max-h-64 overflow-y-auto whitespace-pre-wrap border-t border-base-700/60 px-3 py-2 text-xs italic leading-relaxed text-slate-500">
+          {message.reasoning}
+        </div>
+      )}
     </div>
   );
 }
@@ -256,13 +316,14 @@ export function ChatMessage({
 
         {/* Message bubble — always editable/visible, never suppressed by hover */}
         <div
-          className={`rounded-2xl px-4 py-2.5 transition-all duration-200 ${
+          className={`rounded-2xl px-4 py-2.5 break-words transition-all duration-200 ${
             isUser
               ? "bg-accent-600/90 text-base-950"
               : "border border-base-700/60 bg-base-850/70 text-slate-100"
           } ${!isUser && message.streaming ? "border-accent-500/40" : ""}`}
         >
           {message.toolCalls && message.toolCalls.length > 0 && <ToolActivity toolCalls={message.toolCalls} />}
+          {!isUser && <ThinkingBlock message={message} />}
           {message.error ? (
             <div className="flex items-start gap-2 text-sm text-red-400">
               <AlertTriangle size={15} className="mt-0.5 shrink-0" />
@@ -314,9 +375,7 @@ export function ChatMessage({
             <div className={message.streaming ? "stream-cursor" : ""}>
               <Markdown content={message.content} />
             </div>
-          ) : message.streaming ? (
-            <StreamingPrelude />
-          ) : !isUser ? (
+          ) : message.streaming ? null : !isUser ? (
             <span className="text-sm italic text-slate-500">No response — try regenerating.</span>
           ) : null}
         </div>

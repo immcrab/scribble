@@ -6,10 +6,14 @@ import { Composer } from "./components/Composer";
 import { EmptyState } from "./components/EmptyState";
 import { SettingsModal } from "./components/SettingsModal";
 import { PWAInstallPrompt } from "./components/PWAInstallPrompt";
+import { ConsentGate } from "./components/ConsentGate";
+import { hasAcceptedTerms } from "./lib/storage";
+import { applyTheme, watchSystemTheme } from "./lib/theme";
 import { DirectMode } from "./modes/DirectMode";
 import { BattleMode } from "./modes/BattleMode";
 import { SideBySideMode } from "./modes/SideBySideMode";
 import { AgentMode } from "./modes/AgentMode";
+import { ImageMode } from "./modes/ImageMode";
 import { useChatStore } from "./state/chatStore";
 import type { Attachment, Mode } from "./types";
 
@@ -29,6 +33,12 @@ export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [pending, setPending] = useState<InitialPrompt | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [accepted, setAccepted] = useState(hasAcceptedTerms);
+
+  useEffect(() => {
+    applyTheme(settings.theme);
+    watchSystemTheme(settings.theme);
+  }, [settings.theme]);
 
   useEffect(() => {
     if (!activeChat) {
@@ -60,6 +70,10 @@ export default function App() {
   const initialFor = (chatId: string) => (pending?.chatId === chatId ? pending : undefined);
   const consumeInitial = () => setPending(null);
 
+  if (!accepted) {
+    return <ConsentGate onAccept={() => setAccepted(true)} />;
+  }
+
   return (
     <div className={`flex h-dvh w-full overflow-hidden bg-base-950 ${settings.reduceMotion ? "motion-reduce-force" : ""}`}>
       <Sidebar
@@ -69,7 +83,7 @@ export default function App() {
       />
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <div className="flex items-center gap-2 px-4 py-2.5">
+        <div className="flex min-w-0 flex-wrap items-center gap-2 px-4 py-2.5">
           <button
             onClick={() => setMobileMenuOpen(true)}
             className="flex h-11 w-11 items-center justify-center rounded-xl text-slate-400 transition-colors hover:bg-base-700/60 hover:text-white md:hidden sm:h-auto sm:w-auto sm:rounded-lg sm:p-2"
@@ -117,6 +131,14 @@ export default function App() {
           )}
           {activeChat?.mode === "agent" && (
             <AgentMode
+              key={activeChat.id}
+              chatId={activeChat.id}
+              initialPrompt={initialFor(activeChat.id)}
+              onConsumeInitial={consumeInitial}
+            />
+          )}
+          {activeChat?.mode === "image" && (
+            <ImageMode
               key={activeChat.id}
               chatId={activeChat.id}
               initialPrompt={initialFor(activeChat.id)}

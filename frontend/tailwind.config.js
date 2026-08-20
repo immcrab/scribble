@@ -5,35 +5,35 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Warm charcoal + blue palette, values pulled directly from Arena.ai's
-        // own CSS custom properties (--background, --card, --border,
-        // --brand-blue, etc.) rather than eyeballed from screenshots.
+        // Values live as RGB-channel CSS custom properties in src/styles/index.css
+        // (`:root` = dark, `.light` = light) so every `bg-base-850/70`-style opacity
+        // utility keeps working while the whole palette flips with the theme toggle.
+        // Dark defaults, for reference: base-950 #1b1a18 … base-500 #68615a,
+        // accent-400 #ffffff … accent-700 #9c9891, slate-100 #f5f0eb … slate-600 #4c4743.
         base: {
-          950: "#1b1a18", // outer app shell — a shade below Arena's own bg for depth
-          900: "#252523", // Arena --background / --sidebar-background
-          850: "#23211f", // Arena --popover / --sidebar-accent
-          800: "#33302e", // Arena --card / --surface-secondary
-          700: "#413d39", // Arena --border
-          600: "#524d47", // Arena --border-medium
-          500: "#68615a", // Arena --neutral-9 (muted)
+          950: "rgb(var(--base-950) / <alpha-value>)",
+          900: "rgb(var(--base-900) / <alpha-value>)",
+          850: "rgb(var(--base-850) / <alpha-value>)",
+          800: "rgb(var(--base-800) / <alpha-value>)",
+          700: "rgb(var(--base-700) / <alpha-value>)",
+          600: "rgb(var(--base-600) / <alpha-value>)",
+          500: "rgb(var(--base-500) / <alpha-value>)",
         },
-        // Monochrome accent — no blue. Mirrors Arena's own minimal look, where
-        // the only real "color" is a bright off-white highlight against the
-        // warm charcoal surfaces; red/emerald stay for error/success only.
+        // Monochrome accent — no blue, in either theme.
         accent: {
-          400: "#ffffff",
-          500: "#f5f0eb",
-          600: "#d5cdc3",
-          700: "#9c9891",
-          glow: "#f5f0eb",
+          400: "rgb(var(--accent-400) / <alpha-value>)",
+          500: "rgb(var(--accent-500) / <alpha-value>)",
+          600: "rgb(var(--accent-600) / <alpha-value>)",
+          700: "rgb(var(--accent-700) / <alpha-value>)",
+          glow: "rgb(var(--accent-500) / <alpha-value>)",
         },
         slate: {
-          100: "#f5f0eb", // Arena --brand-neutral-3 (primary text)
-          200: "#e7e1da", // Arena --text-secondary
-          300: "#c7c2bc", // Arena --text-tertiary
-          400: "#9c9891", // Arena --brand-neutral-7
-          500: "#827c73", // Arena --brand-neutral-8
-          600: "#4c4743", // Arena --brand-neutral-10
+          100: "rgb(var(--slate-100) / <alpha-value>)",
+          200: "rgb(var(--slate-200) / <alpha-value>)",
+          300: "rgb(var(--slate-300) / <alpha-value>)",
+          400: "rgb(var(--slate-400) / <alpha-value>)",
+          500: "rgb(var(--slate-500) / <alpha-value>)",
+          600: "rgb(var(--slate-600) / <alpha-value>)",
         },
       },
       fontFamily: {
@@ -41,7 +41,7 @@ export default {
         serif: ["'Source Serif 4'", "ui-serif", "Georgia", "serif"],
       },
       boxShadow: {
-        glow: "0 0 0 1px rgba(245,240,235,0.12), 0 8px 30px -8px rgba(245,240,235,0.25)",
+        glow: "0 0 0 1px rgb(var(--accent-500) / 0.12), 0 8px 30px -8px rgb(var(--accent-500) / 0.25)",
         panel: "0 4px 24px -4px rgba(0,0,0,0.5)",
       },
       keyframes: {
@@ -87,6 +87,12 @@ export default {
           "0%": { backgroundPosition: "-200% 0" },
           "100%": { backgroundPosition: "200% 0" },
         },
+        // Text-shimmer used by the live "Thinking for Ns" label — a soft light
+        // band sweeping through the label text, replacing the plain pulsing dots.
+        "thinking-shimmer": {
+          "0%": { backgroundPosition: "150% 0" },
+          "100%": { backgroundPosition: "-150% 0" },
+        },
       },
       animation: {
         "fade-in-up": "fade-in-up 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
@@ -99,6 +105,7 @@ export default {
         "avatar-glow": "avatar-glow 2.2s ease-in-out infinite",
         blink: "blink 1s step-start infinite",
         shimmer: "shimmer 1.8s linear infinite",
+        "thinking-shimmer": "thinking-shimmer 2.2s linear infinite",
       },
     },
   },

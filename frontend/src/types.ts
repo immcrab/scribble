@@ -1,5 +1,9 @@
 export type Provider = "xkiro" | "groq" | "mistral" | "gemini" | "custom";
 
+/** Claude-Code-style reasoning depth, sent to the Worker and mapped to a
+ * per-provider native param (or a system-prompt nudge) — see worker/src/adapters. */
+export type Effort = "low" | "medium" | "high" | "extra" | "ultra";
+
 export type ModelCapability = "text" | "vision" | "code" | "reasoning";
 
 export interface ModelDef {
@@ -63,9 +67,15 @@ export interface ChatMessage {
   /** for battle/side-by-side: which pane this message belongs to */
   pane?: "a" | "b";
   revealed?: boolean;
+  /** Reasoning/thinking text streamed separately from the answer (see runStream.ts). */
+  reasoning?: string;
+  /** Date.now() when this assistant turn started — drives the live "Thinking for Ns" timer. */
+  thinkingStartedAt?: number;
+  /** Elapsed ms from thinkingStartedAt to the first real content token — frozen once set. */
+  thinkingMs?: number;
 }
 
-export type Mode = "battle" | "agent" | "side-by-side" | "direct";
+export type Mode = "battle" | "agent" | "side-by-side" | "direct" | "image";
 
 export interface Vote {
   winner: "a" | "b" | "tie";
@@ -84,4 +94,6 @@ export interface Chat {
   modelAId?: string;
   modelBId?: string;
   vote?: Vote;
+  /** Per-chat override of settings.effort — falls back to the global default when unset. */
+  effort?: Effort;
 }

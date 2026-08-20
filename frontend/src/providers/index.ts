@@ -8,4 +8,4 @@
  * touch client code.
  */
 export { streamChat, checkWorkerHealth, WorkerClientError } from "../lib/workerClient";
-export type { WireMessage } from "../lib/workerClient";
+export type { WireMessage, StreamChunk } from "../lib/workerClient";

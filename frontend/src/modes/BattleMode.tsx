@@ -4,6 +4,7 @@ import { randomModelPair, findModel } from "../config/models";
 import { ChatMessage } from "../components/ChatMessage";
 import { Composer } from "../components/Composer";
 import { VoteBar } from "../components/VoteBar";
+import { EffortSelector } from "../components/EffortSelector";
 import { EmptyState } from "../components/EmptyState";
 import { ArtifactWorkspace } from "../components/ArtifactWorkspace";
 import { ChatWorkspaceSplit } from "../components/ChatWorkspaceSplit";
@@ -47,12 +48,13 @@ export function BattleMode({
 }) {
   const chat = useChatStore((s) => s.chats.find((c) => c.id === chatId));
   const settings = useChatStore((s) => s.settings);
-  const { addMessage, setChatModels, maybeAutoTitle, abort, setVote } = useChatStore();
+  const { addMessage, setChatModels, patchChat, maybeAutoTitle, abort, setVote } = useChatStore();
   const [eagerWorkspace, setEagerWorkspace] = useState(false);
   const chatEndRef = useAutoScroll<HTMLDivElement>(chat?.messages ?? []);
 
   if (!chat) return null;
 
+  const effort = chat.effort ?? settings.effort;
   const generating = chat.messages.some((m) => m.streaming);
   const rounds = groupRounds(chat.messages);
   const lastRound = rounds[rounds.length - 1];
@@ -119,8 +121,8 @@ export function BattleMode({
       { role: "user", content: text, attachments: userWireAttachments },
     ];
 
-    runAssistantStream({ chatId: chat.id, messageId: aMsg.id, model: modelA, history: historyA });
-    runAssistantStream({ chatId: chat.id, messageId: bMsg.id, model: modelB, history: historyB });
+    runAssistantStream({ chatId: chat.id, messageId: aMsg.id, model: modelA, history: historyA, effort });
+    runAssistantStream({ chatId: chat.id, messageId: bMsg.id, model: modelB, history: historyB, effort });
   };
 
   const stop = () => {
@@ -164,6 +166,9 @@ export function BattleMode({
 
   return (
     <div className="flex h-full flex-col">
+      <div className="flex items-center justify-end border-b border-base-700/60 px-5 py-3">
+        <EffortSelector value={effort} onChange={(e) => patchChat(chat.id, { effort: e })} />
+      </div>
       <ChatWorkspaceSplit
         hasWorkspace={hasWorkspace}
         workspaceStreaming={!!lastRound?.a?.streaming || !!lastRound?.b?.streaming}

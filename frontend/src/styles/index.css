@@ -2,46 +2,119 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * Theme tokens — RGB channel triplets (not hex) so Tailwind's `<alpha-value>`
+ * opacity mechanism keeps working for every existing `bg-base-850/70`-style
+ * utility across the app. `:root` holds the dark palette (the app's default
+ * look); `.light` on <html> overrides it with an inverted warm-neutral
+ * palette. Applied by frontend/src/main.tsx before first paint based on
+ * settings.theme, so there's no flash of the wrong theme.
+ */
+:root {
+  --base-950: 27 26 24;
+  --base-900: 37 37 35;
+  --base-850: 35 33 31;
+  --base-800: 51 48 46;
+  --base-700: 65 61 57;
+  --base-600: 82 77 71;
+  --base-500: 104 97 90;
+
+  --accent-400: 255 255 255;
+  --accent-500: 245 240 235;
+  --accent-600: 213 205 195;
+  --accent-700: 156 152 145;
+
+  --slate-100: 245 240 235;
+  --slate-200: 231 225 218;
+  --slate-300: 199 194 188;
+  --slate-400: 156 152 145;
+  --slate-500: 130 124 115;
+  --slate-600: 76 71 67;
+
+  --code-bg: 31 29 26;
+  --code-chip-bg: 44 41 37;
+  --scrollbar-thumb: 82 77 71;
+  --scrollbar-thumb-hover: 156 152 145;
+  --glass-top: 35 33 31;
+  --glass-bottom: 27 26 24;
+
+  color-scheme: dark;
+}
+
+:root.light {
+  --base-950: 250 248 245;
+  --base-900: 255 255 255;
+  --base-850: 245 242 237;
+  --base-800: 238 233 226;
+  --base-700: 221 214 203;
+  --base-600: 199 191 176;
+  --base-500: 138 129 117;
+
+  --accent-400: 27 26 24;
+  --accent-500: 42 40 37;
+  --accent-600: 76 71 67;
+  --accent-700: 104 97 90;
+
+  --slate-100: 27 26 24;
+  --slate-200: 42 40 37;
+  --slate-300: 76 71 67;
+  --slate-400: 104 97 90;
+  --slate-500: 130 124 115;
+  --slate-600: 199 194 188;
+
+  --code-bg: 238 233 226;
+  --code-chip-bg: 230 224 214;
+  --scrollbar-thumb: 199 191 176;
+  --scrollbar-thumb-hover: 138 129 117;
+  --glass-top: 255 255 255;
+  --glass-bottom: 245 242 237;
+
+  color-scheme: light;
+}
+
 html,
 body,
 #root {
   height: 100%;
+  overflow-x: hidden;
 }
 
 body {
   font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+  background: rgb(var(--base-950));
 }
 
 ::selection {
-  background: rgba(245, 240, 235, 0.25);
+  background: rgb(var(--accent-500) / 0.25);
 }
 
-/* thin, dark, warm-charcoal scrollbars */
+/* thin scrollbars, themed */
 * {
   scrollbar-width: thin;
-  scrollbar-color: #524d47 transparent;
+  scrollbar-color: rgb(var(--scrollbar-thumb)) transparent;
 }
 *::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 *::-webkit-scrollbar-thumb {
-  background: #524d47;
+  background: rgb(var(--scrollbar-thumb));
   border-radius: 8px;
 }
 *::-webkit-scrollbar-thumb:hover {
-  background: #9c9891;
+  background: rgb(var(--scrollbar-thumb-hover));
 }
 
 .glass-panel {
-  background: linear-gradient(180deg, rgba(35, 33, 31, 0.92), rgba(27, 26, 24, 0.92));
+  background: linear-gradient(180deg, rgb(var(--glass-top) / 0.92), rgb(var(--glass-bottom) / 0.92));
   backdrop-filter: blur(14px);
 }
 
 .prose-scribble {
-  color: theme("colors.slate.200");
+  color: rgb(var(--slate-200));
   font-size: 0.95rem;
   line-height: 1.65;
+  overflow-wrap: anywhere;
 }
 .prose-scribble p {
   margin: 0.5em 0;
@@ -55,8 +128,8 @@ body {
   margin: 0.2em 0;
 }
 .prose-scribble pre {
-  background: #1f1d1a;
-  border: 1px solid #413d39;
+  background: rgb(var(--code-bg));
+  border: 1px solid rgb(var(--base-700));
   border-radius: 0 0 10px 10px;
   border-top: none;
   padding: 0.9em 1em;
@@ -68,28 +141,28 @@ body {
   font-size: 0.85em;
 }
 .prose-scribble :not(pre) > code {
-  background: #2c2925;
-  border: 1px solid #413d39;
+  background: rgb(var(--code-chip-bg));
+  border: 1px solid rgb(var(--base-700));
   border-radius: 5px;
   padding: 0.1em 0.4em;
-  color: #f5f0eb;
+  color: rgb(var(--accent-500));
 }
 .prose-scribble h1,
 .prose-scribble h2,
 .prose-scribble h3 {
   font-weight: 600;
   margin: 0.8em 0 0.3em;
-  color: white;
+  color: rgb(var(--slate-100));
 }
 .prose-scribble a {
-  color: #f5f0eb;
+  color: rgb(var(--accent-500));
   text-decoration: underline;
   text-underline-offset: 2px;
 }
 .prose-scribble blockquote {
-  border-left: 2px solid #524d47;
+  border-left: 2px solid rgb(var(--base-600));
   padding-left: 0.9em;
-  color: theme("colors.slate.400");
+  color: rgb(var(--slate-400));
   margin: 0.6em 0;
 }
 .prose-scribble table {
@@ -100,7 +173,7 @@ body {
 }
 .prose-scribble th,
 .prose-scribble td {
-  border: 1px solid #413d39;
+  border: 1px solid rgb(var(--base-700));
   padding: 0.4em 0.7em;
   text-align: left;
 }
@@ -170,10 +243,10 @@ select {
   content: "▍";
   display: inline-block;
   margin-left: 2px;
-  color: theme("colors.accent.400");
+  color: rgb(var(--accent-400));
   opacity: 0.9;
   animation: cursor-breathe 1.2s ease-in-out infinite;
-  filter: drop-shadow(0 0 3px theme("colors.accent.400"));
+  filter: drop-shadow(0 0 3px rgb(var(--accent-400)));
   animation-delay: 0ms;
 }
 
@@ -189,7 +262,7 @@ select {
   width: 5px;
   height: 5px;
   border-radius: 999px;
-  background: theme("colors.slate.500");
+  background: rgb(var(--slate-500));
   animation: pulse-dot 1.4s ease-in-out infinite;
   animation-delay: 0ms;
 }
@@ -230,7 +303,7 @@ select {
   padding: 0.15em 0;
 }
 .stream-prelude .prelude-text {
-  color: theme("colors.slate.500");
+  color: rgb(var(--slate-500));
   font-size: 0.8rem;
   letter-spacing: 0.03em;
   opacity: 0.8;
@@ -241,8 +314,28 @@ select {
   50% { opacity: 0.4; }
 }
 
+/* Live "Thinking for Ns…" label — a soft light band sweeps through the text via
+   background-clip:text, replacing a plain color pulse with something that reads
+   as "live work happening" rather than just blinking. */
+.thinking-label {
+  background-image: linear-gradient(
+    90deg,
+    rgb(var(--slate-500)) 0%,
+    rgb(var(--slate-500)) 35%,
+    rgb(var(--slate-200)) 50%,
+    rgb(var(--slate-500)) 65%,
+    rgb(var(--slate-500)) 100%
+  );
+  background-size: 250% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  font-size: 0.8rem;
+  letter-spacing: 0.02em;
+}
+
 .skeleton-line {
-  background: linear-gradient(90deg, #1f1d1a 25%, #2c2925 37%, #1f1d1a 63%);
+  background: linear-gradient(90deg, rgb(var(--code-bg)) 25%, rgb(var(--code-chip-bg)) 37%, rgb(var(--code-bg)) 63%);
   background-size: 400% 100%;
   animation: shimmer 1.8s linear infinite;
   border-radius: 6px;
@@ -336,8 +429,8 @@ select {
   right: 1rem;
   margin: 0 auto;
   max-width: 420px;
-  background: theme("colors.base.850");
-  border: 1px solid theme("colors.base.700");
+  background: rgb(var(--base-850));
+  border: 1px solid rgb(var(--base-700));
   border-radius: 1.25rem;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
 }

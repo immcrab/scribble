@@ -1,7 +1,9 @@
-import type { Chat, CustomProvider, ModelDef } from "../types";
+import type { Chat, CustomProvider, Effort, ModelDef } from "../types";
+import type { Theme } from "./theme";
 
 const CHATS_KEY = "scribble:chats";
 const SETTINGS_KEY = "scribble:settings";
+const CONSENT_KEY = "scribble:consent";
 
 export interface ScribbleSettings {
   workerUrl: string;
@@ -14,6 +16,10 @@ export interface ScribbleSettings {
   reduceMotion: boolean;
   /** Auto-open the code workspace panel for detected coding requests. */
   autoOpenCode: boolean;
+  /** Light/Dark/System — applied via frontend/src/lib/theme.ts. */
+  theme: Theme;
+  /** Global default reasoning effort for new chats — overridable per-chat (Chat.effort). */
+  effort: Effort;
   /** User-added OpenAI-compatible connections (name + base URL + API key) — never round-tripped to cloud sync, same as `password`. */
   customProviders: CustomProvider[];
   /** User-added models, each pointing at a built-in provider or one of `customProviders` — same local-only treatment as `customProviders`. */
@@ -26,6 +32,8 @@ const SETTINGS_DEFAULTS: Omit<ScribbleSettings, "workerUrl" | "password"> = {
   sendOnEnter: true,
   reduceMotion: false,
   autoOpenCode: true,
+  theme: "dark",
+  effort: "medium",
   customProviders: [],
   customModels: [],
   updatedAt: 0,
@@ -66,7 +74,41 @@ export function loadSettings(): ScribbleSettings {
 }
 
 export function saveSettings(settings: ScribbleSettings): void {
-  localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+  try {
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+  } catch {
+    // storage full or unavailable — settings still work in-memory for this session
+  }
+}
+
+/** Per-browser gate for the terms/privacy consent screen — deliberately kept out of
+ * ScribbleSettings so it never round-trips through cloud sync/merge. */
+export function hasAcceptedTerms(): boolean {
+  try {
+    return localStorage.getItem(CONSENT_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+export function setAcceptedTerms(): void {
+  try {
+    localStorage.setItem(CONSENT_KEY, "1");
+  } catch {
+    // if storage is unavailable, the gate will just show again next load
+  }
+}
+
+/** Wipes every localStorage key Scribble owns — chats, settings, consent flag.
+ * Used by Settings → Account's "Clear local data" and as part of account deletion. */
+export function clearAllLocalData(): void {
+  try {
+    localStorage.removeItem(CHATS_KEY);
+    localStorage.removeItem(SETTINGS_KEY);
+    localStorage.removeItem(CONSENT_KEY);
+  } catch {
+    // storage unavailable — nothing to clear
+  }
 }
 
 export function titleFromPrompt(prompt: string): string {

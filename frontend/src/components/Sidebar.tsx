@@ -24,6 +24,7 @@ const MODE_LABEL: Record<Mode, string> = {
   agent: "Agent",
   "side-by-side": "Side by Side",
   direct: "Direct",
+  image: "Image",
 };
 
 export function Sidebar({

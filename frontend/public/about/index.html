@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>About — Scribble</title>
+    <meta name="description" content="What Scribble is and who runs it." />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,300;8..60,500;8..60,600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        color-scheme: dark;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+      }
+      body {
+        background: #1b1a18;
+        color: #e7e1da;
+        font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+        line-height: 1.65;
+      }
+      .wrap {
+        max-width: 720px;
+        margin: 0 auto;
+        padding: 56px 24px 96px;
+      }
+      header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 40px;
+      }
+      .mark {
+        width: 28px;
+        height: 28px;
+        flex-shrink: 0;
+      }
+      header a {
+        color: #f5f0eb;
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 1.05rem;
+      }
+      h1 {
+        font-family: "Source Serif 4", ui-serif, Georgia, serif;
+        font-weight: 300;
+        letter-spacing: -0.02em;
+        font-size: 2.4rem;
+        margin: 0 0 8px;
+        color: #f5f0eb;
+      }
+      h2 {
+        font-size: 1.05rem;
+        font-weight: 600;
+        color: #f5f0eb;
+        margin: 2.2em 0 0.6em;
+      }
+      p,
+      li {
+        color: #c7c2bc;
+        font-size: 0.94rem;
+      }
+      ul {
+        padding-left: 1.3em;
+        margin: 0.6em 0;
+      }
+      li {
+        margin: 0.35em 0;
+      }
+      a {
+        color: #f5f0eb;
+        text-decoration: underline;
+        text-underline-offset: 2px;
+      }
+      .note {
+        margin-top: 3em;
+        padding: 14px 16px;
+        border: 1px solid #413d39;
+        border-radius: 10px;
+        background: #23211f;
+        font-size: 0.82rem;
+        color: #827c73;
+      }
+      .links {
+        display: flex;
+        gap: 16px;
+        margin-top: 2.5em;
+        font-size: 0.85rem;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header>
+        <svg class="mark" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+          <rect width="32" height="32" rx="9" fill="#252523" />
+          <path d="M16 6c1 6 3 9 10 10-7 1-9 4-10 10-1-6-3-9-10-10 7-1 9-4 10-10Z" fill="#f5f0eb" />
+        </svg>
+        <a href="/">Scribble</a>
+      </header>
+
+      <h1>About Scribble</h1>
+
+      <p>
+        Scribble is a small, independently run AI playground — a place to chat with, compare, and battle
+        several third-party AI models side by side, in one interface, for free. It isn't a company or a
+        funded product; it's a hobby project built and maintained by one person.
+      </p>
+
+      <h2>What it does</h2>
+      <ul>
+        <li><strong>Direct</strong> — a normal one-on-one chat with a model of your choice.</li>
+        <li><strong>Battle</strong> — two anonymous models answer the same prompt; you vote on the better response.</li>
+        <li><strong>Side by Side</strong> — compare two named models on the same prompt at once.</li>
+        <li><strong>Agent</strong> — a chat mode built for tool-using workflows.</li>
+        <li><strong>Image</strong> — generate images from a text prompt.</li>
+      </ul>
+      <p>
+        Under the hood, a Cloudflare Worker proxies requests to xKiro, Groq, Mistral, Google Gemini, and
+        Cloudflare Workers AI, so provider API keys never touch your browser. Everything you type stays in
+        your browser's local storage unless you sign in, which enables cross-device sync and unlocks the
+        rest of the models and modes — see the <a href="/privacy">Privacy Policy</a> for the full picture.
+      </p>
+
+      <h2>Who's behind it</h2>
+      <p>
+        Scribble is run independently, not by a company. Support requests go to
+        <a href="mailto:hi@scribbleai.dev">hi@scribbleai.dev</a> — replies come from
+        <a href="mailto:imcrabfr@gmail.com">imcrabfr@gmail.com</a>, the person who maintains this project.
+      </p>
+
+      <p class="note">
+        Scribble is offered "as is," with no uptime or accuracy guarantees — see the
+        <a href="/terms">Terms of Service</a> for details.
+      </p>
+
+      <div class="links">
+        <a href="/privacy">Privacy Policy</a>
+        <a href="/terms">Terms of Service</a>
+        <a href="/">← Back to Scribble</a>
+      </div>
+    </div>
+  </body>
+</html>

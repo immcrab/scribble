@@ -1,4 +1,4 @@
-import type { ModelDef, Attachment } from "../types";
+import type { ModelDef, Attachment, Effort } from "../types";
 
 export interface WireMessage {
   role: "user" | "assistant" | "system";
@@ -14,13 +14,19 @@ interface StreamChatParams {
   signal: AbortSignal;
   /** Required when model.provider === "custom" — the user's own endpoint + key, forwarded to the Worker per-request. */
   customProvider?: { baseUrl: string; apiKey: string };
+  effort?: Effort;
 }
 
 /** One line of the Worker's NDJSON stream protocol. */
 type StreamEvent =
   | { delta: string }
+  | { reasoning: string }
   | { done: true }
   | { error: string };
+
+/** A single yielded chunk from streamChat — content is the answer text, reasoning is
+ * the model's separately-streamed thinking (see worker/src/adapters/base.ts). */
+export type StreamChunk = { type: "content"; text: string } | { type: "reasoning"; text: string };
 
 export class WorkerClientError extends Error {}
 
@@ -30,8 +36,8 @@ export class WorkerClientError extends Error {}
  * same newline-delimited JSON event stream, so the frontend never needs to
  * know provider-specific wire formats.
  */
-export async function* streamChat(params: StreamChatParams): AsyncGenerator<string> {
-  const { workerUrl, password, model, messages, signal, customProvider } = params;
+export async function* streamChat(params: StreamChatParams): AsyncGenerator<StreamChunk> {
+  const { workerUrl, password, model, messages, signal, customProvider, effort } = params;
   if (!workerUrl) {
     throw new WorkerClientError(
       "No Worker URL configured. Open Settings and paste your Cloudflare Worker URL."
@@ -55,6 +61,7 @@ export async function* streamChat(params: StreamChatParams): AsyncGenerator<stri
       messages,
       visionCapable: model.supportsVision,
       ...(customProvider ? { customProvider } : {}),
+      ...(effort ? { effort } : {}),
     }),
     signal,
   });
@@ -93,7 +100,10 @@ export async function* streamChat(params: StreamChatParams): AsyncGenerator<stri
         throw new WorkerClientError(event.error);
       }
       if ("delta" in event) {
-        yield event.delta;
+        yield { type: "content", text: event.delta };
+      }
+      if ("reasoning" in event) {
+        yield { type: "reasoning", text: event.reasoning };
       }
       if ("done" in event) {
         return;

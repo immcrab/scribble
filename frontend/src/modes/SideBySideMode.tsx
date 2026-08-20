@@ -4,6 +4,7 @@ import { getDefaultModel, findModel } from "../config/models";
 import { ChatMessage } from "../components/ChatMessage";
 import { Composer } from "../components/Composer";
 import { ModelSelector } from "../components/ModelSelector";
+import { EffortSelector } from "../components/EffortSelector";
 import { EmptyState } from "../components/EmptyState";
 import { ArtifactWorkspace } from "../components/ArtifactWorkspace";
 import { ChatWorkspaceSplit } from "../components/ChatWorkspaceSplit";
@@ -47,7 +48,7 @@ export function SideBySideMode({
 }) {
   const chat = useChatStore((s) => s.chats.find((c) => c.id === chatId));
   const settings = useChatStore((s) => s.settings);
-  const { addMessage, setChatModels, maybeAutoTitle, abort, removeMessagesAfter } = useChatStore();
+  const { addMessage, setChatModels, patchChat, maybeAutoTitle, abort, removeMessagesAfter } = useChatStore();
   const [eagerWorkspace, setEagerWorkspace] = useState(false);
   const chatEndRef = useAutoScroll<HTMLDivElement>(chat?.messages ?? []);
 
@@ -55,6 +56,7 @@ export function SideBySideMode({
 
   const modelA = chat.modelAId ? findModel(chat.modelAId) : getDefaultModel();
   const modelB = chat.modelBId ? findModel(chat.modelBId) : getDefaultModel();
+  const effort = chat.effort ?? settings.effort;
   const generating = chat.messages.some((m) => m.streaming);
   const rounds = groupRounds(chat.messages);
   const lastRound = rounds[rounds.length - 1];
@@ -117,8 +119,8 @@ export function SideBySideMode({
       { role: "user", content: text, attachments: userWireAttachments },
     ];
 
-    runAssistantStream({ chatId: chat.id, messageId: aMsg.id, model: modelA, history: historyA });
-    runAssistantStream({ chatId: chat.id, messageId: bMsg.id, model: modelB, history: historyB });
+    runAssistantStream({ chatId: chat.id, messageId: aMsg.id, model: modelA, history: historyA, effort });
+    runAssistantStream({ chatId: chat.id, messageId: bMsg.id, model: modelB, history: historyB, effort });
   };
 
   const stop = () => {
@@ -167,8 +169,8 @@ export function SideBySideMode({
       ...buildHistory("b", userId),
       { role: "user", content: userMsg.content, attachments: userWireAttachments },
     ];
-    runAssistantStream({ chatId: chat.id, messageId: aMsg.id, model: modelA, history: historyA });
-    runAssistantStream({ chatId: chat.id, messageId: bMsg.id, model: modelB, history: historyB });
+    runAssistantStream({ chatId: chat.id, messageId: aMsg.id, model: modelA, history: historyA, effort });
+    runAssistantStream({ chatId: chat.id, messageId: bMsg.id, model: modelB, history: historyB, effort });
   };
 
   /** Regenerate just one pane for the current round. */
@@ -196,7 +198,7 @@ export function SideBySideMode({
       ...buildHistory(pane, old.id),
       { role: "user", content: lastRound.user.content, attachments: userWireAttachments },
     ];
-    runAssistantStream({ chatId: chat.id, messageId: newMsg.id, model: old.model, history });
+    runAssistantStream({ chatId: chat.id, messageId: newMsg.id, model: old.model, history, effort });
   };
 
   useEffect(() => {
@@ -238,8 +240,12 @@ export function SideBySideMode({
         <span className="text-xs font-medium text-slate-500">Model B</span>
         <ModelSelector
           value={modelB}
+          align="right"
           onChange={(m) => !locked && setChatModels(chat.id, { modelBId: m.modelId })}
         />
+        <div className="ml-auto">
+          <EffortSelector value={effort} onChange={(e) => patchChat(chat.id, { effort: e })} />
+        </div>
       </div>
 
       <ChatWorkspaceSplit

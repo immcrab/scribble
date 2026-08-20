@@ -1,21 +1,34 @@
 import { streamChat, type WireMessage } from "../providers";
-import type { ModelDef } from "../types";
+import type { Effort, ModelDef } from "../types";
 import { useChatStore } from "../state/chatStore";
+import { isModelGated } from "../config/models";
+import { auth } from "./firebase";
 
 /**
  * Drives a single assistant message's streaming lifecycle: fetches tokens
  * from the Worker and writes them into the chat store as they arrive. Shared
  * by every mode (Direct, Battle, Side by Side, Agent) so streaming, abort,
- * and error handling behave identically everywhere.
+ * error handling, the thinking timer, and reasoning-text bookkeeping all
+ * behave identically everywhere.
  */
 export async function runAssistantStream(params: {
   chatId: string;
   messageId: string;
   model: ModelDef;
   history: WireMessage[];
+  effort?: Effort;
 }) {
-  const { chatId, messageId, model, history } = params;
+  const { chatId, messageId, model, history, effort } = params;
   const store = useChatStore.getState();
+
+  if (isModelGated(model) && !auth.currentUser) {
+    store.updateMessage(chatId, messageId, {
+      streaming: false,
+      error: `Sign in to use ${model.displayName} — the free default (Qwen3.5 Flash) doesn't need an account.`,
+    });
+    return;
+  }
+
   const controller = new AbortController();
   store.registerAbort(messageId, controller);
 
@@ -24,16 +37,29 @@ export async function runAssistantStream(params: {
       ? store.settings.customProviders.find((p) => p.id === model.customProviderId)
       : undefined;
 
+  const thinkingStartedAt = Date.now();
+  store.updateMessage(chatId, messageId, { thinkingStartedAt });
+  let thinkingStamped = false;
+
   try {
-    for await (const delta of streamChat({
+    for await (const chunk of streamChat({
       workerUrl: store.settings.workerUrl,
       password: store.settings.password,
       model,
       messages: history,
       signal: controller.signal,
       customProvider: customProvider ? { baseUrl: customProvider.baseUrl, apiKey: customProvider.apiKey } : undefined,
+      effort,
     })) {
-      useChatStore.getState().appendMessageContent(chatId, messageId, delta);
+      if (chunk.type === "reasoning") {
+        useChatStore.getState().appendMessageReasoning(chatId, messageId, chunk.text);
+        continue;
+      }
+      if (!thinkingStamped) {
+        thinkingStamped = true;
+        useChatStore.getState().updateMessage(chatId, messageId, { thinkingMs: Date.now() - thinkingStartedAt });
+      }
+      useChatStore.getState().appendMessageContent(chatId, messageId, chunk.text);
     }
     useChatStore.getState().updateMessage(chatId, messageId, { streaming: false });
   } catch (err) {

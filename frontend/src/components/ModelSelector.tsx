@@ -1,8 +1,9 @@
-import { ChevronDown, Eye, Check, Sparkles } from "lucide-react";
+import { ChevronDown, Eye, Check, Sparkles, Lock } from "lucide-react";
 import type { ModelDef } from "../types";
-import { modelsByProvider, PROVIDER_LABELS } from "../config/models";
+import { modelsByProvider, PROVIDER_LABELS, isModelGated } from "../config/models";
 import { ModelFavicon, ProviderFavicon } from "./ProviderIcon";
 import { Dropdown } from "./Dropdown";
+import { useAuthStore } from "../state/authStore";
 
 export function ModelIcon({ name, model, size = 15 }: { name?: string; model?: ModelDef; size?: number }) {
   if (model) return <ModelFavicon model={model} size={size} />;
@@ -19,6 +20,8 @@ export function ModelSelector({
   align?: "left" | "right";
 }) {
   const grouped = modelsByProvider();
+  const user = useAuthStore((s) => s.user);
+  const signInWithGoogle = useAuthStore((s) => s.signInWithGoogle);
 
   return (
     <Dropdown
@@ -54,31 +57,44 @@ export function ModelSelector({
                   {PROVIDER_LABELS[provider]}
                 </span>
               </div>
-              {grouped[provider].map((m) => (
-                <button
-                  key={m.modelId}
-                  onClick={() => {
-                    onChange(m);
-                    close();
-                  }}
-                  className={`flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-sm transition-colors hover:bg-base-700/50 ${
-                    value?.modelId === m.modelId ? "bg-accent-500/10 text-white font-medium" : "text-slate-300"
-                  }`}
-                >
-                  <ModelFavicon model={m} size={15} />
-                  <span className="min-w-0 flex-1 truncate">{m.displayName}</span>
-                  {m.supportsVision && (
-                    <span
-                      title="Supports image and vision input"
-                      className="inline-flex items-center gap-1 rounded border border-sky-500/30 bg-sky-500/15 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-sky-400 shrink-0"
-                    >
-                      <Eye size={10} strokeWidth={2.5} />
-                      <span>Vision</span>
-                    </span>
-                  )}
-                  {value?.modelId === m.modelId && <Check size={13} className="shrink-0 text-accent-400" />}
-                </button>
-              ))}
+              {grouped[provider].map((m) => {
+                const locked = isModelGated(m) && !user;
+                return (
+                  <button
+                    key={m.modelId}
+                    onClick={() => {
+                      if (locked) {
+                        signInWithGoogle();
+                        return;
+                      }
+                      onChange(m);
+                      close();
+                    }}
+                    className={`flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-sm transition-colors hover:bg-base-700/50 ${
+                      value?.modelId === m.modelId ? "bg-accent-500/10 text-white font-medium" : "text-slate-300"
+                    }`}
+                  >
+                    <ModelFavicon model={m} size={15} />
+                    <span className="min-w-0 flex-1 truncate">{m.displayName}</span>
+                    {m.supportsVision && (
+                      <span
+                        title="Supports image and vision input"
+                        className="hidden sm:inline-flex items-center gap-1 rounded border border-sky-500/30 bg-sky-500/15 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-sky-400 shrink-0"
+                      >
+                        <Eye size={10} strokeWidth={2.5} />
+                        <span>Vision</span>
+                      </span>
+                    )}
+                    {locked ? (
+                      <span title="Sign in to unlock">
+                        <Lock size={12} className="shrink-0 text-slate-500" />
+                      </span>
+                    ) : (
+                      value?.modelId === m.modelId && <Check size={13} className="shrink-0 text-accent-400" />
+                    )}
+                  </button>
+                );
+              })}
             </div>
           ))}
         </>

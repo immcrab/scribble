@@ -5,6 +5,7 @@ import { getDefaultModel, findModel } from "../config/models";
 import { ChatMessage } from "../components/ChatMessage";
 import { Composer } from "../components/Composer";
 import { ModelSelector } from "../components/ModelSelector";
+import { EffortSelector } from "../components/EffortSelector";
 import { EmptyState } from "../components/EmptyState";
 import { ArtifactWorkspace } from "../components/ArtifactWorkspace";
 import { ChatWorkspaceSplit } from "../components/ChatWorkspaceSplit";
@@ -43,13 +44,14 @@ export function AgentMode({
 }) {
   const chat = useChatStore((s) => s.chats.find((c) => c.id === chatId));
   const settings = useChatStore((s) => s.settings);
-  const { addMessage, setChatModels, maybeAutoTitle, abort, removeMessagesAfter, updateMessage } = useChatStore();
+  const { addMessage, setChatModels, patchChat, maybeAutoTitle, abort, removeMessagesAfter, updateMessage } = useChatStore();
   const [eagerWorkspace, setEagerWorkspace] = useState(false);
   const chatEndRef = useAutoScroll<HTMLDivElement>(chat?.messages ?? []);
 
   if (!chat) return null;
 
   const model = (chat.modelId ? findModel(chat.modelId) : undefined) ?? getDefaultModel();
+  const effort = chat.effort ?? settings.effort;
   const generating = chat.messages.some((m) => m.streaming);
 
   const buildHistory = (upToId?: string): WireMessage[] => {
@@ -93,7 +95,7 @@ export function AgentMode({
       ...buildHistory(),
       { role: "user", content: text, attachments: userWireAttachments },
     ];
-    runAssistantStream({ chatId: chat.id, messageId: assistantMsg.id, model: activeModel, history });
+    runAssistantStream({ chatId: chat.id, messageId: assistantMsg.id, model: activeModel, history, effort });
   };
 
   const regenerate = (assistantId: string, withModelId?: string) => {
@@ -111,7 +113,7 @@ export function AgentMode({
       toolCalls: [],
     };
     addMessage(chat.id, newAssistant);
-    runAssistantStream({ chatId: chat.id, messageId: newAssistant.id, model: runModel, history });
+    runAssistantStream({ chatId: chat.id, messageId: newAssistant.id, model: runModel, history, effort });
   };
 
   /** Edit a user message in-place and stream a fresh reply. */
@@ -135,7 +137,7 @@ export function AgentMode({
       toolCalls: [],
     };
     addMessage(chat.id, newAssistant);
-    runAssistantStream({ chatId: chat.id, messageId: newAssistant.id, model, history });
+    runAssistantStream({ chatId: chat.id, messageId: newAssistant.id, model, history, effort });
   };
 
   const stop = () => {
@@ -166,6 +168,7 @@ export function AgentMode({
       <div className="flex flex-wrap items-center gap-3 border-b border-base-700/60 px-5 py-3">
         <span className="text-xs font-medium text-slate-500">Model</span>
         <ModelSelector value={model} onChange={(m) => setChatModels(chat.id, { modelId: m.modelId })} />
+        <EffortSelector value={effort} onChange={(e) => patchChat(chat.id, { effort: e })} />
         <div className="ml-auto flex items-center gap-1.5">
           {PLANNED_TOOLS.map((t) => (
             <span

@@ -192,6 +192,13 @@ export const ALL_MODELS: ModelDef[] = [
 
 export const DEFAULT_MODEL_ID = "qwen/qwen3.5-flash";
 
+/** Every model except the free default requires signing in — see the plan's
+ * "Sign-in gating" slice. Checked by ModelSelector, SettingsModal's default-model
+ * picker, ChatMessage's regenerate-with menu, and defensively in runStream.ts. */
+export function isModelGated(model: Pick<ModelDef, "modelId" | "provider">): boolean {
+  return !(model.provider === "xkiro" && model.modelId === DEFAULT_MODEL_ID);
+}
+
 export const PROVIDER_LABELS: Record<Provider, string> = {
   xkiro: "xKiro",
   groq: "Groq",
