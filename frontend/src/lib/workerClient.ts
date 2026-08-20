@@ -120,3 +120,24 @@ export async function checkWorkerHealth(workerUrl: string): Promise<boolean> {
     return false;
   }
 }
+
+/** Short AI-generated sidebar title for a chat's opening message. Returns null on any
+ * failure (no Worker URL, offline, rate-limited, etc.) — caller keeps its heuristic title. */
+export async function generateChatTitle(workerUrl: string, password: string | undefined, prompt: string): Promise<string | null> {
+  if (!workerUrl) return null;
+  try {
+    const res = await fetch(`${workerUrl.replace(/\/$/, "")}/api/chat/title`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(password ? { "X-Scribble-Password": password } : {}),
+      },
+      body: JSON.stringify({ prompt }),
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { title?: string };
+    return data.title?.trim() || null;
+  } catch {
+    return null;
+  }
+}

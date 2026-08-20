@@ -5,6 +5,31 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>Page not found — Scribble</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <!-- GitHub Pages serves this file for any unknown path under the site (e.g. a shared
+         /scribble/c/{id} link). Redirect to the app root with the real path packed into a
+         "?p=" query string; index.html unpacks it before the app boots. segmentCount must
+         match the site's base path depth (1 for "/scribble/") — see vite.config.ts. -->
+    <script>
+      (function (l) {
+        var segmentCount = 1;
+        l.replace(
+          l.protocol +
+            "//" +
+            l.hostname +
+            (l.port ? ":" + l.port : "") +
+            l.pathname.split("/").slice(0, 1 + segmentCount).join("/") +
+            "/?p=/" +
+            l.pathname
+              .slice(1)
+              .split("/")
+              .slice(segmentCount)
+              .join("/")
+              .replace(/&/g, "~and~") +
+            (l.search ? "&q=" + l.search.slice(1).replace(/&/g, "~and~") : "") +
+            l.hash
+        );
+      })(window.location);
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link

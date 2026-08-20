@@ -3,7 +3,8 @@ import type { Chat, ChatMessage, Mode, Vote } from "../types";
 import { getDefaultModel, setCustomModels } from "../config/models";
 import { loadChats, saveChats, loadSettings, saveSettings, titleFromPrompt } from "../lib/storage";
 import type { ScribbleSettings } from "../lib/storage";
-import { startCloudSync, stopCloudSync, pushChatsToCloud, pushSettingsToCloud } from "../lib/cloudSync";
+import { startCloudSync, stopCloudSync, pushChatsToCloud, pushChatsPublic, pushSettingsToCloud } from "../lib/cloudSync";
+import { generateChatTitle } from "../lib/workerClient";
 import { uid } from "../lib/id";
 
 let persistTimer: ReturnType<typeof setTimeout> | null = null;
@@ -12,6 +13,7 @@ function debouncedPersist(chats: Chat[]) {
   persistTimer = setTimeout(() => {
     saveChats(chats);
     pushChatsToCloud(chats);
+    pushChatsPublic(chats);
   }, 250);
 }
 
@@ -176,9 +178,21 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 
   maybeAutoTitle: (id, prompt) => {
     const chat = get().chats.find((c) => c.id === id);
-    if (chat && chat.messages.length <= 1) {
-      get().renameChat(id, titleFromPrompt(prompt));
-    }
+    if (!chat || chat.messages.length > 1) return;
+
+    const fallbackTitle = titleFromPrompt(prompt);
+    get().renameChat(id, fallbackTitle);
+
+    // Upgrade to an AI-generated title in the background; skip if the user
+    // already renamed the chat themselves while this was in flight.
+    const { workerUrl, password } = get().settings;
+    void generateChatTitle(workerUrl, password, prompt).then((aiTitle) => {
+      if (!aiTitle) return;
+      const current = get().chats.find((c) => c.id === id);
+      if (current && current.title === fallbackTitle) {
+        get().renameChat(id, aiTitle);
+      }
+    });
   },
 
   addMessage: (chatId, message) => {

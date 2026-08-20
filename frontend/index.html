@@ -1,6 +1,23 @@
 <!doctype html>
 <html lang="en">
   <head>
+    <!-- GitHub Pages has no server-side routing, so 404.html redirects any deep link
+         (e.g. /c/{id}) here as a "?p=/c/{id}" query string. Restore the real path
+         before the app boots so client-side routing (see src/lib/router.ts) sees it. -->
+    <script>
+      (function (l) {
+        if (l.search[1] === "/") {
+          var decoded = l.search
+            .slice(1)
+            .split("&")
+            .map(function (s) {
+              return s.replace(/~and~/g, "&");
+            })
+            .join("?");
+          window.history.replaceState(null, "", l.pathname.slice(0, -1) + decoded + l.hash);
+        }
+      })(window.location);
+    </script>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=yes, maximum-scale=5, minimum-scale=1" />
     <title>Scribble — AI Playground</title>

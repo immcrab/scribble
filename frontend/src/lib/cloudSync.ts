@@ -181,3 +181,47 @@ export function pushSettingsToCloud(settings: ScribbleSettings): void {
     dbSet(ref(db, `users/${uid}/settingsJson`), json).catch(() => {});
   }, 2000);
 }
+
+/**
+ * Mirrors each chat to a public RTDB path keyed only by chat id — this is what makes
+ * "/c/{id}" links work for someone who isn't signed in (see fetchPublicChat below and
+ * App.tsx's shared-chat view). Anyone with the exact link can read it; the id is an
+ * unguessable UUID, so this is "unlisted", not access-controlled. Runs independent of
+ * sign-in state (public chats aren't user-scoped), debounced per chat id.
+ */
+const lastPublicJson = new Map<string, string>();
+const publicPushTimers = new Map<string, ReturnType<typeof setTimeout>>();
+
+export function pushChatsPublic(chats: Chat[]): void {
+  const db = getRtdb();
+  if (!db) return;
+  for (const chat of chats) {
+    if (chat.messages.length === 0) continue; // nothing worth a link yet
+    if (chat.messages.some((m) => m.streaming)) continue; // wait until settled, same as pushChatsToCloud
+    const json = JSON.stringify(chat);
+    if (lastPublicJson.get(chat.id) === json) continue;
+
+    const existing = publicPushTimers.get(chat.id);
+    if (existing) clearTimeout(existing);
+    const timer = setTimeout(() => {
+      publicPushTimers.delete(chat.id);
+      lastPublicJson.set(chat.id, json);
+      dbSet(ref(db, `publicChats/${chat.id}`), json).catch(() => {});
+    }, 2000);
+    publicPushTimers.set(chat.id, timer);
+  }
+}
+
+/** Looks up a shared chat by id for an unauthenticated visitor. Returns null if it
+ * doesn't exist, the database isn't reachable, or the payload is malformed. */
+export async function fetchPublicChat(id: string): Promise<Chat | null> {
+  const db = getRtdb();
+  if (!db) return null;
+  try {
+    const snap = await dbGet(ref(db, `publicChats/${id}`));
+    if (!snap.exists()) return null;
+    return JSON.parse(snap.val() as string) as Chat;
+  } catch {
+    return null;
+  }
+}
