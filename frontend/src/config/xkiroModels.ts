@@ -14,107 +14,18 @@ import type { ModelDef } from "../types";
  *   curl https://api.xkiro.com/v1/models -H "Authorization: Bearer $KEY"
  * (that endpoint lists the full catalog, not just what's free — you still
  * have to test individual models to know which are actually unlocked).
+ *
+ * REMOVED 2026-08-20: all nine `qwen/*` entries (qwen3.8-max, qwen3.6-max-preview,
+ * qwen3.6-plus, qwen3.6-27b, qwen3.6-35b-a3b, qwen3.5-plus, qwen3.5-flash,
+ * qwen3.5-omni-flash, qwen3-coder-plus). xKiro's Qwen route is currently
+ * returning a 200 SSE stream with `data: {"error":"A server error occurred.
+ * Please try again."}` for every one of them — confirmed on every Qwen model
+ * id, none of xKiro's other models (Mistral/MiMo/MiniMax/DeepSeek) affected,
+ * so this is an outage on xKiro's Qwen backend, not our adapter. Re-add once
+ * `curl https://api.xkiro.com/v1/chat/completions -d '{"model":"qwen/qwen3.5-flash",...}'`
+ * returns real content again.
  */
 export const XKIRO_MODELS: ModelDef[] = [
-  {
-    provider: "xkiro",
-    modelId: "qwen/qwen3.8-max",
-    displayName: "Qwen3.8 Max",
-    icon: "Sparkles",
-    contextLength: 1000000,
-    capabilities: ["text", "reasoning", "vision"],
-    free: true,
-    supportsStreaming: true,
-    supportsVision: true,
-  },
-  {
-    provider: "xkiro",
-    modelId: "qwen/qwen3.6-max-preview",
-    displayName: "Qwen3.6 Max Preview",
-    icon: "Sparkles",
-    contextLength: 128000,
-    capabilities: ["text", "reasoning", "vision"],
-    free: true,
-    supportsStreaming: true,
-    supportsVision: true,
-  },
-  {
-    provider: "xkiro",
-    modelId: "qwen/qwen3.6-plus",
-    displayName: "Qwen3.6 Plus",
-    icon: "Sparkles",
-    contextLength: 128000,
-    capabilities: ["text","vision"],
-    free: true,
-    supportsStreaming: true,
-    supportsVision: false,
-  },
-  {
-    provider: "xkiro",
-    modelId: "qwen/qwen3.6-27b",
-    displayName: "Qwen3.6 27B",
-    icon: "Sparkles",
-    contextLength: 128000,
-    capabilities: ["text", "vision"],
-    free: true,
-    supportsStreaming: true,
-    supportsVision: false,
-  },
-  {
-    provider: "xkiro",
-    modelId: "qwen/qwen3.6-35b-a3b",
-    displayName: "Qwen3.6 35B A3B",
-    icon: "Sparkles",
-    contextLength: 128000,
-    capabilities: ["text", "vision"],
-    free: true,
-    supportsStreaming: true,
-    supportsVision: false,
-  },
-  {
-    provider: "xkiro",
-    modelId: "qwen/qwen3.5-plus",
-    displayName: "Qwen3.5 Plus",
-    icon: "Sparkles",
-    contextLength: 128000,
-    capabilities: ["text", "vision"],
-    free: true,
-    supportsStreaming: true,
-    supportsVision: false,
-  },
-  {
-    provider: "xkiro",
-    modelId: "qwen/qwen3.5-flash",
-    displayName: "Qwen3.5 Flash",
-    icon: "Sparkles",
-    contextLength: 1000000,
-    capabilities: ["text", "vision"],
-    free: true,
-    supportsStreaming: true,
-    supportsVision: true,
-  },
-  {
-    provider: "xkiro",
-    modelId: "qwen/qwen3.5-omni-flash",
-    displayName: "Qwen3.5 Omni Flash",
-    icon: "Sparkles",
-    contextLength: 128000,
-    capabilities: ["text", "vision"],
-    free: true,
-    supportsStreaming: true,
-    supportsVision: true,
-  },
-  {
-    provider: "xkiro",
-    modelId: "qwen/qwen3-coder-plus",
-    displayName: "Qwen3 Coder Plus",
-    icon: "Sparkles",
-    contextLength: 128000,
-    capabilities: ["text", "code", "vision"],
-    free: true,
-    supportsStreaming: true,
-    supportsVision: false,
-  },
   {
     provider: "xkiro",
     modelId: "mistralai/mistral-small-2603",

@@ -190,7 +190,7 @@ export const ALL_MODELS: ModelDef[] = [
   ...GEMINI_MODELS,
 ];
 
-export const DEFAULT_MODEL_ID = "qwen/qwen3.5-flash";
+export const DEFAULT_MODEL_ID = "mistralai/mistral-small-2603";
 
 /** Every model except the free default requires signing in — see the plan's
  * "Sign-in gating" slice. Checked by ModelSelector, SettingsModal's default-model

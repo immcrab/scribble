@@ -24,7 +24,7 @@ export async function runAssistantStream(params: {
   if (isModelGated(model) && !auth.currentUser) {
     store.updateMessage(chatId, messageId, {
       streaming: false,
-      error: `Sign in to use ${model.displayName} — the free default (Qwen3.5 Flash) doesn't need an account.`,
+      error: `Sign in to use ${model.displayName} — the free default (Mistral Small 4) doesn't need an account.`,
     });
     return;
   }
