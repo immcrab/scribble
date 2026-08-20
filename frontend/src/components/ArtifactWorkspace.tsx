@@ -203,6 +203,14 @@ export function ArtifactWorkspace({
             className="h-full w-full bg-white"
             title={pane.label}
           />
+        ) : pane?.streaming ? (
+          // Skip syntax highlighting while streaming — re-running rehype-highlight
+          // over the whole (growing) file on every chunk blocks the main thread
+          // and freezes the page during generation. Plain text is cheap; the
+          // highlighted view takes over once the response finishes.
+          <div className="h-full overflow-auto p-3">
+            <pre className="whitespace-pre-wrap break-words text-xs text-slate-300">{file?.content ?? ""}</pre>
+          </div>
         ) : (
           <div className="h-full overflow-auto p-1">
             <Markdown content={`\`\`\`${file?.language ?? "text"}\n${file?.content ?? ""}\n\`\`\``} />
