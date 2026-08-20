@@ -13,7 +13,10 @@ import type { Chat } from "../types";
  * chat that only exists on one device always survives — logging in on a
  * second device unions histories instead of one clobbering the other.
  * Settings merge the same way as one whole-object comparison, except
- * `password` always stays local (never round-tripped to the cloud).
+ * `password`, `customProviders`, and `customModels` always stay local
+ * (never round-tripped to the cloud) — the latter two carry the user's own
+ * third-party API keys, which is exactly the kind of secret `password` was
+ * already being excluded for.
  */
 
 export function mergeChats(local: Chat[], remote: Chat[]): Chat[] {
@@ -29,7 +32,7 @@ export function mergeChats(local: Chat[], remote: Chat[]): Chat[] {
 export function mergeSettings(local: ScribbleSettings, remote: ScribbleSettings | null): ScribbleSettings {
   if (!remote) return local;
   const winner = remote.updatedAt > local.updatedAt ? remote : local;
-  return { ...winner, password: local.password };
+  return { ...winner, password: local.password, customProviders: local.customProviders, customModels: local.customModels };
 }
 
 let activeUid: string | null = null;

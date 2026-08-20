@@ -1,4 +1,4 @@
-export type Provider = "xkiro" | "groq" | "mistral" | "gemini";
+export type Provider = "xkiro" | "groq" | "mistral" | "gemini" | "custom";
 
 export type ModelCapability = "text" | "vision" | "code" | "reasoning";
 
@@ -14,6 +14,21 @@ export interface ModelDef {
   supportsStreaming: boolean;
   supportsVision: boolean;
   description?: string;
+  /** Added by the user via Settings rather than curated in config/*.ts — shows a delete affordance. */
+  isCustom?: boolean;
+  /** Only set when provider === "custom" — id of the CustomProvider (settings.customProviders) that owns this model. */
+  customProviderId?: string;
+}
+
+/** A user-defined OpenAI-compatible endpoint (name + base URL + API key), configured in Settings.
+ * The API key travels with each chat request to the Worker, which forwards it straight through —
+ * unlike the built-in providers, it's never stored server-side. */
+export interface CustomProvider {
+  id: string;
+  name: string;
+  /** OpenAI-compatible API root, e.g. "https://api.example.com/v1" — the Worker appends "/chat/completions". */
+  baseUrl: string;
+  apiKey: string;
 }
 
 export type Role = "user" | "assistant" | "system" | "tool";

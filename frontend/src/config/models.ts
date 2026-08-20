@@ -197,18 +197,45 @@ export const PROVIDER_LABELS: Record<Provider, string> = {
   groq: "Groq",
   mistral: "Mistral",
   gemini: "Google Gemini",
+  custom: "Custom",
 };
+
+/**
+ * User-added models (Settings → Custom Models) live in `settings.customModels`,
+ * which only React components can reach directly via the zustand store. Every
+ * other consumer here — chatStore's own default-model logic, the non-React
+ * modes — needs them too, and threading a `customModels` param through every
+ * `findModel`/`getDefaultModel` call site would touch a dozen files for no
+ * real benefit. Instead chatStore pushes the current list in here once,
+ * on init and on every settings update, and everything below reads through
+ * `allModels()` — same pattern as a small in-memory cache kept in sync by
+ * its one writer.
+ */
+let customModels: ModelDef[] = [];
+
+export function setCustomModels(models: ModelDef[]): void {
+  customModels = models;
+}
+
+function allModels(): ModelDef[] {
+  return customModels.length ? [...ALL_MODELS, ...customModels] : ALL_MODELS;
+}
+
+/** Flat list of every selectable model — built-ins plus whatever the user added in Settings. */
+export function getAllModels(): ModelDef[] {
+  return allModels();
+}
 
 export function modelsByProvider(): Record<Provider, ModelDef[]> {
   const grouped = {} as Record<Provider, ModelDef[]>;
-  for (const m of ALL_MODELS) {
+  for (const m of allModels()) {
     (grouped[m.provider] ??= []).push(m);
   }
   return grouped;
 }
 
 export function findModel(modelId: string): ModelDef | undefined {
-  return ALL_MODELS.find((m) => m.modelId === modelId);
+  return allModels().find((m) => m.modelId === modelId);
 }
 
 export function getDefaultModel(overrideId?: string): ModelDef {
@@ -216,7 +243,7 @@ export function getDefaultModel(overrideId?: string): ModelDef {
 }
 
 export function randomModelPair(): [ModelDef, ModelDef] {
-  const pool = ALL_MODELS.filter((m) => m.free && m.supportsStreaming);
+  const pool = allModels().filter((m) => m.free && m.supportsStreaming);
   const a = pool[Math.floor(Math.random() * pool.length)];
   let b = pool[Math.floor(Math.random() * pool.length)];
   let guard = 0;

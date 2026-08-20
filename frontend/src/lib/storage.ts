@@ -1,4 +1,4 @@
-import type { Chat } from "../types";
+import type { Chat, CustomProvider, ModelDef } from "../types";
 
 const CHATS_KEY = "scribble:chats";
 const SETTINGS_KEY = "scribble:settings";
@@ -14,6 +14,10 @@ export interface ScribbleSettings {
   reduceMotion: boolean;
   /** Auto-open the code workspace panel for detected coding requests. */
   autoOpenCode: boolean;
+  /** User-added OpenAI-compatible connections (name + base URL + API key) — never round-tripped to cloud sync, same as `password`. */
+  customProviders: CustomProvider[];
+  /** User-added models, each pointing at a built-in provider or one of `customProviders` — same local-only treatment as `customProviders`. */
+  customModels: ModelDef[];
   /** Set whenever a genuine local edit is made — lets cloud sync pick the newer side on merge. 0 means "never explicitly saved". */
   updatedAt: number;
 }
@@ -22,6 +26,8 @@ const SETTINGS_DEFAULTS: Omit<ScribbleSettings, "workerUrl" | "password"> = {
   sendOnEnter: true,
   reduceMotion: false,
   autoOpenCode: true,
+  customProviders: [],
+  customModels: [],
   updatedAt: 0,
 };
 

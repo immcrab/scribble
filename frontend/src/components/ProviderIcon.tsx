@@ -1,4 +1,5 @@
 import { useId } from "react";
+import { Plug } from "lucide-react";
 import type { ModelDef, Provider } from "../types";
 
 export function GeminiIcon({ size = 16, className = "" }: { size?: number; className?: string }) {
@@ -150,6 +151,8 @@ export function ProviderFavicon({
       return <GroqIcon size={size} className={className} />;
     case "xkiro":
       return <XKiroIcon size={size} className={className} />;
+    case "custom":
+      return <Plug size={size} className={`shrink-0 text-slate-400 ${className}`} />;
     default:
       return <XKiroIcon size={size} className={className} />;
   }

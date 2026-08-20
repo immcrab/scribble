@@ -12,6 +12,8 @@ interface StreamChatParams {
   model: ModelDef;
   messages: WireMessage[];
   signal: AbortSignal;
+  /** Required when model.provider === "custom" — the user's own endpoint + key, forwarded to the Worker per-request. */
+  customProvider?: { baseUrl: string; apiKey: string };
 }
 
 /** One line of the Worker's NDJSON stream protocol. */
@@ -29,10 +31,15 @@ export class WorkerClientError extends Error {}
  * know provider-specific wire formats.
  */
 export async function* streamChat(params: StreamChatParams): AsyncGenerator<string> {
-  const { workerUrl, password, model, messages, signal } = params;
+  const { workerUrl, password, model, messages, signal, customProvider } = params;
   if (!workerUrl) {
     throw new WorkerClientError(
       "No Worker URL configured. Open Settings and paste your Cloudflare Worker URL."
+    );
+  }
+  if (model.provider === "custom" && !customProvider) {
+    throw new WorkerClientError(
+      `"${model.displayName}" needs its custom provider connection, but it's missing or was deleted — check Settings.`
     );
   }
 
@@ -47,6 +54,7 @@ export async function* streamChat(params: StreamChatParams): AsyncGenerator<stri
       model: model.modelId,
       messages,
       visionCapable: model.supportsVision,
+      ...(customProvider ? { customProvider } : {}),
     }),
     signal,
   });

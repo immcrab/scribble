@@ -19,6 +19,11 @@ export async function runAssistantStream(params: {
   const controller = new AbortController();
   store.registerAbort(messageId, controller);
 
+  const customProvider =
+    model.provider === "custom"
+      ? store.settings.customProviders.find((p) => p.id === model.customProviderId)
+      : undefined;
+
   try {
     for await (const delta of streamChat({
       workerUrl: store.settings.workerUrl,
@@ -26,6 +31,7 @@ export async function runAssistantStream(params: {
       model,
       messages: history,
       signal: controller.signal,
+      customProvider: customProvider ? { baseUrl: customProvider.baseUrl, apiKey: customProvider.apiKey } : undefined,
     })) {
       useChatStore.getState().appendMessageContent(chatId, messageId, delta);
     }

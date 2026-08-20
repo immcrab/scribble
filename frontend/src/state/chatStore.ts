@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import type { Chat, ChatMessage, Mode, Vote } from "../types";
-import { getDefaultModel } from "../config/models";
+import { getDefaultModel, setCustomModels } from "../config/models";
 import { loadChats, saveChats, loadSettings, saveSettings, titleFromPrompt } from "../lib/storage";
 import type { ScribbleSettings } from "../lib/storage";
 import { startCloudSync, stopCloudSync, pushChatsToCloud, pushSettingsToCloud } from "../lib/cloudSync";
@@ -39,6 +39,9 @@ function createInitialChat(mode: Mode = "direct"): Chat {
     ...getDefaultModelPatch(mode, loadSettings().defaultModelId),
   };
 }
+
+const initialSettings = loadSettings();
+setCustomModels(initialSettings.customModels);
 
 const loadedChats = loadChats();
 const initialChats = loadedChats.length > 0 ? loadedChats : [createInitialChat("direct")];
@@ -81,7 +84,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   chats: initialChats,
   activeChatId: initialChats[0]?.id ?? null,
   sidebarOpen: true,
-  settings: loadSettings(),
+  settings: initialSettings,
   abortControllers: new Map(),
 
   activeChat: () => get().chats.find((c) => c.id === get().activeChatId),
@@ -239,6 +242,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   updateSettings: (patch) => {
     set((s) => {
       const settings = { ...s.settings, ...patch, updatedAt: Date.now() };
+      setCustomModels(settings.customModels);
       saveSettings(settings);
       pushSettingsToCloud(settings);
       return { settings };

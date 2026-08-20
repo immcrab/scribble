@@ -2,10 +2,11 @@ import { useState } from "react";
 import { X, CheckCircle2, XCircle, Loader2, ChevronDown, Check } from "lucide-react";
 import { useChatStore } from "../state/chatStore";
 import { checkWorkerHealth } from "../lib/workerClient";
-import { ALL_MODELS, getDefaultModel } from "../config/models";
+import { getAllModels, getDefaultModel } from "../config/models";
 import { ModelFavicon } from "./ProviderIcon";
 import { Dropdown } from "./Dropdown";
 import { ToggleSwitch } from "./ToggleSwitch";
+import { CustomModelsSection } from "./CustomModelsSection";
 
 function SectionLabel({ children }: { children: string }) {
   return <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">{children}</h3>;
@@ -117,7 +118,7 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
                 >
                   {({ close }) => (
                     <div className="max-h-64 w-full overflow-y-auto py-1">
-                      {ALL_MODELS.map((m) => (
+                      {getAllModels().map((m) => (
                         <button
                           key={`${m.provider}:${m.modelId}`}
                           onClick={() => {
@@ -162,6 +163,11 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
                 onChange={(v) => updateSettings({ reduceMotion: v })}
               />
             </div>
+          </div>
+
+          <div>
+            <SectionLabel>Custom Models</SectionLabel>
+            <CustomModelsSection />
           </div>
         </div>
 

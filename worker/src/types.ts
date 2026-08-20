@@ -7,23 +7,43 @@ export interface Env {
   SCRIBBLE_PASSWORD?: string;
 }
 
-export type Provider = "xkiro" | "groq" | "mistral" | "gemini";
+export type Provider = "xkiro" | "groq" | "mistral" | "gemini" | "custom";
+
+export interface WireAttachment {
+  name?: string;
+  type?: string;
+  dataUrl: string;
+}
 
 export interface WireMessage {
   role: "user" | "assistant" | "system";
   content: string;
+  attachments?: WireAttachment[];
+}
+
+/** A user-defined OpenAI-compatible endpoint, sent by the client with each request when
+ * `provider === "custom"` — unlike the built-in providers, this key is never stored as a
+ * Worker secret; it travels with the request and is forwarded straight through. */
+export interface CustomProviderConfig {
+  baseUrl: string;
+  apiKey: string;
 }
 
 export interface ChatRequestBody {
   provider: Provider;
   model: string;
   messages: WireMessage[];
+  /** Whether the selected model declares vision support — gates whether image attachments are sent as image parts. */
+  visionCapable?: boolean;
+  /** Required when provider === "custom". */
+  customProvider?: CustomProviderConfig;
 }
 
 export interface AdapterParams {
   apiKey: string;
   model: string;
   messages: WireMessage[];
+  visionCapable: boolean;
 }
 
 export type ProviderAdapter = (params: AdapterParams) => Promise<ReadableStream<Uint8Array>>;
