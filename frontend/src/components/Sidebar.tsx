@@ -18,6 +18,7 @@ import { LogoMark } from "./Logo";
 import { useChatStore } from "../state/chatStore";
 import { useAuthStore } from "../state/authStore";
 import { ExportChat } from "./ExportChat";
+import { AdUnit } from "./AdUnit";
 import type { Mode } from "../types";
 
 const MODE_LABEL: Record<Mode, string> = {
@@ -264,6 +265,12 @@ export function Sidebar({
           </div>
 
           {!sidebarOpen && !mobileOpen && <div className="flex-1" />}
+
+          {(sidebarOpen || mobileOpen) && (
+            <div className="px-3 pb-2">
+              <AdUnit slot="0000000000" />
+            </div>
+          )}
 
           <div className="border-t border-base-700/60 p-3">
             {!authLoading && (
