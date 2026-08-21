@@ -39,10 +39,32 @@ function extFor(lang: string): string {
   return EXT_BY_LANG[lang.toLowerCase()] ?? "txt";
 }
 
-// The optional leading group picks up our own "File: path/to/file.ext" convention (see the
-// worker's SYSTEM_PROMPT) written on its own line immediately above the fence, so a model that
-// follows it gets real filenames instead of generic file1.js/file2.js ones.
-const FENCE_RE = /(?:(?:^|\n)File:[ \t]*([^\n`]+?)[ \t]*\n)?```([a-zA-Z0-9]*)\n([\s\S]*?)```/gi;
+// A line that's *just* a filename, optionally dressed up the way models tend to write one:
+// "File: app.py", "**index.html**", "`style.css`", "### main.go", a heading, or bare "utils.js"
+// with nothing else on the line. Anchored so it can't grab a mid-sentence word that happens to
+// contain a dot — the whole line (after any decoration) has to be the filename.
+const FILENAME_LINE_CORE =
+  "[ \\t]*(?:#{1,6}[ \\t]*)?(?:\\*\\*|__)?`?(?:(?:File|Filename|Path)[ \\t]*:[ \\t]*)?([A-Za-z0-9_][\\w./-]*\\.[A-Za-z0-9]{1,10})`?(?:\\*\\*|__)?[ \\t]*:?[ \\t]*";
+
+// The optional leading group picks up a filename line written immediately above the fence (see
+// worker SYSTEM_PROMPT), in whichever of the common styles above the model used, so a model that
+// names its files gets real filenames instead of generic file1.js/file2.js ones.
+const FENCE_RE = new RegExp("(?:(?:^|\\n)" + FILENAME_LINE_CORE + "\\n)?```([a-zA-Z0-9]*)\\n([\\s\\S]*?)```", "gim");
+
+// Same filename-line shape, but anchored to the *end* of a string instead of followed by a
+// fence — used to catch the hint above a still-open trailing fence while a message is streaming.
+const TRAILING_FILENAME_LINE_RE = new RegExp("(?:^|\\n)" + FILENAME_LINE_CORE + "\\n$", "i");
+
+// A model that doesn't put the filename on its own line very often still opens the file with a
+// same-language comment naming it — e.g. `// src/app.js`, `# app.py`, `<!-- index.html -->`.
+// Checked as a fallback, after the line-above-fence convention, before giving up to a generic name.
+const LEADING_COMMENT_RE = /^[ \t]*(?:\/\/|#|--|;)[ \t]*([A-Za-z0-9_][\w./-]*\.[A-Za-z0-9]{1,10})[ \t]*$|^[ \t]*<!--[ \t]*([A-Za-z0-9_][\w./-]*\.[A-Za-z0-9]{1,10})[ \t]*-->[ \t]*$/m;
+
+function filenameFromLeadingComment(code: string): string | undefined {
+  const firstLine = code.split("\n", 1)[0] ?? "";
+  const m = firstLine.match(LEADING_COMMENT_RE);
+  return m ? (m[1] ?? m[2]) : undefined;
+}
 
 function cleanFilename(raw: string): string {
   return raw.trim().replace(/^[`*_]+|[`*_]+$/g, "").trim();
@@ -95,7 +117,8 @@ export function extractArtifact(content: string): Artifact | null {
     const lang = (m[2] || "text").toLowerCase();
     const code = m[3].replace(/\n$/, "");
     if (code.trim().length === 0) continue;
-    blocks.push({ lang, code, filename: m[1] ? cleanFilename(m[1]) : undefined });
+    const filename = m[1] ? cleanFilename(m[1]) : filenameFromLeadingComment(code);
+    blocks.push({ lang, code, filename });
   }
   if (blocks.length === 0) return null;
 
@@ -158,10 +181,10 @@ export function extractPartialArtifact(content: string): Artifact | null {
   const trailing = content.slice(lastFenceStart);
   const trailingMatch = trailing.match(/```([a-zA-Z0-9]*)\n?([\s\S]*)$/);
 
-  // Pull an optional "File: path" hint immediately above the open fence — same convention
+  // Pull an optional filename-line hint immediately above the open fence — same convention
   // extractArtifact recognizes for closed fences — so the in-progress file gets a real name
   // while it's still streaming instead of a generic one that would flash and get replaced.
-  const fileLineMatch = closedPortion.match(/(?:^|\n)File:[ \t]*([^\n`]+?)[ \t]*\n$/i);
+  const fileLineMatch = closedPortion.match(TRAILING_FILENAME_LINE_RE);
   let filenameHint: string | undefined;
   if (fileLineMatch) {
     filenameHint = cleanFilename(fileLineMatch[1]);
@@ -177,7 +200,7 @@ export function extractPartialArtifact(content: string): Artifact | null {
     const lang = (trailingMatch[1] || "text").toLowerCase();
     const code = trailingMatch[2] ?? "";
     if (code.trim().length > 0 || files.length === 0) {
-      const name = dedupeName(filenameHint ?? `file.${extFor(lang)}`, seenNames);
+      const name = dedupeName(filenameHint ?? filenameFromLeadingComment(code) ?? `file.${extFor(lang)}`, seenNames);
       files.push({ name, language: lang, content: code });
     }
   }
