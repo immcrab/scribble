@@ -1,4 +1,3 @@
-import { useId } from "react";
 import { Plug } from "lucide-react";
 import type { ModelDef, Provider } from "../types";
 
@@ -24,7 +23,32 @@ const LOGO_URLS = {
   qwen: "https://raw.githubusercontent.com/lobehub/lobe-icons/refs/heads/master/packages/static-png/dark/qwen-color.png",
   mimo: "https://cdn.xtrouter.com/tag-images/0fe99040-c983-4e95-a208-d5ef6072cf83.png",
   minimax: "https://cdn.xtrouter.com/tag-images/minimax-logo.png",
+  xkiro: "https://xkiro.com/images/logo/logo-xt-green.png",
 } as const;
+
+/** Guesses a known brand's logo for a user-added custom provider from its name/base URL — falls back to the generic plug icon when nothing matches. */
+export function detectCustomProviderLogo(name: string, baseUrl: string): string | undefined {
+  const hay = `${name} ${baseUrl}`.toLowerCase();
+  if (hay.includes("openrouter")) return LOGO_URLS.openrouter;
+  if (hay.includes("together")) return LOGO_URLS.together;
+  if (hay.includes("groq")) return LOGO_URLS.groq;
+  if (hay.includes("perplexity")) return LOGO_URLS.perplexity;
+  if (hay.includes("mistral")) return LOGO_URLS.mistral;
+  if (hay.includes("cohere")) return LOGO_URLS.cohere;
+  if (hay.includes("deepseek")) return LOGO_URLS.deepseek;
+  if (hay.includes("anthropic") || hay.includes("claude")) return LOGO_URLS.anthropic;
+  if (hay.includes("openai")) return LOGO_URLS.openai;
+  if (hay.includes("gemini") || hay.includes("generativelanguage") || hay.includes("googleapis")) return LOGO_URLS.gemini;
+  if (hay.includes("nvidia")) return LOGO_URLS.nvidia;
+  if (hay.includes("azure") || hay.includes("microsoft")) return LOGO_URLS.microsoft;
+  if (hay.includes("bedrock") || hay.includes("amazon") || hay.includes("aws")) return LOGO_URLS.amazon;
+  if (hay.includes("x.ai") || hay.includes("xai") || hay.includes("grok")) return LOGO_URLS.grok;
+  if (hay.includes("meta") || hay.includes("llama")) return LOGO_URLS.meta;
+  if (hay.includes("dashscope") || hay.includes("alibaba") || hay.includes("qwen")) return LOGO_URLS.qwen;
+  if (hay.includes("minimax")) return LOGO_URLS.minimax;
+  if (hay.includes("xkiro")) return LOGO_URLS.xkiro;
+  return undefined;
+}
 
 /** Renders a logo image (built-in brand or a user-supplied `logoUrl`). */
 export function LogoImage({ src, size = 16, className = "" }: { src: string; size?: number; className?: string }) {
@@ -52,32 +76,8 @@ export function GroqIcon({ size = 16, className = "" }: { size?: number; classNa
   return <LogoImage src={LOGO_URLS.groq} size={size} className={className} />;
 }
 
-/** xKiro is this app's own aggregator brand — no public logo exists, so it keeps a drawn mark. */
 export function XKiroIcon({ size = 16, className = "" }: { size?: number; className?: string }) {
-  const gradId = useId();
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={`shrink-0 ${className}`} xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <linearGradient id={gradId} x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#C084FC" />
-          <stop offset="50%" stopColor="#818CF8" />
-          <stop offset="100%" stopColor="#22D3EE" />
-        </linearGradient>
-      </defs>
-      <rect width="24" height="24" rx="5" fill={`url(#${gradId})`} fillOpacity="0.16" />
-      <path
-        d="M6 6L18 18M18 6L6 18"
-        stroke={`url(#${gradId})`}
-        strokeWidth="2.6"
-        strokeLinecap="round"
-      />
-      <circle cx="12" cy="12" r="2.5" fill={`url(#${gradId})`} />
-      <circle cx="6" cy="6" r="1.3" fill="#C084FC" />
-      <circle cx="18" cy="18" r="1.3" fill="#22D3EE" />
-      <circle cx="18" cy="6" r="1.3" fill="#818CF8" />
-      <circle cx="6" cy="18" r="1.3" fill="#818CF8" />
-    </svg>
-  );
+  return <LogoImage src={LOGO_URLS.xkiro} size={size} className={className} />;
 }
 
 export function OpenAIIcon({ size = 16, className = "" }: { size?: number; className?: string }) {

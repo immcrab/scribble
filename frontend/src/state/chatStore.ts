@@ -96,6 +96,19 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   createChat: (mode, customModelId) => {
     const defaults = getDefaultModelPatch(mode, get().settings.defaultModelId);
     if (customModelId) defaults.modelId = customModelId;
+
+    // Reuse an already-empty chat if one exists, rather than piling up empty
+    // "New chat" entries every time the button is clicked without sending anything.
+    const existing = get().chats.find((c) => c.messages.length === 0);
+    if (existing) {
+      set((s) => {
+        const chats = s.chats.map((c) => (c.id === existing.id ? { ...c, mode, updatedAt: Date.now(), ...defaults } : c));
+        debouncedPersist(chats);
+        return { chats, activeChatId: existing.id };
+      });
+      return existing.id;
+    }
+
     const chat: Chat = {
       id: uid(),
       title: "New chat",

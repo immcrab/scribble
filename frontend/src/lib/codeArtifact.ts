@@ -39,62 +39,88 @@ function extFor(lang: string): string {
   return EXT_BY_LANG[lang.toLowerCase()] ?? "txt";
 }
 
-const FENCE_RE = /```([a-zA-Z0-9]*)\n([\s\S]*?)```/g;
+// The optional leading group picks up our own "File: path/to/file.ext" convention (see the
+// worker's SYSTEM_PROMPT) written on its own line immediately above the fence, so a model that
+// follows it gets real filenames instead of generic file1.js/file2.js ones.
+const FENCE_RE = /(?:(?:^|\n)File:[ \t]*([^\n`]+?)[ \t]*\n)?```([a-zA-Z0-9]*)\n([\s\S]*?)```/gi;
+
+function cleanFilename(raw: string): string {
+  return raw.trim().replace(/^[`*_]+|[`*_]+$/g, "").trim();
+}
+
+/** Appends " (2)", " (3)", ... before the extension to disambiguate a name collision. */
+function dedupeName(name: string, seen: Set<string>): string {
+  if (!seen.has(name)) return name;
+  const dot = name.lastIndexOf(".");
+  const base = dot > 0 ? name.slice(0, dot) : name;
+  const ext = dot > 0 ? name.slice(dot) : "";
+  let i = 2;
+  let candidate = `${base} (${i})${ext}`;
+  while (seen.has(candidate)) {
+    i++;
+    candidate = `${base} (${i})${ext}`;
+  }
+  return candidate;
+}
+
+function buildPreviewHtml(files: ArtifactFile[]): string | undefined {
+  const htmlFile =
+    files.find((f) => f.name.toLowerCase() === "index.html") ??
+    files.find((f) => f.language === "html" || f.language === "htm" || /\.html?$/i.test(f.name));
+  if (!htmlFile) return undefined;
+
+  const cssFiles = files.filter((f) => f !== htmlFile && (f.language === "css" || /\.css$/i.test(f.name)));
+  const jsFiles = files.filter(
+    (f) => f !== htmlFile && (f.language === "js" || f.language === "javascript" || /\.js$/i.test(f.name))
+  );
+
+  let html = htmlFile.content;
+  const hasHtmlShell = /<html[\s>]/i.test(html);
+  const styleTag = cssFiles.length ? `<style>\n${cssFiles.map((f) => f.content).join("\n\n")}\n</style>` : "";
+  const scriptTag = jsFiles.length ? `<script>\n${jsFiles.map((f) => f.content).join("\n\n")}\n</script>` : "";
+
+  if (hasHtmlShell) {
+    if (styleTag) html = /<\/head>/i.test(html) ? html.replace(/<\/head>/i, `${styleTag}\n</head>`) : styleTag + html;
+    if (scriptTag) html = /<\/body>/i.test(html) ? html.replace(/<\/body>/i, `${scriptTag}\n</body>`) : html + scriptTag;
+    return html;
+  }
+  return `<!doctype html>\n<html>\n<head>${styleTag}</head>\n<body>\n${html}\n${scriptTag}\n</body>\n</html>`;
+}
 
 export function extractArtifact(content: string): Artifact | null {
-  const blocks: { lang: string; code: string }[] = [];
+  const blocks: { lang: string; code: string; filename?: string }[] = [];
   FENCE_RE.lastIndex = 0;
   let m: RegExpExecArray | null;
   while ((m = FENCE_RE.exec(content))) {
-    const lang = (m[1] || "text").toLowerCase();
-    const code = m[2].replace(/\n$/, "");
+    const lang = (m[2] || "text").toLowerCase();
+    const code = m[3].replace(/\n$/, "");
     if (code.trim().length === 0) continue;
-    blocks.push({ lang, code });
+    blocks.push({ lang, code, filename: m[1] ? cleanFilename(m[1]) : undefined });
   }
   if (blocks.length === 0) return null;
 
   const remainingText = content.replace(FENCE_RE, "").trim();
 
-  const htmlBlock = blocks.find((b) => b.lang === "html" || b.lang === "htm");
-  const cssBlocks = blocks.filter((b) => b.lang === "css");
-  const jsBlocks = blocks.filter((b) => b.lang === "js" || b.lang === "javascript");
+  const langCount: Record<string, number> = {};
+  for (const b of blocks) if (!b.filename) langCount[b.lang] = (langCount[b.lang] ?? 0) + 1;
+  const seenLang: Record<string, number> = {};
+  const seenNames = new Set<string>();
 
-  const files: ArtifactFile[] = [];
-  let previewHtml: string | undefined;
-
-  if (htmlBlock) {
-    files.push({ name: "index.html", language: "html", content: htmlBlock.code });
-    cssBlocks.forEach((b, i) =>
-      files.push({ name: cssBlocks.length > 1 ? `style${i + 1}.css` : "style.css", language: "css", content: b.code })
-    );
-    jsBlocks.forEach((b, i) =>
-      files.push({ name: jsBlocks.length > 1 ? `script${i + 1}.js` : "script.js", language: "javascript", content: b.code })
-    );
-
-    let html = htmlBlock.code;
-    const hasHtmlShell = /<html[\s>]/i.test(html);
-    const styleTag = cssBlocks.length ? `<style>\n${cssBlocks.map((b) => b.code).join("\n\n")}\n</style>` : "";
-    const scriptTag = jsBlocks.length ? `<script>\n${jsBlocks.map((b) => b.code).join("\n\n")}\n</script>` : "";
-
-    if (hasHtmlShell) {
-      if (styleTag) html = /<\/head>/i.test(html) ? html.replace(/<\/head>/i, `${styleTag}\n</head>`) : styleTag + html;
-      if (scriptTag) html = /<\/body>/i.test(html) ? html.replace(/<\/body>/i, `${scriptTag}\n</body>`) : html + scriptTag;
-      previewHtml = html;
+  const files: ArtifactFile[] = blocks.map((b) => {
+    let name: string;
+    if (b.filename) {
+      name = b.filename;
     } else {
-      previewHtml = `<!doctype html>\n<html>\n<head>${styleTag}</head>\n<body>\n${html}\n${scriptTag}\n</body>\n</html>`;
+      seenLang[b.lang] = (seenLang[b.lang] ?? 0) + 1;
+      const suffix = langCount[b.lang] > 1 ? String(seenLang[b.lang]) : "";
+      name = `file${suffix}.${extFor(b.lang)}`;
     }
-  } else {
-    const langCount: Record<string, number> = {};
-    for (const b of blocks) langCount[b.lang] = (langCount[b.lang] ?? 0) + 1;
-    const seen: Record<string, number> = {};
-    for (const b of blocks) {
-      seen[b.lang] = (seen[b.lang] ?? 0) + 1;
-      const suffix = langCount[b.lang] > 1 ? String(seen[b.lang]) : "";
-      files.push({ name: `file${suffix}.${extFor(b.lang)}`, language: b.lang, content: b.code });
-    }
-  }
+    name = dedupeName(name, seenNames);
+    seenNames.add(name);
+    return { name, language: b.lang, content: b.code };
+  });
 
-  return { files, previewHtml, remainingText };
+  return { files, previewHtml: buildPreviewHtml(files), remainingText };
 }
 
 /** Heuristic: only worth a dedicated artifact panel for real files, not one-line inline snippets. */
@@ -128,19 +154,31 @@ export function extractPartialArtifact(content: string): Artifact | null {
   const lastFenceStart = content.lastIndexOf("```");
   // Everything before the trailing open fence has a balanced (even) fence
   // count, so it parses cleanly as ordinary closed content.
-  const closedPortion = content.slice(0, lastFenceStart);
+  let closedPortion = content.slice(0, lastFenceStart);
   const trailing = content.slice(lastFenceStart);
   const trailingMatch = trailing.match(/```([a-zA-Z0-9]*)\n?([\s\S]*)$/);
+
+  // Pull an optional "File: path" hint immediately above the open fence — same convention
+  // extractArtifact recognizes for closed fences — so the in-progress file gets a real name
+  // while it's still streaming instead of a generic one that would flash and get replaced.
+  const fileLineMatch = closedPortion.match(/(?:^|\n)File:[ \t]*([^\n`]+?)[ \t]*\n$/i);
+  let filenameHint: string | undefined;
+  if (fileLineMatch) {
+    filenameHint = cleanFilename(fileLineMatch[1]);
+    closedPortion = closedPortion.slice(0, fileLineMatch.index);
+  }
 
   const base = extractArtifact(closedPortion);
   const files = base?.files.slice() ?? [];
   const remainingText = (base?.remainingText ?? closedPortion).trim();
+  const seenNames = new Set(files.map((f) => f.name));
 
   if (trailingMatch) {
     const lang = (trailingMatch[1] || "text").toLowerCase();
     const code = trailingMatch[2] ?? "";
     if (code.trim().length > 0 || files.length === 0) {
-      files.push({ name: `file.${extFor(lang)}`, language: lang, content: code });
+      const name = dedupeName(filenameHint ?? `file.${extFor(lang)}`, seenNames);
+      files.push({ name, language: lang, content: code });
     }
   }
 

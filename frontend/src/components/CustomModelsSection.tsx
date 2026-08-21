@@ -4,7 +4,7 @@ import { useChatStore } from "../state/chatStore";
 import { uid } from "../lib/id";
 import { PROVIDER_LABELS } from "../config/models";
 import type { CustomProvider, ModelDef, Provider } from "../types";
-import { ModelFavicon, ProviderFavicon } from "./ProviderIcon";
+import { ModelFavicon, ProviderFavicon, detectCustomProviderLogo } from "./ProviderIcon";
 import { ToggleSwitch } from "./ToggleSwitch";
 
 const BUILT_IN_PROVIDERS: Provider[] = ["xkiro", "groq", "mistral", "gemini"];
@@ -41,7 +41,14 @@ export function CustomModelsSection() {
     const apiKey = providerForm.apiKey.trim();
     const logoUrl = providerForm.logoUrl.trim();
     if (!name || !baseUrl || !apiKey) return;
-    const provider: CustomProvider = { id: uid(), name, baseUrl, apiKey, logoUrl: logoUrl || undefined };
+    // No logo pasted in? Guess one from the name/URL (e.g. "OpenRouter" → its real logo) before falling back to the generic plug icon.
+    const provider: CustomProvider = {
+      id: uid(),
+      name,
+      baseUrl,
+      apiKey,
+      logoUrl: logoUrl || detectCustomProviderLogo(name, baseUrl),
+    };
     updateSettings({ customProviders: [...customProviders, provider] });
     setProviderForm({ name: "", baseUrl: "", apiKey: "", logoUrl: "" });
   };
@@ -62,6 +69,11 @@ export function CustomModelsSection() {
     if (!displayName || !modelId) return;
 
     const provider: Provider = isBuiltInTarget ? (modelForm.target as Provider) : "custom";
+    // Inherit the connection's logo (pasted or auto-detected) when the model itself has none —
+    // ModelFavicon reads model.logoUrl directly and has no access to the customProviders list.
+    const inheritedLogoUrl = isBuiltInTarget
+      ? undefined
+      : customProviders.find((p) => p.id === modelForm.target)?.logoUrl;
     const model: ModelDef = {
       provider,
       modelId,
@@ -74,7 +86,7 @@ export function CustomModelsSection() {
       supportsVision: modelForm.supportsVision,
       isCustom: true,
       customProviderId: isBuiltInTarget ? undefined : modelForm.target,
-      logoUrl: modelForm.logoUrl.trim() || undefined,
+      logoUrl: modelForm.logoUrl.trim() || inheritedLogoUrl,
     };
     updateSettings({ customModels: [...customModels, model] });
     setModelForm({ displayName: "", modelId: "", target: BUILT_IN_PROVIDERS[0], supportsVision: false, logoUrl: "" });
