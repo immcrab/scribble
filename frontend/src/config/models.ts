@@ -183,11 +183,54 @@ const GEMINI_MODELS: ModelDef[] = [
   },
 ];
 
+/**
+ * Vercel AI Gateway — single OpenAI-compatible endpoint that proxies to many
+ * upstream providers, model ids namespaced as "{provider}/{model}":
+ * https://ai-gateway.vercel.sh/v1/chat/completions
+ * Paid (billed through the gateway key), not free like the other built-ins.
+ */
+const VERCEL_MODELS: ModelDef[] = [
+  {
+    provider: "vercel",
+    modelId: "openai/gpt-5.1",
+    displayName: "GPT-5.1 (via Vercel)",
+    icon: "Triangle",
+    contextLength: 400000,
+    capabilities: ["text", "vision", "code", "reasoning"],
+    free: false,
+    supportsStreaming: true,
+    supportsVision: true,
+  },
+  {
+    provider: "vercel",
+    modelId: "anthropic/claude-sonnet-4.5",
+    displayName: "Claude Sonnet 4.5 (via Vercel)",
+    icon: "Triangle",
+    contextLength: 200000,
+    capabilities: ["text", "vision", "code", "reasoning"],
+    free: false,
+    supportsStreaming: true,
+    supportsVision: true,
+  },
+  {
+    provider: "vercel",
+    modelId: "xai/grok-4",
+    displayName: "Grok 4 (via Vercel)",
+    icon: "Triangle",
+    contextLength: 256000,
+    capabilities: ["text", "code", "reasoning"],
+    free: false,
+    supportsStreaming: true,
+    supportsVision: false,
+  },
+];
+
 export const ALL_MODELS: ModelDef[] = [
   ...XKIRO_MODELS,
   ...GROQ_MODELS,
   ...MISTRAL_MODELS,
   ...GEMINI_MODELS,
+  ...VERCEL_MODELS,
 ];
 
 export const DEFAULT_MODEL_ID = "mistralai/mistral-small-2603";
@@ -204,6 +247,7 @@ export const PROVIDER_LABELS: Record<Provider, string> = {
   groq: "Groq",
   mistral: "Mistral",
   gemini: "Google Gemini",
+  vercel: "Vercel AI Gateway",
   custom: "Custom",
 };
 

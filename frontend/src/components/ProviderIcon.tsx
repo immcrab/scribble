@@ -24,6 +24,7 @@ const LOGO_URLS = {
   mimo: "https://cdn.xtrouter.com/tag-images/0fe99040-c983-4e95-a208-d5ef6072cf83.png",
   minimax: "https://cdn.xtrouter.com/tag-images/minimax-logo.png",
   xkiro: "https://xkiro.com/images/logo/logo-xt-green.png",
+  vercel: `${LOBEHUB}/vercel-color.png`,
 } as const;
 
 /** Guesses a known brand's logo for a user-added custom provider from its name/base URL — falls back to the generic plug icon when nothing matches. */
@@ -47,6 +48,7 @@ export function detectCustomProviderLogo(name: string, baseUrl: string): string 
   if (hay.includes("dashscope") || hay.includes("alibaba") || hay.includes("qwen")) return LOGO_URLS.qwen;
   if (hay.includes("minimax")) return LOGO_URLS.minimax;
   if (hay.includes("xkiro")) return LOGO_URLS.xkiro;
+  if (hay.includes("vercel")) return LOGO_URLS.vercel;
   return undefined;
 }
 
@@ -78,6 +80,10 @@ export function GroqIcon({ size = 16, className = "" }: { size?: number; classNa
 
 export function XKiroIcon({ size = 16, className = "" }: { size?: number; className?: string }) {
   return <LogoImage src={LOGO_URLS.xkiro} size={size} className={className} />;
+}
+
+export function VercelIcon({ size = 16, className = "" }: { size?: number; className?: string }) {
+  return <LogoImage src={LOGO_URLS.vercel} size={size} className={className} />;
 }
 
 export function OpenAIIcon({ size = 16, className = "" }: { size?: number; className?: string }) {
@@ -165,6 +171,8 @@ export function ProviderFavicon({
       return <GroqIcon size={size} className={className} />;
     case "xkiro":
       return <XKiroIcon size={size} className={className} />;
+    case "vercel":
+      return <VercelIcon size={size} className={className} />;
     case "custom":
       return <Plug size={size} className={`shrink-0 text-slate-400 ${className}`} />;
     default:

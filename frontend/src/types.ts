@@ -1,4 +1,4 @@
-export type Provider = "xkiro" | "groq" | "mistral" | "gemini" | "custom";
+export type Provider = "xkiro" | "groq" | "mistral" | "gemini" | "vercel" | "custom";
 
 /** Claude-Code-style reasoning depth, sent to the Worker and mapped to a
  * per-provider native param (or a system-prompt nudge) — see worker/src/adapters. */
