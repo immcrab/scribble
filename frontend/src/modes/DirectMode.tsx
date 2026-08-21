@@ -8,6 +8,7 @@ import { EffortSelector } from "../components/EffortSelector";
 import { EmptyState } from "../components/EmptyState";
 import { ArtifactWorkspace } from "../components/ArtifactWorkspace";
 import { ChatWorkspaceSplit } from "../components/ChatWorkspaceSplit";
+import { AdUnit } from "../components/AdUnit";
 import { extractArtifact, isArtifactWorthy, isCodingRequest } from "../lib/codeArtifact";
 import { useLiveArtifact } from "../lib/useLiveArtifact";
 import { runAssistantStream } from "../lib/runStream";
@@ -177,18 +178,30 @@ export function DirectMode({
             ) : (
               <div className="flex-1 overflow-y-auto px-4 py-5 sm:px-8" ref={chatEndRef}>
                 <div className={`mx-auto flex flex-col gap-5 ${hasWorkspace ? "" : "max-w-3xl"}`}>
-                  {chat.messages.map((m) => (
-                    <ChatMessage
-                      key={m.id}
-                      message={m}
-                      suppressCode={hasWorkspace}
-                      onRegenerate={m.role === "assistant" && !m.streaming ? () => regenerate(m.id) : undefined}
-                      onRegenerateWith={
-                        m.role === "assistant" && !m.streaming ? (modelId) => regenerate(m.id, modelId) : undefined
-                      }
-                      onEdit={m.role === "user" && !m.streaming ? (newText) => editMessage(m.id, newText) : undefined}
-                    />
-                  ))}
+                  {(() => {
+                    let assistantCount = 0;
+                    return chat.messages.map((m) => {
+                      if (m.role === "assistant" && !m.streaming) assistantCount++;
+                      // One slim ad card every 6 completed replies — keeps
+                      // it out of the way of the first few turns and never
+                      // sits next to the composer.
+                      const showAdAfter = m.role === "assistant" && !m.streaming && assistantCount % 6 === 0;
+                      return (
+                        <div key={m.id} className="flex flex-col gap-5">
+                          <ChatMessage
+                            message={m}
+                            suppressCode={hasWorkspace}
+                            onRegenerate={m.role === "assistant" && !m.streaming ? () => regenerate(m.id) : undefined}
+                            onRegenerateWith={
+                              m.role === "assistant" && !m.streaming ? (modelId) => regenerate(m.id, modelId) : undefined
+                            }
+                            onEdit={m.role === "user" && !m.streaming ? (newText) => editMessage(m.id, newText) : undefined}
+                          />
+                          {showAdAfter && <AdUnit slot="0000000001" width={320} height={80} />}
+                        </div>
+                      );
+                    });
+                  })()}
                 </div>
               </div>
             )}

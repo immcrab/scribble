@@ -268,7 +268,7 @@ export function Sidebar({
 
           {(sidebarOpen || mobileOpen) && (
             <div className="px-3 pb-2">
-              <AdUnit slot="0000000000" />
+              <AdUnit slot="0000000000" width={234} height={90} />
             </div>
           )}
 
