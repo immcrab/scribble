@@ -184,17 +184,18 @@ const GEMINI_MODELS: ModelDef[] = [
 ];
 
 /**
- * Vercel AI Gateway — single OpenAI-compatible endpoint that proxies to many
+ * OpenRouter — single OpenAI-compatible endpoint that proxies to many
  * upstream providers, model ids namespaced as "{provider}/{model}":
- * https://ai-gateway.vercel.sh/v1/chat/completions
- * Paid (billed through the gateway key), not free like the other built-ins.
+ * https://openrouter.ai/api/v1/chat/completions
+ * Paid (billed through the OpenRouter key), not free like the other built-ins
+ * — a few OpenRouter models are ":free" variants, but most aren't.
  */
-const VERCEL_MODELS: ModelDef[] = [
+const OPENROUTER_MODELS: ModelDef[] = [
   {
-    provider: "vercel",
+    provider: "openrouter",
     modelId: "openai/gpt-5.1",
-    displayName: "GPT-5.1 (via Vercel)",
-    icon: "Triangle",
+    displayName: "GPT-5.1 (via OpenRouter)",
+    icon: "Route",
     contextLength: 400000,
     capabilities: ["text", "vision", "code", "reasoning"],
     free: false,
@@ -202,10 +203,10 @@ const VERCEL_MODELS: ModelDef[] = [
     supportsVision: true,
   },
   {
-    provider: "vercel",
+    provider: "openrouter",
     modelId: "anthropic/claude-sonnet-4.5",
-    displayName: "Claude Sonnet 4.5 (via Vercel)",
-    icon: "Triangle",
+    displayName: "Claude Sonnet 4.5 (via OpenRouter)",
+    icon: "Route",
     contextLength: 200000,
     capabilities: ["text", "vision", "code", "reasoning"],
     free: false,
@@ -213,10 +214,10 @@ const VERCEL_MODELS: ModelDef[] = [
     supportsVision: true,
   },
   {
-    provider: "vercel",
-    modelId: "xai/grok-4",
-    displayName: "Grok 4 (via Vercel)",
-    icon: "Triangle",
+    provider: "openrouter",
+    modelId: "x-ai/grok-4",
+    displayName: "Grok 4 (via OpenRouter)",
+    icon: "Route",
     contextLength: 256000,
     capabilities: ["text", "code", "reasoning"],
     free: false,
@@ -230,7 +231,7 @@ export const ALL_MODELS: ModelDef[] = [
   ...GROQ_MODELS,
   ...MISTRAL_MODELS,
   ...GEMINI_MODELS,
-  ...VERCEL_MODELS,
+  ...OPENROUTER_MODELS,
 ];
 
 export const DEFAULT_MODEL_ID = "mistralai/mistral-small-2603";
@@ -247,7 +248,7 @@ export const PROVIDER_LABELS: Record<Provider, string> = {
   groq: "Groq",
   mistral: "Mistral",
   gemini: "Google Gemini",
-  vercel: "Vercel AI Gateway",
+  openrouter: "OpenRouter",
   custom: "Custom",
 };
 
