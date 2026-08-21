@@ -179,13 +179,21 @@ export function DirectMode({
               <div className="flex-1 overflow-y-auto px-4 py-5 sm:px-8" ref={chatEndRef}>
                 <div className={`mx-auto flex flex-col gap-5 ${hasWorkspace ? "" : "max-w-3xl"}`}>
                   {(() => {
-                    let assistantCount = 0;
+                    let sinceAd = 0;
+                    let gap = 2;
                     return chat.messages.map((m) => {
-                      if (m.role === "assistant" && !m.streaming) assistantCount++;
-                      // One slim ad card every 6 completed replies — keeps
-                      // it out of the way of the first few turns and never
-                      // sits next to the composer.
-                      const showAdAfter = m.role === "assistant" && !m.streaming && assistantCount % 6 === 0;
+                      // Slim ad card every 2-3 completed replies (alternating
+                      // gap) — never sits next to the composer, shown on
+                      // mobile too since this list has no md:hidden guard.
+                      let showAdAfter = false;
+                      if (m.role === "assistant" && !m.streaming) {
+                        sinceAd++;
+                        if (sinceAd >= gap) {
+                          showAdAfter = true;
+                          sinceAd = 0;
+                          gap = gap === 2 ? 3 : 2;
+                        }
+                      }
                       return (
                         <div key={m.id} className="flex flex-col gap-5">
                           <ChatMessage
