@@ -26,22 +26,24 @@ export function CustomModelsSection() {
   const { settings, updateSettings } = useChatStore();
   const { customProviders, customModels } = settings;
 
-  const [providerForm, setProviderForm] = useState({ name: "", baseUrl: "", apiKey: "" });
+  const [providerForm, setProviderForm] = useState({ name: "", baseUrl: "", apiKey: "", logoUrl: "" });
   const [modelForm, setModelForm] = useState({
     displayName: "",
     modelId: "",
     target: BUILT_IN_PROVIDERS[0] as string,
     supportsVision: false,
+    logoUrl: "",
   });
 
   const addProvider = () => {
     const name = providerForm.name.trim();
     const baseUrl = providerForm.baseUrl.trim().replace(/\/$/, "");
     const apiKey = providerForm.apiKey.trim();
+    const logoUrl = providerForm.logoUrl.trim();
     if (!name || !baseUrl || !apiKey) return;
-    const provider: CustomProvider = { id: uid(), name, baseUrl, apiKey };
+    const provider: CustomProvider = { id: uid(), name, baseUrl, apiKey, logoUrl: logoUrl || undefined };
     updateSettings({ customProviders: [...customProviders, provider] });
-    setProviderForm({ name: "", baseUrl: "", apiKey: "" });
+    setProviderForm({ name: "", baseUrl: "", apiKey: "", logoUrl: "" });
   };
 
   const removeProvider = (id: string) => {
@@ -72,9 +74,10 @@ export function CustomModelsSection() {
       supportsVision: modelForm.supportsVision,
       isCustom: true,
       customProviderId: isBuiltInTarget ? undefined : modelForm.target,
+      logoUrl: modelForm.logoUrl.trim() || undefined,
     };
     updateSettings({ customModels: [...customModels, model] });
-    setModelForm({ displayName: "", modelId: "", target: BUILT_IN_PROVIDERS[0], supportsVision: false });
+    setModelForm({ displayName: "", modelId: "", target: BUILT_IN_PROVIDERS[0], supportsVision: false, logoUrl: "" });
   };
 
   const removeModel = (target: ModelDef) => {
@@ -97,7 +100,7 @@ export function CustomModelsSection() {
                 key={p.id}
                 className="flex items-center gap-2 rounded-lg border border-base-600/60 bg-base-900/60 px-3 py-2 text-sm"
               >
-                <ProviderFavicon provider="custom" size={14} />
+                <ProviderFavicon provider="custom" logoUrl={p.logoUrl} size={14} />
                 <span className="min-w-0 flex-1 truncate text-slate-200">{p.name}</span>
                 <span className="hidden max-w-[140px] truncate text-xs text-slate-500 sm:inline">{p.baseUrl}</span>
                 <button
@@ -129,6 +132,12 @@ export function CustomModelsSection() {
             type="password"
             onChange={(e) => setProviderForm((f) => ({ ...f, apiKey: e.target.value }))}
             placeholder="API key"
+            className={inputClass}
+          />
+          <input
+            value={providerForm.logoUrl}
+            onChange={(e) => setProviderForm((f) => ({ ...f, logoUrl: e.target.value }))}
+            placeholder="Logo URL (optional, e.g. https://example.com/logo.png)"
             className={inputClass}
           />
           <button
@@ -206,6 +215,12 @@ export function CustomModelsSection() {
               </optgroup>
             )}
           </select>
+          <input
+            value={modelForm.logoUrl}
+            onChange={(e) => setModelForm((f) => ({ ...f, logoUrl: e.target.value }))}
+            placeholder="Logo URL (optional, overrides the auto-detected icon)"
+            className={inputClass}
+          />
           <ToggleSwitch
             label="Supports vision"
             checked={modelForm.supportsVision}

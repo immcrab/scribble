@@ -26,6 +26,8 @@ export interface ModelDef {
   isCustom?: boolean;
   /** Only set when provider === "custom" — id of the CustomProvider (settings.customProviders) that owns this model. */
   customProviderId?: string;
+  /** User-supplied image URL, shown instead of any built-in icon when set (ModelFavicon checks this first). */
+  logoUrl?: string;
 }
 
 /** A user-defined OpenAI-compatible endpoint (name + base URL + API key), configured in Settings.
@@ -37,6 +39,8 @@ export interface CustomProvider {
   /** OpenAI-compatible API root, e.g. "https://api.example.com/v1" — the Worker appends "/chat/completions". */
   baseUrl: string;
   apiKey: string;
+  /** User-supplied image URL, shown for this provider instead of the generic plug icon. */
+  logoUrl?: string;
 }
 
 export type Role = "user" | "assistant" | "system" | "tool";
