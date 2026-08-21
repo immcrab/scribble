@@ -187,42 +187,76 @@ const GEMINI_MODELS: ModelDef[] = [
  * OpenRouter — single OpenAI-compatible endpoint that proxies to many
  * upstream providers, model ids namespaced as "{provider}/{model}":
  * https://openrouter.ai/api/v1/chat/completions
- * Paid (billed through the OpenRouter key), not free like the other built-ins
- * — a few OpenRouter models are ":free" variants, but most aren't.
+ * Only ":free" variants are listed here (verified live against GET /api/v1/models,
+ * Aug 2026) — free-tier rate limits are low and the catalog turns over, so
+ * re-check periodically.
  */
 const OPENROUTER_MODELS: ModelDef[] = [
   {
     provider: "openrouter",
-    modelId: "openai/gpt-5.1",
-    displayName: "GPT-5.1 (via OpenRouter)",
-    icon: "Route",
-    contextLength: 400000,
-    capabilities: ["text", "vision", "code", "reasoning"],
-    free: false,
-    supportsStreaming: true,
-    supportsVision: true,
-  },
-  {
-    provider: "openrouter",
-    modelId: "anthropic/claude-sonnet-4.5",
-    displayName: "Claude Sonnet 4.5 (via OpenRouter)",
-    icon: "Route",
-    contextLength: 200000,
-    capabilities: ["text", "vision", "code", "reasoning"],
-    free: false,
-    supportsStreaming: true,
-    supportsVision: true,
-  },
-  {
-    provider: "openrouter",
-    modelId: "x-ai/grok-4",
-    displayName: "Grok 4 (via OpenRouter)",
+    modelId: "z-ai/glm-5.2:free",
+    displayName: "GLM 5.2",
     icon: "Route",
     contextLength: 256000,
     capabilities: ["text", "code", "reasoning"],
-    free: false,
+    free: true,
     supportsStreaming: true,
     supportsVision: false,
+  },
+  {
+    provider: "openrouter",
+    modelId: "openai/gpt-oss-20b:free",
+    displayName: "GPT-OSS 20B",
+    icon: "Route",
+    contextLength: 131072,
+    capabilities: ["text", "reasoning"],
+    free: true,
+    supportsStreaming: true,
+    supportsVision: false,
+  },
+  {
+    provider: "openrouter",
+    modelId: "nvidia/nemotron-3-ultra-550b-a55b:free",
+    displayName: "Nemotron 3 Ultra",
+    icon: "Route",
+    contextLength: 1000000,
+    capabilities: ["text", "reasoning"],
+    free: true,
+    supportsStreaming: true,
+    supportsVision: false,
+  },
+  {
+    provider: "openrouter",
+    modelId: "nvidia/nemotron-3-super-120b-a12b:free",
+    displayName: "Nemotron 3 Super",
+    icon: "Route",
+    contextLength: 262144,
+    capabilities: ["text"],
+    free: true,
+    supportsStreaming: true,
+    supportsVision: false,
+  },
+  {
+    provider: "openrouter",
+    modelId: "google/gemma-4-31b-it:free",
+    displayName: "Gemma 4 31B",
+    icon: "Route",
+    contextLength: 262144,
+    capabilities: ["text", "vision"],
+    free: true,
+    supportsStreaming: true,
+    supportsVision: true,
+  },
+  {
+    provider: "openrouter",
+    modelId: "nvidia/nemotron-nano-12b-v2-vl:free",
+    displayName: "Nemotron Nano 12B VL",
+    icon: "Route",
+    contextLength: 128000,
+    capabilities: ["text", "vision"],
+    free: true,
+    supportsStreaming: true,
+    supportsVision: true,
   },
 ];
 
