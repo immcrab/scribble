@@ -258,6 +258,17 @@ const OPENROUTER_MODELS: ModelDef[] = [
     supportsStreaming: true,
     supportsVision: true,
   },
+  {
+    provider: "openrouter",
+    modelId: "poolside/laguna-s-2.1",
+    displayName: "Laguna S 2.1",
+    icon: "Route",
+    contextLength: 1048576,
+    capabilities: ["text", "code"],
+    free: false,
+    supportsStreaming: true,
+    supportsVision: false,
+  },
 ];
 
 export const ALL_MODELS: ModelDef[] = [

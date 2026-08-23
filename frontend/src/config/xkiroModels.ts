@@ -197,6 +197,7 @@ export const XKIRO_MODELS: ModelDef[] = [
     modelId: "stealth/ox-alpha-free",
     displayName: "OX Alpha",
     icon: "Sparkles",
+    logoUrl: "https://cdn.xtrouter.com/tag-images/Stealth.svg",
     contextLength: 1000000,
     capabilities: ["text"],
     free: true,
