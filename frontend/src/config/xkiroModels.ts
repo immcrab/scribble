@@ -192,4 +192,15 @@ export const XKIRO_MODELS: ModelDef[] = [
     supportsStreaming: true,
     supportsVision: false,
   },
+  {
+    provider: "xkiro",
+    modelId: "stealth/ox-alpha-free",
+    displayName: "OX Alpha",
+    icon: "Sparkles",
+    contextLength: 1000000,
+    capabilities: ["text"],
+    free: true,
+    supportsStreaming: true,
+    supportsVision: false,
+  },
 ];

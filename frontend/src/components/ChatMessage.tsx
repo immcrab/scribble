@@ -132,16 +132,28 @@ function ToolActivity({ toolCalls }: { toolCalls: ToolCallRecord[] }) {
 
 /** Ticks once a second while `active`, so a live "Thinking for Ns" label stays
  * current without re-rendering the whole message tree on every token. */
-function useElapsedSeconds(active: boolean, startedAt: number | undefined, frozenMs: number | undefined): number {
+function useElapsedMs(active: boolean, startedAt: number | undefined, frozenMs: number | undefined): number {
   const [, tick] = useState(0);
   useEffect(() => {
     if (!active || !startedAt) return;
     const id = setInterval(() => tick((n) => n + 1), 1000);
     return () => clearInterval(id);
   }, [active, startedAt]);
-  if (frozenMs !== undefined) return Math.max(1, Math.round(frozenMs / 1000));
+  if (frozenMs !== undefined) return Math.max(1, frozenMs);
   if (!startedAt) return 0;
-  return Math.max(0, Math.round((Date.now() - startedAt) / 1000));
+  return Math.max(0, Date.now() - startedAt);
+}
+
+/** "1m 20s" past a minute; otherwise "4.27s" (precise) or "4s" (live tick) below it. */
+function formatDuration(ms: number, precise: boolean): string {
+  const totalSeconds = ms / 1000;
+  if (totalSeconds >= 60) {
+    const minutes = Math.floor(totalSeconds / 60);
+    const secs = Math.round(totalSeconds % 60);
+    return `${minutes}m ${secs}s`;
+  }
+  if (precise) return `${totalSeconds.toFixed(2).replace(/^0\./, ".")}s`;
+  return `${Math.round(totalSeconds)}s`;
 }
 
 /**
@@ -157,7 +169,7 @@ function ThinkingBlock({ message }: { message: ChatMessageType }) {
   const [expanded, setExpanded] = useState(false);
   const isThinking = !!message.streaming && !message.content;
   const hasReasoning = !!message.reasoning && message.reasoning.trim().length > 0;
-  const seconds = useElapsedSeconds(isThinking, message.thinkingStartedAt, isThinking ? undefined : message.thinkingMs);
+  const elapsedMs = useElapsedMs(isThinking, message.thinkingStartedAt, isThinking ? undefined : message.thinkingMs);
 
   if (!isThinking && !hasReasoning) return null;
 
@@ -167,7 +179,7 @@ function ThinkingBlock({ message }: { message: ChatMessageType }) {
         <div className="stream-prelude">
           <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-slate-500" />
           <span className="thinking-label animate-thinking-shimmer">
-            {seconds > 0 ? `Thinking for ${seconds}s…` : "Thinking…"}
+            {elapsedMs > 0 ? `Thinking for ${formatDuration(elapsedMs, false)}…` : "Thinking…"}
           </span>
         </div>
         {hasReasoning && (
@@ -187,7 +199,7 @@ function ThinkingBlock({ message }: { message: ChatMessageType }) {
       >
         <ChevronRight size={12} className={`transition-transform ${expanded ? "rotate-90" : ""}`} />
         <Brain size={12} />
-        Thought for {seconds}s
+        Thought for {formatDuration(elapsedMs, true)}
       </button>
       {expanded && (
         <div className="max-h-64 overflow-y-auto whitespace-pre-wrap border-t border-base-700/60 px-3 py-2 text-xs italic leading-relaxed text-slate-500">
