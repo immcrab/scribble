@@ -121,35 +121,20 @@ function DocsIndex({ onOpen }: { onOpen: (slug: string) => void }) {
         />
       </div>
 
-      <div className="my-6">
-        <AdUnit slot="1111111111" width={728} height={90} className="w-full" />
-      </div>
-
-      {[...grouped.entries()].map(([provider, list], i) => (
-        <div key={provider}>
-          <section className="mt-8">
-            <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
-              {PROVIDER_LABELS[provider as ModelDef["provider"]]}
-            </h2>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {list.map((m) => (
-                <ModelCard key={m.modelId} model={m} onOpen={onOpen} />
-              ))}
-            </div>
-          </section>
-          {i < grouped.size - 1 && (
-            <div className="my-8 flex justify-center">
-              <AdUnit slot={i % 2 === 0 ? "2222222222" : "6666666666"} width={i % 2 === 0 ? 336 : 728} height={i % 2 === 0 ? 280 : 90} className={i % 2 === 0 ? "" : "w-full"} />
-            </div>
-          )}
-        </div>
+      {[...grouped.entries()].map(([provider, list]) => (
+        <section key={provider} className="mt-8">
+          <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            {PROVIDER_LABELS[provider as ModelDef["provider"]]}
+          </h2>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {list.map((m) => (
+              <ModelCard key={m.modelId} model={m} onOpen={onOpen} />
+            ))}
+          </div>
+        </section>
       ))}
 
       {filtered.length === 0 && <p className="mt-10 text-center text-sm text-slate-500">No models match "{query}"</p>}
-
-      <div className="my-8 flex justify-center">
-        <AdUnit slot="3333333333" width={728} height={90} className="w-full" />
-      </div>
     </div>
   );
 }
@@ -192,11 +177,7 @@ function ModelPage({ model, onOpen, onBackToIndex }: { model: ModelDef; onOpen: 
         </span>
       </div>
 
-      <div className="my-6">
-        <AdUnit slot="4444444444" width={336} height={280} className="mx-0" />
-      </div>
-
-      <dl className="grid grid-cols-2 gap-3 rounded-xl border border-base-700/60 bg-base-900/40 p-4 text-sm sm:grid-cols-3">
+      <dl className="mt-6 grid grid-cols-2 gap-3 rounded-xl border border-base-700/60 bg-base-900/40 p-4 text-sm sm:grid-cols-3">
         <div>
           <dt className="text-[11px] uppercase tracking-wide text-slate-500">Context length</dt>
           <dd className="mt-0.5 text-slate-200">{model.contextLength.toLocaleString()} tokens</dd>
@@ -213,10 +194,6 @@ function ModelPage({ model, onOpen, onBackToIndex }: { model: ModelDef; onOpen: 
         </div>
       </dl>
 
-      <div className="my-6 flex justify-center">
-        <AdUnit slot="7777777777" width={300} height={100} />
-      </div>
-
       {related.length > 0 && (
         <section className="mt-10">
           <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -229,11 +206,20 @@ function ModelPage({ model, onOpen, onBackToIndex }: { model: ModelDef; onOpen: 
           </div>
         </section>
       )}
-
-      <div className="my-8 flex justify-center">
-        <AdUnit slot="5555555555" width={728} height={90} className="w-full" />
-      </div>
     </div>
+  );
+}
+
+/** Two stacked ad units forming one side rail. Sticky on desktop so they stay in view
+ * while the center column scrolls; below `lg` there's no room beside the content, so
+ * they drop into normal flow instead — still visible, just stacked side-by-side under
+ * the page rather than beside it (see the flex-row/flex-col swap on the `aside`). */
+function AdRail({ slots, order }: { slots: [string, string]; order: string }) {
+  return (
+    <aside className={`flex shrink-0 justify-center gap-3 lg:w-[160px] lg:flex-col lg:sticky lg:top-4 ${order}`}>
+      <AdUnit slot={slots[0]} width={160} height={300} />
+      <AdUnit slot={slots[1]} width={160} height={300} />
+    </aside>
   );
 }
 
@@ -263,9 +249,20 @@ export function DocsPage({ slug, onExit }: { slug: string; onExit: () => void })
   return (
     <div className="flex h-dvh w-full flex-col overflow-y-auto bg-base-950">
       <DocsHeader onExit={onExit} />
-      {!slug && <DocsIndex onOpen={navigate} />}
-      {slug && model && <ModelPage model={model} onOpen={navigate} onBackToIndex={backToIndex} />}
-      {slug && !model && <NotFound onBackToIndex={backToIndex} />}
+
+      <div className="flex justify-center border-b border-base-700/40 bg-base-900/20 px-4 py-4">
+        <AdUnit slot="1111111111" width={728} height={90} className="w-full" />
+      </div>
+
+      <div className="mx-auto flex w-full max-w-[1400px] flex-1 flex-col gap-6 px-4 py-6 lg:flex-row lg:items-start lg:px-8">
+        <AdRail slots={["2222222222", "3333333333"]} order="order-2 lg:order-1" />
+        <div className="min-w-0 flex-1 order-1 lg:order-2">
+          {!slug && <DocsIndex onOpen={navigate} />}
+          {slug && model && <ModelPage model={model} onOpen={navigate} onBackToIndex={backToIndex} />}
+          {slug && !model && <NotFound onBackToIndex={backToIndex} />}
+        </div>
+        <AdRail slots={["4444444444", "5555555555"]} order="order-3" />
+      </div>
     </div>
   );
 }
