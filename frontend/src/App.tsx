@@ -10,7 +10,8 @@ import { ConsentGate } from "./components/ConsentGate";
 import { SharedChatView } from "./components/SharedChatView";
 import { hasAcceptedTerms } from "./lib/storage";
 import { applyTheme, watchSystemTheme } from "./lib/theme";
-import { parseChatIdFromLocation, syncUrlToChat, onPopState } from "./lib/router";
+import { parseChatIdFromLocation, syncUrlToChat, onPopState, parseDocsSlugFromLocation } from "./lib/router";
+import { DocsPage } from "./pages/DocsPage";
 import { fetchPublicChat } from "./lib/cloudSync";
 import { DirectMode } from "./modes/DirectMode";
 import { BattleMode } from "./modes/BattleMode";
@@ -52,6 +53,7 @@ export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [pending, setPending] = useState<InitialPrompt | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [docsSlug, setDocsSlug] = useState<string | null>(() => parseDocsSlugFromLocation());
   const [accepted, setAccepted] = useState(hasAcceptedTerms);
   const [shareState, setShareState] = useState<ShareState>(() => {
     const urlId = parseChatIdFromLocation();
@@ -98,12 +100,20 @@ export default function App() {
     []
   );
 
-  // Keep the address bar pointed at whichever chat is active — this is what gives every
-  // chat its own "/c/{id}" URL. Suspended while viewing someone else's shared chat.
+  // Docs is a separate section entirely (see pages/DocsPage.tsx) — track its own slug
+  // ("" = index, null = not in docs) so back/forward through /docs/{model} pages works.
   useEffect(() => {
-    if (shareState.status !== "idle" || !activeChatId) return;
+    const listener = () => setDocsSlug(parseDocsSlugFromLocation());
+    window.addEventListener("popstate", listener);
+    return () => window.removeEventListener("popstate", listener);
+  }, []);
+
+  // Keep the address bar pointed at whichever chat is active — this is what gives every
+  // chat its own "/c/{id}" URL. Suspended while viewing someone else's shared chat, or docs.
+  useEffect(() => {
+    if (shareState.status !== "idle" || !activeChatId || docsSlug !== null) return;
     syncUrlToChat(activeChatId);
-  }, [activeChatId, shareState.status]);
+  }, [activeChatId, shareState.status, docsSlug]);
 
   // Picking a chat from the sidebar (or starting a new one) while viewing a shared/unresolved
   // chat should always drop back into the normal app — those actions only ever fire from
@@ -154,6 +164,18 @@ export default function App() {
 
   const initialFor = (chatId: string) => (pending?.chatId === chatId ? pending : undefined);
   const consumeInitial = () => setPending(null);
+
+  if (docsSlug !== null) {
+    return (
+      <DocsPage
+        slug={docsSlug}
+        onExit={() => {
+          window.history.pushState(null, "", import.meta.env.BASE_URL);
+          setDocsSlug(null);
+        }}
+      />
+    );
+  }
 
   if (!accepted) {
     return <ConsentGate onAccept={() => setAccepted(true)} />;

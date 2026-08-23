@@ -1,6 +1,8 @@
 import type { ModelDef, Provider } from "../types";
 import { XKIRO_MODELS } from "./xkiroModels";
 
+// Adding a model here? Also add a one-line entry to modelDocs.ts — see ADD_NEW_MODEL.md.
+
 /**
  * Groq models — official free dev tier, OpenAI-compatible endpoint
  * https://api.groq.com/openai/v1/chat/completions

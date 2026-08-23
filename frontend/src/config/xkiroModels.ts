@@ -25,6 +25,8 @@ import type { ModelDef } from "../types";
  * occasional hiccup, so these three don't carry a `knownBroken` flag. Only
  * the three Qwen ids actually wanted are listed below; the other six xKiro
  * Qwen ids stay out until asked for.
+ *
+ * Adding a model here? Also add a one-line entry to modelDocs.ts — see ADD_NEW_MODEL.md.
  */
 export const XKIRO_MODELS: ModelDef[] = [
   {

@@ -13,12 +13,14 @@ import {
   LogOut,
   Search,
   Download as ExportIcon,
+  BookOpen,
 } from "lucide-react";
 import { LogoMark } from "./Logo";
 import { useChatStore } from "../state/chatStore";
 import { useAuthStore } from "../state/authStore";
 import { ExportChat } from "./ExportChat";
 import { AdUnit } from "./AdUnit";
+import { docsPath } from "../lib/router";
 import type { Mode } from "../types";
 
 const MODE_LABEL: Record<Mode, string> = {
@@ -316,6 +318,18 @@ export function Sidebar({
                 )}
               </>
             )}
+            <button
+              onClick={closeOnMobileSelect(() => {
+                window.history.pushState(null, "", docsPath());
+                window.dispatchEvent(new PopStateEvent("popstate"));
+              })}
+              className={`flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-slate-400 transition-colors hover:bg-base-800/70 hover:text-white ${
+                !sidebarOpen && !mobileOpen && "md:justify-center"
+              }`}
+            >
+              <BookOpen size={16} />
+              {(sidebarOpen || mobileOpen) && "Docs"}
+            </button>
             <button
               onClick={closeOnMobileSelect(onOpenSettings)}
               className={`flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-slate-400 transition-colors hover:bg-base-800/70 hover:text-white ${

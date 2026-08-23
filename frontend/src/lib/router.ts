@@ -44,3 +44,25 @@ export function onPopState(handler: (chatId: string | null) => void): () => void
   window.addEventListener("popstate", listener);
   return () => window.removeEventListener("popstate", listener);
 }
+
+/**
+ * Docs section lives at "<base>/docs" (index) and "<base>/docs/{slug}" (one model
+ * each) — same deep-link mechanism as "/c/{id}" above, via the 404.html/index.html
+ * redirect pair. `null` means "not a docs URL", `""` means the docs index.
+ */
+export function parseDocsSlugFromLocation(): string | null {
+  const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+  const path = window.location.pathname;
+  if (path === `${base}/docs` || path === `${base}/docs/`) return "";
+  const match = path.match(/\/docs\/([^/]+)\/?$/);
+  return match ? normalizeId(match[1]) : null;
+}
+
+export function docsPath(slug?: string): string {
+  const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+  return slug ? `${base}/docs/${encodeURIComponent(slug)}` : `${base}/docs`;
+}
+
+export function pushDocsPath(slug?: string): void {
+  window.history.pushState(null, "", docsPath(slug));
+}

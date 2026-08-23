@@ -4,7 +4,7 @@ export type Provider = "xkiro" | "groq" | "mistral" | "gemini" | "openrouter" | 
  * per-provider native param (or a system-prompt nudge) — see worker/src/adapters. */
 export type Effort = "low" | "medium" | "high" | "extra" | "ultra";
 
-export type ModelCapability = "text" | "vision" | "code" | "reasoning";
+export type ModelCapability = "text" | "vision" | "video" | "code" | "reasoning";
 
 export interface ModelDef {
   provider: Provider;
