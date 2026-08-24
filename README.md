@@ -100,14 +100,19 @@ npx wrangler deploy
 ```
 
 Copy the resulting `https://scribble-worker.<subdomain>.workers.dev` URL —
-you'll paste it into the frontend's Settings modal after deploying.
+you'll paste it into the frontend's Settings modal after deploying, or bake
+it in at build time via `VITE_WORKER_URL` (see below).
 
 ## 6. Deploy the frontend to GitHub Pages
 
 ```bash
 cd frontend
-npm run build   # outputs to frontend/dist
+VITE_WORKER_URL=https://scribble-worker.<subdomain>.workers.dev npm run build   # outputs to frontend/dist
 ```
+
+Setting `VITE_WORKER_URL` at build time bakes in a default Worker endpoint so
+visitors don't have to manually configure Settings — it's just the public
+Worker URL, not a secret. Settings can still override it per-browser.
 
 `vite.config.ts` sets `base: "/scribble/"` by default — change it (or pass
 `VITE_BASE=/your-repo-name/` at build time) to match your repository name, or
