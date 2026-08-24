@@ -16,6 +16,24 @@ import type { ModelCapability, ModelDef } from "../types";
  * based on the current URL, matching the "/c/{id}" pattern in lib/router.ts.
  */
 
+/**
+ * Real AdSense ad-unit slot ids (client ca-pub-3625273606687332 — see AdUnit.tsx).
+ * Each id below must come from an ad unit created in the AdSense dashboard
+ * (Ads → By ad unit → Display ads); a slot id can't be invented, it has to be
+ * copied from there. Swap every "REPLACE_ME_*" for a real slot id — until then
+ * those units render as unfilled/blank space, same as any other new ad unit.
+ *
+ * The rails intentionally hold more than 2 ids each: they're laid out in normal
+ * document flow (not sticky), so as the page scrolls each ad scrolls away and
+ * the next one in the array takes its place — different creative, not the same
+ * unit following the reader down the page.
+ */
+const AD_SLOTS = {
+  top: "REPLACE_ME_TOP",
+  left: ["REPLACE_ME_LEFT_1", "REPLACE_ME_LEFT_2", "REPLACE_ME_LEFT_3"],
+  right: ["REPLACE_ME_RIGHT_1", "REPLACE_ME_RIGHT_2", "REPLACE_ME_RIGHT_3"],
+};
+
 export function modelSlug(modelId: string): string {
   return modelId
     .toLowerCase()
@@ -210,15 +228,17 @@ function ModelPage({ model, onOpen, onBackToIndex }: { model: ModelDef; onOpen: 
   );
 }
 
-/** Two stacked ad units forming one side rail. Sticky on desktop so they stay in view
- * while the center column scrolls; below `lg` there's no room beside the content, so
- * they drop into normal flow instead — still visible, just stacked side-by-side under
- * the page rather than beside it (see the flex-row/flex-col swap on the `aside`). */
-function AdRail({ slots, order }: { slots: [string, string]; order: string }) {
+/** A side rail of ad units in normal document flow — deliberately NOT sticky, so each
+ * one scrolls away with the page instead of chasing the reader down it. Spaced apart
+ * with a big gap so there's a clear stretch of empty rail (the "cutoff") before the
+ * next, different, ad unit scrolls into view. Below `lg` there's no room beside the
+ * content, so the rail drops under it instead, still stacked vertically. */
+function AdRail({ slots, order }: { slots: string[]; order: string }) {
   return (
-    <aside className={`flex shrink-0 justify-center gap-3 lg:w-[160px] lg:flex-col lg:sticky lg:top-4 ${order}`}>
-      <AdUnit slot={slots[0]} width={160} height={300} />
-      <AdUnit slot={slots[1]} width={160} height={300} />
+    <aside className={`flex shrink-0 flex-col items-center gap-32 lg:w-[160px] ${order}`}>
+      {slots.map((slot) => (
+        <AdUnit key={slot} slot={slot} width={160} height={300} />
+      ))}
     </aside>
   );
 }
@@ -251,17 +271,17 @@ export function DocsPage({ slug, onExit }: { slug: string; onExit: () => void })
       <DocsHeader onExit={onExit} />
 
       <div className="flex justify-center border-b border-base-700/40 bg-base-900/20 px-4 py-4">
-        <AdUnit slot="1111111111" width={728} height={90} className="w-full" />
+        <AdUnit slot={AD_SLOTS.top} width={728} height={90} className="w-full" />
       </div>
 
       <div className="mx-auto flex w-full max-w-[1400px] flex-1 flex-col gap-6 px-4 py-6 lg:flex-row lg:items-start lg:px-8">
-        <AdRail slots={["2222222222", "3333333333"]} order="order-2 lg:order-1" />
+        <AdRail slots={AD_SLOTS.left} order="order-2 lg:order-1" />
         <div className="min-w-0 flex-1 order-1 lg:order-2">
           {!slug && <DocsIndex onOpen={navigate} />}
           {slug && model && <ModelPage model={model} onOpen={navigate} onBackToIndex={backToIndex} />}
           {slug && !model && <NotFound onBackToIndex={backToIndex} />}
         </div>
-        <AdRail slots={["4444444444", "5555555555"]} order="order-3" />
+        <AdRail slots={AD_SLOTS.right} order="order-3" />
       </div>
     </div>
   );
