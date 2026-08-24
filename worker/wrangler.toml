@@ -1,0 +1,19 @@
+name = "scribble-worker"
+main = "src/index.ts"
+compatibility_date = "2024-11-01"
+
+# Comma-separated list of allowed origins for CORS, e.g. your GitHub Pages
+# domain. Set with: wrangler secret put ALLOWED_ORIGINS  (or as a plain var
+# below if you don't mind it being public — it's not sensitive).
+[vars]
+ALLOWED_ORIGINS = "http://localhost:5173,https://immcrab.github.io,https://scribbleai.dev"
+
+# Secrets (never commit real values — set these with `wrangler secret put NAME`):
+#   XKIRO_API_KEY
+#   GROQ_API_KEY
+#   MISTRAL_API_KEY
+#   GEMINI_API_KEY
+#   OPENROUTER_API_KEY
+#   SCRIBBLE_PASSWORD   (optional — omit to leave Scribble open/unauthenticated)
+#   CF_ACCOUNT_ID       (Cloudflare account id — powers /api/image/generate)
+#   CF_AI_TOKEN         (Workers AI-scoped API token — powers /api/image/generate)

@@ -1,0 +1,354 @@
+import type { ModelDef, Provider } from "../types";
+import { XKIRO_MODELS } from "./xkiroModels";
+
+// Adding a model here? Also add a one-line entry to modelDocs.ts — see ADD_NEW_MODEL.md.
+
+/**
+ * Groq models — official free dev tier, OpenAI-compatible endpoint
+ * https://api.groq.com/openai/v1/chat/completions
+ * Verified live against a real Groq free-tier key (Aug 2026) — Groq's
+ * catalog turns over fast, so re-check GET /openai/v1/models periodically.
+ */
+const GROQ_MODELS: ModelDef[] = [
+  {
+    provider: "groq",
+    modelId: "groq/compound",
+    displayName: "Compound",
+    icon: "Zap",
+    contextLength: 131072,
+    capabilities: ["text", "reasoning", "code"],
+    free: true,
+    supportsStreaming: true,
+    supportsVision: false,
+  },
+  {
+    provider: "groq",
+    modelId: "groq/compound-mini",
+    displayName: "Compound Mini",
+    icon: "Zap",
+    contextLength: 131072,
+    capabilities: ["text", "reasoning"],
+    free: true,
+    supportsStreaming: true,
+    supportsVision: false,
+  },
+  {
+    provider: "groq",
+    modelId: "openai/gpt-oss-120b",
+    displayName: "GPT-OSS 120B",
+    icon: "Zap",
+    contextLength: 131072,
+    capabilities: ["text", "reasoning"],
+    free: true,
+    supportsStreaming: true,
+    supportsVision: false,
+  },
+  {
+    provider: "groq",
+    modelId: "openai/gpt-oss-20b",
+    displayName: "GPT-OSS 20B",
+    icon: "Zap",
+    contextLength: 131072,
+    capabilities: ["text", "reasoning"],
+    free: true,
+    supportsStreaming: true,
+    supportsVision: false,
+  },
+  {
+    provider: "groq",
+    modelId: "llama-3.2-11b-vision-preview",
+    displayName: "Llama 3.2 11B Vision",
+    icon: "Zap",
+    contextLength: 128000,
+    capabilities: ["text", "vision", "reasoning"],
+    free: true,
+    supportsStreaming: true,
+    supportsVision: true,
+  },
+  {
+    provider: "groq",
+    modelId: "qwen/qwen3.6-27b",
+    displayName: "Qwen3.6 27B",
+    icon: "Zap",
+    contextLength: 131072,
+    capabilities: ["text", "reasoning", "code"],
+    free: true,
+    supportsStreaming: true,
+    supportsVision: false,
+  },
+];
+
+/**
+ * Mistral models — La Plateforme free "Experiment" tier (rate-limited, all
+ * models available). Endpoint is OpenAI-compatible:
+ * https://api.mistral.ai/v1/chat/completions
+ * Verified live against a real Mistral key (Aug 2026) — pixtral/nemo aliases
+ * from earlier catalogs are gone; check GET /v1/models to refresh this.
+ */
+const MISTRAL_MODELS: ModelDef[] = [
+  {
+    provider: "mistral",
+    modelId: "mistral-small-latest",
+    displayName: "Mistral Small",
+    icon: "Wind",
+    contextLength: 32000,
+    capabilities: ["text", "code"],
+    free: true,
+    supportsStreaming: true,
+    supportsVision: false,
+  },
+  {
+    provider: "mistral",
+    modelId: "mistral-large-latest",
+    displayName: "Mistral Large",
+    icon: "Wind",
+    contextLength: 128000,
+    capabilities: ["text", "code", "reasoning"],
+    free: true,
+    supportsStreaming: true,
+    supportsVision: false,
+  },
+  {
+    provider: "mistral",
+    modelId: "ministral-8b-latest",
+    displayName: "Ministral 8B",
+    icon: "Wind",
+    contextLength: 128000,
+    capabilities: ["text"],
+    free: true,
+    supportsStreaming: true,
+    supportsVision: false,
+  },
+  {
+    provider: "mistral",
+    modelId: "codestral-latest",
+    displayName: "Codestral",
+    icon: "Wind",
+    contextLength: 32000,
+    capabilities: ["code"],
+    free: true,
+    supportsStreaming: true,
+    supportsVision: false,
+  },
+  {
+    provider: "mistral",
+    modelId: "pixtral-12b-2409",
+    displayName: "Pixtral 12B",
+    icon: "Wind",
+    contextLength: 128000,
+    capabilities: ["text", "vision", "code"],
+    free: true,
+    supportsStreaming: true,
+    supportsVision: true,
+  },
+  {
+    provider: "mistral",
+    modelId: "devstral-latest",
+    displayName: "Devstral",
+    icon: "Wind",
+    contextLength: 128000,
+    capabilities: ["code"],
+    free: true,
+    supportsStreaming: true,
+    supportsVision: false,
+  },
+];
+
+/**
+ * Gemini models — official free API tier only (Pro is paid-only as of 2026).
+ * https://generativelanguage.googleapis.com/v1beta/models/{model}:streamGenerateContent
+ * Verified live against a real Gemini key (Aug 2026) — 2.5 Flash/Flash-Lite
+ * were retired for new users mid-2026 in favor of the 3.x line below.
+ */
+const GEMINI_MODELS: ModelDef[] = [
+  {
+    provider: "gemini",
+    modelId: "gemini-3.6-flash",
+    displayName: "Gemini 3.6 Flash",
+    icon: "Gem",
+    contextLength: 1000000,
+    capabilities: ["text", "vision", "code"],
+    free: true,
+    supportsStreaming: true,
+    supportsVision: true,
+  },
+  {
+    provider: "gemini",
+    modelId: "gemini-3.5-flash-lite",
+    displayName: "Gemini 3.5 Flash-Lite",
+    icon: "Gem",
+    contextLength: 1000000,
+    capabilities: ["text", "vision"],
+    free: true,
+    supportsStreaming: true,
+    supportsVision: true,
+  },
+];
+
+/**
+ * OpenRouter — single OpenAI-compatible endpoint that proxies to many
+ * upstream providers, model ids namespaced as "{provider}/{model}":
+ * https://openrouter.ai/api/v1/chat/completions
+ * Only ":free" variants are listed here (verified live against GET /api/v1/models,
+ * Aug 2026) — free-tier rate limits are low and the catalog turns over, so
+ * re-check periodically.
+ */
+const OPENROUTER_MODELS: ModelDef[] = [
+  {
+    provider: "openrouter",
+    modelId: "z-ai/glm-5.2:free",
+    displayName: "GLM 5.2",
+    icon: "Route",
+    contextLength: 256000,
+    capabilities: ["text", "code", "reasoning"],
+    free: true,
+    supportsStreaming: true,
+    supportsVision: false,
+  },
+  {
+    provider: "openrouter",
+    modelId: "openai/gpt-oss-20b:free",
+    displayName: "GPT-OSS 20B",
+    icon: "Route",
+    contextLength: 131072,
+    capabilities: ["text", "reasoning"],
+    free: true,
+    supportsStreaming: true,
+    supportsVision: false,
+  },
+  {
+    provider: "openrouter",
+    modelId: "nvidia/nemotron-3-ultra-550b-a55b:free",
+    displayName: "Nemotron 3 Ultra",
+    icon: "Route",
+    contextLength: 1000000,
+    capabilities: ["text", "reasoning"],
+    free: true,
+    supportsStreaming: true,
+    supportsVision: false,
+  },
+  {
+    provider: "openrouter",
+    modelId: "nvidia/nemotron-3-super-120b-a12b:free",
+    displayName: "Nemotron 3 Super",
+    icon: "Route",
+    contextLength: 262144,
+    capabilities: ["text"],
+    free: true,
+    supportsStreaming: true,
+    supportsVision: false,
+  },
+  {
+    provider: "openrouter",
+    modelId: "google/gemma-4-31b-it:free",
+    displayName: "Gemma 4 31B",
+    icon: "Route",
+    contextLength: 262144,
+    capabilities: ["text", "vision"],
+    free: true,
+    supportsStreaming: true,
+    supportsVision: true,
+  },
+  {
+    provider: "openrouter",
+    modelId: "nvidia/nemotron-nano-12b-v2-vl:free",
+    displayName: "Nemotron Nano 12B VL",
+    icon: "Route",
+    contextLength: 128000,
+    capabilities: ["text", "vision"],
+    free: true,
+    supportsStreaming: true,
+    supportsVision: true,
+  },
+  {
+    provider: "openrouter",
+    modelId: "poolside/laguna-s-2.1",
+    displayName: "Laguna S 2.1",
+    icon: "Route",
+    contextLength: 1048576,
+    capabilities: ["text", "code"],
+    free: false,
+    supportsStreaming: true,
+    supportsVision: false,
+  },
+];
+
+export const ALL_MODELS: ModelDef[] = [
+  ...XKIRO_MODELS,
+  ...GROQ_MODELS,
+  ...MISTRAL_MODELS,
+  ...GEMINI_MODELS,
+  ...OPENROUTER_MODELS,
+];
+
+export const DEFAULT_MODEL_ID = "mistralai/mistral-small-2603";
+
+/** Every model except the free default requires signing in — see the plan's
+ * "Sign-in gating" slice. Checked by ModelSelector, SettingsModal's default-model
+ * picker, ChatMessage's regenerate-with menu, and defensively in runStream.ts. */
+export function isModelGated(model: Pick<ModelDef, "modelId" | "provider">): boolean {
+  return !(model.provider === "xkiro" && model.modelId === DEFAULT_MODEL_ID);
+}
+
+export const PROVIDER_LABELS: Record<Provider, string> = {
+  xkiro: "xKiro",
+  groq: "Groq",
+  mistral: "Mistral",
+  gemini: "Google Gemini",
+  openrouter: "OpenRouter",
+  custom: "Custom",
+};
+
+/**
+ * User-added models (Settings → Custom Models) live in `settings.customModels`,
+ * which only React components can reach directly via the zustand store. Every
+ * other consumer here — chatStore's own default-model logic, the non-React
+ * modes — needs them too, and threading a `customModels` param through every
+ * `findModel`/`getDefaultModel` call site would touch a dozen files for no
+ * real benefit. Instead chatStore pushes the current list in here once,
+ * on init and on every settings update, and everything below reads through
+ * `allModels()` — same pattern as a small in-memory cache kept in sync by
+ * its one writer.
+ */
+let customModels: ModelDef[] = [];
+
+export function setCustomModels(models: ModelDef[]): void {
+  customModels = models;
+}
+
+function allModels(): ModelDef[] {
+  return customModels.length ? [...ALL_MODELS, ...customModels] : ALL_MODELS;
+}
+
+/** Flat list of every selectable model — built-ins plus whatever the user added in Settings. */
+export function getAllModels(): ModelDef[] {
+  return allModels();
+}
+
+export function modelsByProvider(): Record<Provider, ModelDef[]> {
+  const grouped = {} as Record<Provider, ModelDef[]>;
+  for (const m of allModels()) {
+    (grouped[m.provider] ??= []).push(m);
+  }
+  return grouped;
+}
+
+export function findModel(modelId: string): ModelDef | undefined {
+  return allModels().find((m) => m.modelId === modelId);
+}
+
+export function getDefaultModel(overrideId?: string): ModelDef {
+  return (overrideId ? findModel(overrideId) : undefined) ?? findModel(DEFAULT_MODEL_ID) ?? ALL_MODELS[0];
+}
+
+export function randomModelPair(): [ModelDef, ModelDef] {
+  const pool = allModels().filter((m) => m.free && m.supportsStreaming && !m.knownBroken);
+  const a = pool[Math.floor(Math.random() * pool.length)];
+  let b = pool[Math.floor(Math.random() * pool.length)];
+  let guard = 0;
+  while (b.modelId === a.modelId && pool.length > 1 && guard < 20) {
+    b = pool[Math.floor(Math.random() * pool.length)];
+    guard++;
+  }
+  return [a, b];
+}

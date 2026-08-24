@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <script>
+      (function (l) {
+        if (l.search[1] === "/") {
+          var decoded = l.search
+            .slice(1)
+            .split("&")
+            .map(function (s) {
+              return s.replace(/~and~/g, "&");
+            })
+            .join("?");
+          window.history.replaceState(null, "", l.pathname.slice(0, -1) + decoded + l.hash);
+        }
+      })(window.location);
+    </script>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=yes, maximum-scale=5, minimum-scale=1" />
+    <title>Scribble — Multi-Model AI Chat</title>
+    <meta name="description" content="Scribble: battle, compare, and chat with AI models." />
+    <link rel="canonical" href="https://scribbleai.dev/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://scribbleai.dev/" />
+    <meta property="og:site_name" content="Scribble" />
+    <meta property="og:title" content="Scribble — Multi-Model AI Chat" />
+    <meta property="og:description" content="Battle, compare, and chat with AI models side by side." />
+    <meta property="og:image" content="https://scribbleai.dev/pwa-512.png" />
+    <meta property="og:image:width" content="512" />
+    <meta property="og:image:height" content="512" />
+    <meta property="og:image:type" content="image/png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Scribble — Multi-Model AI Chat" />
+    <meta name="twitter:description" content="Battle, compare, and chat with AI models side by side." />
+    <meta name="twitter:image" content="https://scribbleai.dev/pwa-512.png" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/favicon.svg" />
+    <link rel="mask-icon" href="/favicon.svg" color="#1b1a18" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="theme-color" content="#1b1a18" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,300;8..60,500;8..60,600&display=swap"
+      rel="stylesheet"
+    />
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3625273606687332"
+     crossorigin="anonymous"></script>
+
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-G07JY55E9C"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'G-G07JY55E9C');
+    </script>
+  </head>
+  <body class="bg-base-950 text-slate-100 antialiased">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
