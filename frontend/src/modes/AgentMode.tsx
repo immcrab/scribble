@@ -173,11 +173,12 @@ export function AgentMode({
           {PLANNED_TOOLS.map((t) => (
             <span
               key={t.label}
-              title="Coming soon — infrastructure is in place, not yet wired to a live tool"
-              className="flex items-center gap-1 rounded-lg border border-base-700/50 px-2 py-1 text-[11px] text-slate-600"
+              title="Not wired up yet — planned for a future update"
+              className="flex cursor-default items-center gap-1 rounded-lg border border-dashed border-base-700/50 px-2 py-1 text-[11px] text-slate-600"
             >
               <t.icon size={11} />
               {t.label}
+              <span className="ml-0.5 text-[9px] uppercase tracking-wide text-slate-700">soon</span>
             </span>
           ))}
         </div>

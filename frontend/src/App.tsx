@@ -71,6 +71,20 @@ export default function App() {
     watchSystemTheme(settings.theme);
   }, [settings.theme]);
 
+  // Keep the tab title in sync with whatever's actually on screen — the active
+  // chat, a shared chat someone sent us, or the docs section — instead of the
+  // static default from index.html.
+  useEffect(() => {
+    if (docsSlug !== null) return; // DocsPage owns its own title while mounted
+    if (shareState.status === "shared") {
+      document.title = `${shareState.chat.title || "Shared chat"} — Scribble`;
+    } else if (activeChat?.title) {
+      document.title = `${activeChat.title} — Scribble`;
+    } else {
+      document.title = "Scribble — Multi-Model AI Chat";
+    }
+  }, [docsSlug, shareState, activeChat?.title]);
+
   // Kick off the fetch for a shared chat this browser doesn't have locally
   // (deferred out of useState's initializer, which must stay side-effect-free).
   useEffect(() => {

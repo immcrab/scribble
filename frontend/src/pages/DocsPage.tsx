@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { ArrowLeft, Search, Eye, Video, Code2, Brain, Type, Zap, Lock } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { ArrowLeft, Search, Eye, Video, Code2, Brain, Type, Zap, Lock, ArrowUp, ChevronDown } from "lucide-react";
 import { getAllModels, PROVIDER_LABELS, isModelGated } from "../config/models";
 import { getModelDescription } from "../config/modelDocs";
 import { ModelFavicon } from "../components/ProviderIcon";
@@ -33,6 +33,79 @@ const AD_SLOTS = {
   left: ["REPLACE_ME_LEFT_1", "REPLACE_ME_LEFT_2", "REPLACE_ME_LEFT_3"],
   right: ["REPLACE_ME_RIGHT_1", "REPLACE_ME_RIGHT_2", "REPLACE_ME_RIGHT_3"],
 };
+
+/** Bump this whenever a model is added/removed/re-described — shown on the index
+ * page so readers know how fresh the catalog is. */
+const CATALOG_LAST_UPDATED = "August 2026";
+
+const FAQ_ITEMS: { question: string; answer: string }[] = [
+  {
+    question: "Do I need an account to use these models?",
+    answer:
+      "No. Most models here are free and open the moment you pick them. A few — marked with a lock icon — need a sign-in, usually because the provider requires it or the model costs real money to run.",
+  },
+  {
+    question: "Is my chat data used to train anything?",
+    answer:
+      "Scribble doesn't train models. Messages are sent straight to the provider you picked, under that provider's own terms — see the model's page for which one that is.",
+  },
+  {
+    question: "Why does context length vary so much between models?",
+    answer:
+      "It's set by whoever built the model, not by Scribble. Longer context means the model can hold more of a conversation or document in memory at once, but it also tends to cost more and run slower.",
+  },
+  {
+    question: "Can I add a model that isn't listed here?",
+    answer:
+      "Yes — any OpenAI-compatible endpoint can be added from Settings → Custom Models. It'll show up in the model picker but won't get a docs page here since Scribble has no way to verify what it actually does.",
+  },
+];
+
+function FaqItem({ item }: { item: (typeof FAQ_ITEMS)[number] }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="border-b border-base-700/50 py-3 first:pt-0 last:border-b-0">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        className="flex w-full items-center justify-between gap-3 text-left text-sm font-medium text-slate-200 hover:text-white"
+      >
+        {item.question}
+        <ChevronDown size={15} className={`shrink-0 text-slate-500 transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
+      {open && <p className="mt-2 text-sm leading-relaxed text-slate-400">{item.answer}</p>}
+    </div>
+  );
+}
+
+function FaqSection() {
+  return (
+    <section className="mt-10 rounded-xl border border-base-700/60 bg-base-900/40 p-4 sm:p-5">
+      <h2 className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Frequently asked</h2>
+      <div>
+        {FAQ_ITEMS.map((item) => (
+          <FaqItem key={item.question} item={item} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+/** Floating scroll-to-top button, shown once the reader is far enough down a docs
+ * page for it to be worth the tap — these pages (especially the catalog) can run long. */
+function BackToTop({ visible, onClick }: { visible: boolean; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      aria-label="Back to top"
+      className={`fixed bottom-6 right-4 z-20 flex h-10 w-10 items-center justify-center rounded-full border border-base-600/60 bg-base-800/90 text-slate-300 shadow-panel backdrop-blur transition-all hover:border-accent-500/50 hover:text-white sm:right-6 ${
+        visible ? "opacity-100" : "pointer-events-none translate-y-2 opacity-0"
+      }`}
+    >
+      <ArrowUp size={16} />
+    </button>
+  );
+}
 
 export function modelSlug(modelId: string): string {
   return modelId
@@ -128,6 +201,7 @@ function DocsIndex({ onOpen }: { onOpen: (slug: string) => void }) {
       <p className="mt-2 max-w-2xl text-sm text-slate-400">
         Every model available in Scribble, what it's good at, and its capabilities — vision, code, reasoning, and more.
       </p>
+      <p className="mt-1 text-xs text-slate-600">Catalog last updated {CATALOG_LAST_UPDATED}</p>
 
       <div className="relative mt-5 max-w-sm">
         <Search size={14} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" />
@@ -153,6 +227,8 @@ function DocsIndex({ onOpen }: { onOpen: (slug: string) => void }) {
       ))}
 
       {filtered.length === 0 && <p className="mt-10 text-center text-sm text-slate-500">No models match "{query}"</p>}
+
+      <FaqSection />
     </div>
   );
 }
@@ -266,8 +342,29 @@ export function DocsPage({ slug, onExit }: { slug: string; onExit: () => void })
 
   const model = slug ? getAllModels().find((m) => modelSlug(m.modelId) === slug) : undefined;
 
+  useEffect(() => {
+    document.title = model ? `${model.displayName} — Scribble Docs` : "Model catalog — Scribble Docs";
+  }, [model]);
+
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [scrollPct, setScrollPct] = useState(0);
+  const handleScroll = () => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const max = el.scrollHeight - el.clientHeight;
+    setScrollPct(max > 0 ? Math.min(1, el.scrollTop / max) : 0);
+  };
+  // New page (index <-> a model) starts scrolled to top with a reset progress bar.
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: 0 });
+    setScrollPct(0);
+  }, [slug]);
+
   return (
-    <div className="flex h-dvh w-full flex-col overflow-y-auto bg-base-950">
+    <div ref={scrollRef} onScroll={handleScroll} className="flex h-dvh w-full flex-col overflow-y-auto bg-base-950">
+      <div className="fixed inset-x-0 top-0 z-20 h-[2px] bg-base-800/60">
+        <div className="h-full bg-accent-500 transition-[width]" style={{ width: `${scrollPct * 100}%` }} />
+      </div>
       <DocsHeader onExit={onExit} />
 
       <div className="flex justify-center border-b border-base-700/40 bg-base-900/20 px-4 py-4">
@@ -283,6 +380,8 @@ export function DocsPage({ slug, onExit }: { slug: string; onExit: () => void })
         </div>
         <AdRail slots={AD_SLOTS.right} order="order-3" />
       </div>
+
+      <BackToTop visible={scrollPct > 0.15} onClick={() => scrollRef.current?.scrollTo({ top: 0, behavior: "smooth" })} />
     </div>
   );
 }
