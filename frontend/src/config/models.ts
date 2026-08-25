@@ -424,7 +424,7 @@ export const ALL_MODELS: ModelDef[] = [
 export const DEFAULT_MODEL_ID = "mistralai/mistral-small-2603";
 
 /** Every model except the free default requires signing in — see the plan's
- * "Sign-in gating" slice. Checked by ModelSelector, SettingsPage's default-model
+ * "Sign-in gating" slice. Checked by ModelSelector, SettingsModal's default-model
  * picker, ChatMessage's regenerate-with menu, and defensively in runStream.ts. */
 export function isModelGated(model: Pick<ModelDef, "modelId" | "provider">): boolean {
   return !(model.provider === "xkiro" && model.modelId === DEFAULT_MODEL_ID);
