@@ -25,7 +25,7 @@ export async function shouldSearchWeb(apiKey: string, query: string): Promise<bo
     body: JSON.stringify({
       model: SEARCH_DECISION_MODEL,
       stream: false,
-      max_tokens: 20,
+      max_tokens: 40,
       temperature: 0,
       reasoning_effort: "low",
       messages: [
@@ -45,6 +45,10 @@ export async function shouldSearchWeb(apiKey: string, query: string): Promise<bo
 
   const json = (await res.json()) as { choices?: { message?: { content?: string } }[] };
   const raw = json.choices?.[0]?.message?.content?.trim().toLowerCase() ?? "";
+  // Reasoning models occasionally still burn the whole budget on hidden
+  // chain-of-thought despite reasoning_effort/max_tokens headroom above —
+  // treat that as inconclusive (caller fails open) rather than a silent "no".
+  if (!raw) throw new Error("Groq returned no decision.");
   return raw.startsWith("y");
 }
 
