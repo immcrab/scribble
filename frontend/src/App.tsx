@@ -6,6 +6,7 @@ import { Composer } from "./components/Composer";
 import { EmptyState } from "./components/EmptyState";
 import { SettingsModal } from "./components/SettingsModal";
 import { PWAInstallPrompt } from "./components/PWAInstallPrompt";
+import { LocationConsentPrompt } from "./components/LocationConsentPrompt";
 import { ConsentGate } from "./components/ConsentGate";
 import { SharedChatView } from "./components/SharedChatView";
 import { hasAcceptedTerms } from "./lib/storage";
@@ -285,6 +286,7 @@ export default function App() {
       </div>
 
       <PWAInstallPrompt />
+      <LocationConsentPrompt />
       {settingsOpen && <SettingsModal onClose={() => setSettingsOpen(false)} />}
     </div>
   );

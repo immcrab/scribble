@@ -20,11 +20,13 @@ export interface ScribbleSettings {
    * classification call — whether the reply needs a live web search, and run one
    * automatically if so. See worker/src/adapters/search.ts. */
   autoWebSearch: boolean;
-  /** When true, every chat turn asks the browser's Geolocation API for the user's approximate
-   * position (prompting for permission on first use) and sends coarse "lat, lon" coordinates
-   * along with the request — see lib/clientContext.ts. Off by default; local date/time and
-   * timezone are always sent regardless, since neither reveals anything sensitive. */
-  shareLocation: boolean;
+  /** Consent state for sending an IP-derived approximate location (city-level, via ipapi.co —
+   * no browser geolocation prompt) with each chat request — see lib/clientContext.ts.
+   * "unset": never asked yet, in-site popup will ask once. "granted"/"denied": user's answer,
+   * from the popup or toggled directly in Settings. If "denied", the popup asks again the next
+   * time the user sends a message that looks location-related (e.g. "where am I"). Local
+   * date/time and timezone are always sent regardless, since neither reveals anything sensitive. */
+  locationConsent: "unset" | "granted" | "denied";
   /** Light/Dark/System — applied via frontend/src/lib/theme.ts. */
   theme: Theme;
   /** Global default reasoning effort for new chats — overridable per-chat (Chat.effort). */
@@ -45,7 +47,7 @@ const SETTINGS_DEFAULTS: Omit<ScribbleSettings, "workerUrl" | "password"> = {
   reduceMotion: false,
   autoOpenCode: true,
   autoWebSearch: true,
-  shareLocation: false,
+  locationConsent: "unset",
   theme: "dark",
   effort: "medium",
   customProviders: [],

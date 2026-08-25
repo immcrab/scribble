@@ -265,9 +265,9 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
                   />
                   <ToggleSwitch
                     label="Share approximate location"
-                    description="Lets Scribble give locally-relevant answers. Your browser will ask permission before sharing anything — off by default"
-                    checked={settings.shareLocation}
-                    onChange={(v) => updateSettings({ shareLocation: v })}
+                    description="Lets Scribble give locally-relevant answers, using a city-level estimate from your IP address — never exact GPS. Off by default"
+                    checked={settings.locationConsent === "granted"}
+                    onChange={(v) => updateSettings({ locationConsent: v ? "granted" : "denied" })}
                   />
                 </div>
               </div>

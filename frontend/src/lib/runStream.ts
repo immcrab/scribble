@@ -44,7 +44,8 @@ export async function runAssistantStream(params: {
   store.updateMessage(chatId, messageId, { thinkingStartedAt });
   let thinkingStamped = false;
 
-  const clientContext = await getClientContext(store.settings.shareLocation);
+  const lastUserMessage = [...history].reverse().find((m) => m.role === "user")?.content;
+  const clientContext = await getClientContext(store.settings.locationConsent, lastUserMessage);
 
   try {
     for await (const chunk of streamChat({
