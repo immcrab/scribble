@@ -32,7 +32,7 @@ export async function shouldSearchWeb(apiKey: string, query: string): Promise<bo
         {
           role: "system",
           content:
-            'Decide whether answering the user\'s message well requires a live web search — e.g. current events, prices, scores, recent releases, "today"/"latest"/"right now", or anything that changes over time or postdates your training. General knowledge, coding help, math, writing, and conversation don\'t need it. Reply with exactly one word: "yes" or "no".',
+            'Decide whether answering the user\'s message well would benefit from a live web search rather than a memorized guess. Search for: current events, prices, scores, recent releases, "today"/"latest"/"right now", anything that changes over time or postdates your training, and factual lookups a memorized answer would likely get wrong or only approximate — statistics, population/counts, rankings, specific real-world numbers, named real people/places/products you\'re unsure about. Don\'t search for: coding help, math, writing, brainstorming, opinions, or general conceptual knowledge a good answer doesn\'t hinge on a precise current number. When unsure, prefer searching. Reply with exactly one word: "yes" or "no".',
         },
         { role: "user", content: query.slice(0, 2000) },
       ],

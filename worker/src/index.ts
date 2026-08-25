@@ -142,7 +142,10 @@ export default {
                   : "No results found.";
                 messages = messages.map((m, i) =>
                   i === lastUserIdx
-                    ? { ...m, content: `${m.content}\n\n[Web search results for "${query}":\n${resultsText}]` }
+                    ? {
+                        ...m,
+                        content: `${m.content}\n\n[Live web search results for "${query}" — use these to answer accurately:\n${resultsText}]`,
+                      }
                     : m
                 );
                 controller.enqueue(
