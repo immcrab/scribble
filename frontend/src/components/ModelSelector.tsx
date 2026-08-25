@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { ChevronDown, ChevronRight, Eye, Check, Sparkles, Star, Lock, TriangleAlert, Loader2, X } from "lucide-react";
 import type { ModelDef, Provider } from "../types";
-import { modelsByProvider, PROVIDER_LABELS, isModelGated, registerSessionPuterModel } from "../config/models";
+import { modelsByProvider, PROVIDER_LABELS, isModelGated } from "../config/models";
 import { ModelFavicon, ProviderFavicon } from "./ProviderIcon";
 import { Dropdown } from "./Dropdown";
 import { PuterNoticeModal } from "./PuterNoticeModal";
@@ -193,10 +193,6 @@ export function ModelSelector({
   }
 
   function selectModel(m: ModelDef, close: () => void) {
-    // Chats only persist a modelId string and resolve it back via findModel() — an
-    // unstarred catalog pick needs registering here or it'd be unresolvable and silently
-    // fall back to the default model the moment this dropdown closes.
-    if (m.provider === "puter") registerSessionPuterModel(m);
     if (isModelGated(m) && !user) {
       signInWithGoogle();
       return;
@@ -206,18 +202,22 @@ export function ModelSelector({
       close();
       return;
     }
+    // Picking a Puter model favorites it — that's also what makes it resolvable later:
+    // chats only persist a modelId string and look it up via findModel(), which searches
+    // the curated catalog plus favorites/custom models, not Puter's full live catalog.
+    if (m.provider === "puter" && !isFavorited(m.modelId)) {
+      updateSettings({ puterFavoriteModels: [...puterFavorites, m] });
+    }
     onChange(m);
     close();
   }
 
   const providers = (Object.keys(grouped) as Provider[]).filter((p) => p !== "puter");
   // `grouped.puter` includes every puter-provider model from any source — ALL_MODELS,
-  // customModels, and sessionPuterModels (a model merely *selected*, not starred, still
-  // needs to resolve via findModel — see registerSessionPuterModel in config/models.ts).
-  // The starred/pinned section must only ever show genuine favorites, sourced straight
-  // from settings, or a picked-but-unstarred model would render there pre-filled with an
-  // "Unstar" star that does nothing visible when clicked (it's not actually in the list
-  // isFavorited checks against). Custom models targeting "puter" still get a plain row,
+  // customModels, and puterFavorites. The starred/pinned section must only ever show
+  // genuine favorites, sourced straight from settings — selectModel() favorites a Puter
+  // model the moment it's picked, so this list IS "every Puter model you've used or
+  // starred." Custom Models entries targeting "puter" still get a plain row below it,
   // same as every other provider, just without the star.
   const favoritedPuterModels = puterFavorites;
   const customPuterModels = (grouped.puter ?? []).filter((m) => m.isCustom && !isFavorited(m.modelId));
@@ -317,7 +317,7 @@ export function ModelSelector({
 
             {favoritedPuterModels.length === 0 && customPuterModels.length === 0 && (
               <p className="px-3.5 py-1.5 text-xs text-slate-500">
-                Puter.js has 800+ free models — star some to pin them here.
+                Puter.js has 800+ free models — pick or star one below to pin it here.
               </p>
             )}
 
@@ -427,6 +427,9 @@ export function ModelSelector({
         modelName={pendingPuterModel.displayName}
         onCancel={() => setPendingPuterModel(null)}
         onConfirm={() => {
+          if (!isFavorited(pendingPuterModel.modelId)) {
+            updateSettings({ puterFavoriteModels: [...puterFavorites, pendingPuterModel] });
+          }
           onChange(pendingPuterModel);
           setPendingPuterModel(null);
         }}

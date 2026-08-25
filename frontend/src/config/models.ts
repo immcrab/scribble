@@ -464,29 +464,14 @@ export function setPuterFavorites(models: ModelDef[]): void {
   puterFavorites = models;
 }
 
-/**
- * Picking a Puter model from that same browse panel without starring it needs to resolve
- * here too — every chat only stores a `modelId` string and looks it up via `findModel`
- * (see modes/DirectMode.tsx etc.), so an unstarred pick would otherwise be unresolvable
- * and silently fall back to the default model. This is session-only (not persisted to
- * settings, unlike `puterFavorites`): picking one re-registers it instantly, and it isn't
- * meant to survive a reload — starring is what makes a pick durable.
- */
-let sessionPuterModels: ModelDef[] = [];
-
-export function registerSessionPuterModel(model: ModelDef): void {
-  if (sessionPuterModels.some((m) => m.modelId === model.modelId)) return;
-  sessionPuterModels = [...sessionPuterModels, model];
-}
-
 function allModels(): ModelDef[] {
-  if (!customModels.length && !puterFavorites.length && !sessionPuterModels.length) return ALL_MODELS;
+  if (!customModels.length && !puterFavorites.length) return ALL_MODELS;
   // Settings → Custom Models can also point a manually-added model at provider "puter" —
-  // if that happens to share an id with one the user separately starred from the browse
+  // if that happens to share an id with one the user separately favorited from the browse
   // panel, it'd otherwise render (and need unfavoriting) twice. Later entries win, so a
-  // starred/session pick's fresher data overrides a stale custom-model entry sharing its id.
+  // favorited pick's fresher data overrides a stale custom-model entry sharing its id.
   const byKey = new Map<string, ModelDef>();
-  for (const m of [...ALL_MODELS, ...customModels, ...puterFavorites, ...sessionPuterModels]) {
+  for (const m of [...ALL_MODELS, ...customModels, ...puterFavorites]) {
     byKey.set(`${m.provider}:${m.modelId}`, m);
   }
   return Array.from(byKey.values());
