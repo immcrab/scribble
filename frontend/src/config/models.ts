@@ -481,7 +481,15 @@ export function registerSessionPuterModel(model: ModelDef): void {
 
 function allModels(): ModelDef[] {
   if (!customModels.length && !puterFavorites.length && !sessionPuterModels.length) return ALL_MODELS;
-  return [...ALL_MODELS, ...customModels, ...puterFavorites, ...sessionPuterModels];
+  // Settings → Custom Models can also point a manually-added model at provider "puter" —
+  // if that happens to share an id with one the user separately starred from the browse
+  // panel, it'd otherwise render (and need unfavoriting) twice. Later entries win, so a
+  // starred/session pick's fresher data overrides a stale custom-model entry sharing its id.
+  const byKey = new Map<string, ModelDef>();
+  for (const m of [...ALL_MODELS, ...customModels, ...puterFavorites, ...sessionPuterModels]) {
+    byKey.set(`${m.provider}:${m.modelId}`, m);
+  }
+  return Array.from(byKey.values());
 }
 
 /** Flat list of every selectable model — built-ins plus whatever the user added in Settings. */
