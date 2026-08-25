@@ -15,6 +15,17 @@ export function looksLikeArithmetic(query: string): boolean {
   return /\d{10,}/.test(trimmed);
 }
 
+/** Same "asking about my own whereabouts" pattern the frontend uses to decide whether to
+ * re-offer the location popup (frontend/src/lib/clientContext.ts). If the message matches
+ * and clientContext already carries an IP-derived location, the answer's already in hand —
+ * a web search would just burn SerpApi quota confirming a fact we were handed for free. */
+const OWN_LOCATION_RE =
+  /\bwhere\s+(am\s+i|are\s+we)\b|\bmy\s+(current\s+)?location\b|\bwhat\s+city\s+am\s+i\b|\bcurrent\s+location\b|\bwhat.?s\s+my\s+location\b/i;
+
+export function isOwnLocationAlreadyKnown(query: string, location?: string): boolean {
+  return !!location && OWN_LOCATION_RE.test(query);
+}
+
 /** Same Groq model used for chat titles (adapters/title.ts) — a reasoning model, so
  * `reasoning_effort: "low"` plus a real `max_tokens` budget below are required or it
  * spends the whole budget on hidden chain-of-thought and returns empty content. */

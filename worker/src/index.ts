@@ -9,7 +9,7 @@ import { openrouterStreamChat } from "./adapters/openrouter";
 import { customStreamChat } from "./adapters/custom";
 import { generateImage } from "./adapters/image";
 import { generateTitle } from "./adapters/title";
-import { searchWeb, shouldSearchWeb, looksLikeArithmetic } from "./adapters/search";
+import { searchWeb, shouldSearchWeb, looksLikeArithmetic, isOwnLocationAlreadyKnown } from "./adapters/search";
 import { ndjsonLine } from "./adapters/base";
 
 // "custom" isn't in here — it has no Worker secret; its key comes from the
@@ -132,8 +132,12 @@ export default {
             // A pure digits/operators string (plain arithmetic, or just numeric-looking
             // noise) is never worth a search — skip it before ever asking the classifier,
             // since a short garbled number-like string reads as ambiguous to a cheap
-            // model and can get misjudged as a lookup-worthy ID/serial number.
-            let worthSearching = !looksLikeArithmetic(query);
+            // model and can get misjudged as a lookup-worthy ID/serial number. Likewise,
+            // "where am I" style questions are already answered by clientContext.location
+            // (IP-derived, see frontend/src/lib/clientContext.ts) — searching would just
+            // spend SerpApi quota confirming a fact we already have.
+            let worthSearching =
+              !looksLikeArithmetic(query) && !isOwnLocationAlreadyKnown(query, body.clientContext?.location);
             if (query && worthSearching && env.GROQ_API_KEY) {
               try {
                 worthSearching = await shouldSearchWeb(env.GROQ_API_KEY, query);
