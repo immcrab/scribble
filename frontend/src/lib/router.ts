@@ -18,6 +18,24 @@ export function parseChatIdFromLocation(): string | null {
   return match ? normalizeId(match[1]) : null;
 }
 
+/** True only for the bare app root ("/" or "<base>/"), where the app shows a fresh
+ * compose screen rather than any particular chat. */
+export function isRootLocation(): boolean {
+  const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+  const path = window.location.pathname;
+  return path === base || path === `${base}/`;
+}
+
+/** Every path shape the SPA itself renders: root, a chat, or docs. Anything else
+ * (typos, dead links, stray paths) is a real 404 — it must not fall back to
+ * whatever chat happened to be active last. */
+export function isKnownAppLocation(): boolean {
+  if (isRootLocation()) return true;
+  if (parseChatIdFromLocation() !== null) return true;
+  if (parseDocsSlugFromLocation() !== null) return true;
+  return false;
+}
+
 export function chatPath(id: string): string {
   const base = import.meta.env.BASE_URL.replace(/\/$/, "");
   return `${base}/c/${encodeURIComponent(id)}`;

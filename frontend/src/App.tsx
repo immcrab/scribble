@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Menu } from "lucide-react";
 import { Sidebar } from "./components/Sidebar";
 import { ModeSelector } from "./components/ModeSelector";
@@ -9,9 +9,17 @@ import { PWAInstallPrompt } from "./components/PWAInstallPrompt";
 import { LocationConsentPrompt } from "./components/LocationConsentPrompt";
 import { ConsentGate } from "./components/ConsentGate";
 import { SharedChatView } from "./components/SharedChatView";
+import { NotFoundPage } from "./components/NotFoundPage";
 import { hasAcceptedTerms } from "./lib/storage";
 import { applyTheme, watchSystemTheme } from "./lib/theme";
-import { parseChatIdFromLocation, syncUrlToChat, onPopState, parseDocsSlugFromLocation } from "./lib/router";
+import {
+  parseChatIdFromLocation,
+  syncUrlToChat,
+  onPopState,
+  parseDocsSlugFromLocation,
+  isRootLocation,
+  isKnownAppLocation,
+} from "./lib/router";
 import { DocsPage } from "./pages/DocsPage";
 import { fetchPublicChat } from "./lib/cloudSync";
 import { DirectMode } from "./modes/DirectMode";
@@ -56,6 +64,16 @@ export default function App() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [docsSlug, setDocsSlug] = useState<string | null>(() => parseDocsSlugFromLocation());
   const [accepted, setAccepted] = useState(hasAcceptedTerms);
+  // Bare "/" (no chat id, no docs slug) always lands on a blank compose screen — never
+  // whichever chat happened to be active last. createChat() reuses an already-empty
+  // chat if one exists (same dedup as the sidebar's "New chat" button) rather than
+  // making a new one every visit. While this flag is set, the URL stays "/" instead
+  // of getting that chat's "/c/{id}" — it only does once the chat has a first message.
+  // Cleared either by picking a different chat, or by that first message landing.
+  const [freshCompose, setFreshCompose] = useState(() => isRootLocation());
+  // Any path that isn't "/", "/c/{id}", or "/docs[/slug]" is a real 404 — it must not
+  // silently fall back to the last active chat (see lib/router.ts isKnownAppLocation).
+  const [notFound, setNotFound] = useState(() => !isKnownAppLocation());
   const [shareState, setShareState] = useState<ShareState>(() => {
     const urlId = parseChatIdFromLocation();
     if (!urlId) return { status: "idle" };
@@ -66,6 +84,30 @@ export default function App() {
     }
     return { status: "resolving" };
   });
+
+  // Tracks the previous activeChatId so the "did the user navigate to a different chat"
+  // effect further down can tell a real change from a no-op re-run (relevant once React's
+  // StrictMode dev-mode double-invokes effects — a plain "have we mounted" bool would see
+  // a false "change" on the replayed run).
+  const prevActiveChatIdRef = useRef(activeChatId);
+  // Set right before this component's own code (re)points activeChatId at a blank chat —
+  // on mount, popping back to "/", or leaving the 404 page — so that same effect can tell
+  // "we just entered fresh-compose" apart from "the user picked a different chat", which
+  // otherwise look identical (both are just an activeChatId change).
+  const suppressFreshComposeClearRef = useRef(false);
+
+  // Point activeChatId at a blank chat for the fresh "/" compose screen, before the
+  // browser paints. A plain useEffect would paint whatever chat was active last for
+  // one frame first; doing this in a useState initializer would mutate the store (which
+  // Sidebar also reads) while App is still rendering, which React (rightly) warns about.
+  // Layout effects run after commit but before paint, so this is the safe, flicker-free spot.
+  useLayoutEffect(() => {
+    if (isRootLocation()) {
+      suppressFreshComposeClearRef.current = true;
+      useChatStore.getState().createChat("direct");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     applyTheme(settings.theme);
@@ -82,14 +124,16 @@ export default function App() {
   // static default from index.html.
   useEffect(() => {
     if (docsSlug !== null) return; // DocsPage owns its own title while mounted
-    if (shareState.status === "shared") {
+    if (notFound) {
+      document.title = "Page not found — Scribble";
+    } else if (shareState.status === "shared") {
       document.title = `${shareState.chat.title || "Shared chat"} — Scribble`;
-    } else if (activeChat?.title) {
+    } else if (!freshCompose && activeChat?.title) {
       document.title = `${activeChat.title} — Scribble`;
     } else {
       document.title = "Scribble — Multi-Model AI Chat";
     }
-  }, [docsSlug, shareState, activeChat?.title]);
+  }, [docsSlug, notFound, shareState, activeChat?.title, freshCompose]);
 
   // Kick off the fetch for a shared chat this browser doesn't have locally
   // (deferred out of useState's initializer, which must stay side-effect-free).
@@ -107,6 +151,15 @@ export default function App() {
       onPopState((urlId) => {
         if (!urlId) {
           setShareState({ status: "idle" });
+          if (isRootLocation()) {
+            // Landing back on "/" (e.g. the back button) — same bootstrap as a fresh
+            // "/" mount: point at a blank chat and suppress the effect below's usual
+            // "activeChatId changed, drop out of fresh-compose" reaction, since this
+            // change *is* the fresh-compose state, not an exit from it.
+            suppressFreshComposeClearRef.current = true;
+            useChatStore.getState().createChat("direct");
+            setFreshCompose(true);
+          }
           return;
         }
         const local = useChatStore.getState().chats.find((c) => c.id === urlId);
@@ -128,27 +181,47 @@ export default function App() {
     return () => window.removeEventListener("popstate", listener);
   }, []);
 
-  // Keep the address bar pointed at whichever chat is active — this is what gives every
-  // chat its own "/c/{id}" URL. Suspended while viewing someone else's shared chat, or docs.
+  // Re-derive 404 state on back/forward too, so navigating to an unknown path always
+  // shows the 404 page (the "/" case is handled by the onPopState handler above, since
+  // it also needs to point activeChatId at a blank chat, not just flip a flag).
   useEffect(() => {
-    if (shareState.status !== "idle" || !activeChatId || docsSlug !== null) return;
+    const listener = () => setNotFound(!isKnownAppLocation());
+    window.addEventListener("popstate", listener);
+    return () => window.removeEventListener("popstate", listener);
+  }, []);
+
+  // Keep the address bar pointed at whichever chat is active — this is what gives every
+  // chat its own "/c/{id}" URL. Suspended while viewing someone else's shared chat, docs,
+  // the fresh "/" compose screen (that only gets a URL once a message is sent), or the
+  // 404 page (the URL there must stay exactly what the visitor typed/followed, not get
+  // silently swapped for whatever chat happens to still be active underneath).
+  useEffect(() => {
+    if (shareState.status !== "idle" || !activeChatId || docsSlug !== null || freshCompose || notFound) return;
     syncUrlToChat(activeChatId);
-  }, [activeChatId, shareState.status, docsSlug]);
+  }, [activeChatId, shareState.status, docsSlug, freshCompose, notFound]);
 
   // Picking a chat from the sidebar (or starting a new one) while viewing a shared/unresolved
   // chat should always drop back into the normal app — those actions only ever fire from
-  // inside the real app UI, not from the read-only shared view itself. Skip the mount run:
-  // every effect fires once on mount regardless of its deps, and at that point activeChatId
-  // "changing" is just the initial value showing up, not a real navigation.
-  const mountedRef = useRef(false);
+  // inside the real app UI, not from the read-only shared view itself.
   useEffect(() => {
-    if (!mountedRef.current) {
-      mountedRef.current = true;
-      return;
-    }
+    const changed = prevActiveChatIdRef.current !== activeChatId;
+    prevActiveChatIdRef.current = activeChatId;
+    if (!changed) return;
     setShareState((s) => (s.status === "idle" ? s : { status: "idle" }));
+    if (suppressFreshComposeClearRef.current) {
+      suppressFreshComposeClearRef.current = false;
+    } else {
+      setFreshCompose(false);
+    }
   }, [activeChatId]);
 
+  // The "/" compose screen only gets a URL once its chat has a first message — see the
+  // syncUrlToChat effect below.
+  useEffect(() => {
+    if (freshCompose && (activeChat?.messages.length ?? 0) > 0) setFreshCompose(false);
+  }, [freshCompose, activeChat?.messages.length]);
+
+  // Safety net for a dangling activeChatId (e.g. the active chat vanished via cloud sync).
   useEffect(() => {
     if (shareState.status !== "idle") return;
     if (!activeChat) {
@@ -162,12 +235,22 @@ export default function App() {
 
   const startOwnChat = () => {
     setShareState({ status: "idle" });
+    setFreshCompose(false);
     useChatStore.getState().createChat("direct");
   };
 
   const startChat = (prompt: string, attachments: Attachment[], codeMode?: boolean) => {
+    setFreshCompose(false);
     const id = useChatStore.getState().createChat("direct");
     setPending({ chatId: id, prompt, attachments, codeMode });
+  };
+
+  const goHome = () => {
+    window.history.pushState(null, "", import.meta.env.BASE_URL);
+    suppressFreshComposeClearRef.current = true;
+    useChatStore.getState().createChat("direct");
+    setNotFound(false);
+    setFreshCompose(true);
   };
 
   const switchMode = (mode: Mode) => {
@@ -195,6 +278,10 @@ export default function App() {
         }}
       />
     );
+  }
+
+  if (notFound) {
+    return <NotFoundPage onHome={goHome} />;
   }
 
   if (!accepted) {
