@@ -6,7 +6,6 @@ import { ChatMessage } from "../components/ChatMessage";
 import { Composer } from "../components/Composer";
 import { ModelSelector } from "../components/ModelSelector";
 import { EffortSelector } from "../components/EffortSelector";
-import { WebSearchToggle } from "../components/WebSearchToggle";
 import { EmptyState } from "../components/EmptyState";
 import { ArtifactWorkspace } from "../components/ArtifactWorkspace";
 import { ChatWorkspaceSplit } from "../components/ChatWorkspaceSplit";
@@ -26,10 +25,11 @@ const PLANNED_TOOLS = [
 
 /**
  * Agent Mode runs a normal streaming chat turn against the selected model,
- * plus an optional web-search tool: when the toggle is on, the Worker runs
- * one SerpApi lookup on the latest user message before the model replies and
- * emits a `toolCall` NDJSON event, rendered via the ToolActivity UI in
- * ChatMessage.tsx. File analysis and code execution remain unwired.
+ * plus web search: when Settings → General → "Web search" is on (the
+ * default), the Worker decides per-turn whether the reply needs a live
+ * search and runs one automatically, emitting `toolCall` NDJSON events
+ * rendered via the ToolActivity UI in ChatMessage.tsx. File analysis and
+ * code execution remain unwired.
  */
 export function AgentMode({
   chatId,
@@ -44,7 +44,6 @@ export function AgentMode({
   const settings = useChatStore((s) => s.settings);
   const { addMessage, setChatModels, patchChat, maybeAutoTitle, abort, removeMessagesAfter, updateMessage } = useChatStore();
   const [eagerWorkspace, setEagerWorkspace] = useState(false);
-  const [webSearch, setWebSearch] = useState(false);
   const chatEndRef = useAutoScroll<HTMLDivElement>(chat?.messages ?? []);
 
   if (!chat) return null;
@@ -94,7 +93,7 @@ export function AgentMode({
       ...buildHistory(),
       { role: "user", content: text, attachments: userWireAttachments },
     ];
-    runAssistantStream({ chatId: chat.id, messageId: assistantMsg.id, model: activeModel, history, effort, webSearch });
+    runAssistantStream({ chatId: chat.id, messageId: assistantMsg.id, model: activeModel, history, effort, webSearch: settings.autoWebSearch });
   };
 
   const regenerate = (assistantId: string, withModelId?: string) => {
@@ -112,7 +111,7 @@ export function AgentMode({
       toolCalls: [],
     };
     addMessage(chat.id, newAssistant);
-    runAssistantStream({ chatId: chat.id, messageId: newAssistant.id, model: runModel, history, effort, webSearch });
+    runAssistantStream({ chatId: chat.id, messageId: newAssistant.id, model: runModel, history, effort, webSearch: settings.autoWebSearch });
   };
 
   /** Edit a user message in-place and stream a fresh reply. */
@@ -136,7 +135,7 @@ export function AgentMode({
       toolCalls: [],
     };
     addMessage(chat.id, newAssistant);
-    runAssistantStream({ chatId: chat.id, messageId: newAssistant.id, model, history, effort, webSearch });
+    runAssistantStream({ chatId: chat.id, messageId: newAssistant.id, model, history, effort, webSearch: settings.autoWebSearch });
   };
 
   const stop = () => {
@@ -169,7 +168,6 @@ export function AgentMode({
         <ModelSelector value={model} onChange={(m) => setChatModels(chat.id, { modelId: m.modelId })} />
         <EffortSelector value={effort} onChange={(e) => patchChat(chat.id, { effort: e })} />
         <div className="ml-auto flex items-center gap-1.5">
-          <WebSearchToggle checked={webSearch} onChange={setWebSearch} />
           {PLANNED_TOOLS.map((t) => (
             <span
               key={t.label}
@@ -194,8 +192,9 @@ export function AgentMode({
                 <EmptyState heading="What would you like Scribble to do?" onPick={(p) => send(p, [])} />
                 <div className="mx-auto -mt-8 flex max-w-md items-start gap-2 rounded-xl border border-base-700/50 bg-base-900/40 px-3.5 py-2.5 text-xs text-slate-500">
                   <Lightbulb size={13} className="mt-0.5 shrink-0 text-accent-400" />
-                  Agent Mode is built for multi-step tasks. Toggle Web search above to have replies
-                  start with a live search — file analysis and code execution are still on the way.
+                  Agent Mode is built for multi-step tasks. Replies search the web automatically
+                  when it'd help (toggle in Settings → General) — file analysis and code execution
+                  are still on the way.
                 </div>
               </div>
             ) : (

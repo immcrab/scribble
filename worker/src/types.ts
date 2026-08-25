@@ -49,7 +49,9 @@ export interface ChatRequestBody {
   /** Required when provider === "custom". */
   customProvider?: CustomProviderConfig;
   effort?: Effort;
-  /** Agent Mode's web-search toggle — runs one SerpApi lookup on the latest user message before the model replies. */
+  /** The client's "auto web search" setting. When true, the Worker first asks a fast
+   * Groq classifier whether the latest user message actually needs a live search, and
+   * only then runs the SerpApi lookup — see the /api/chat/stream handler. */
   webSearch?: boolean;
 }
 

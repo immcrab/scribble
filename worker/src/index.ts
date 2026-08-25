@@ -9,7 +9,7 @@ import { openrouterStreamChat } from "./adapters/openrouter";
 import { customStreamChat } from "./adapters/custom";
 import { generateImage } from "./adapters/image";
 import { generateTitle } from "./adapters/title";
-import { searchWeb } from "./adapters/search";
+import { searchWeb, shouldSearchWeb } from "./adapters/search";
 import { ndjsonLine } from "./adapters/base";
 
 // "custom" isn't in here — it has no Worker secret; its key comes from the
@@ -117,7 +117,20 @@ export default {
           if (body.webSearch && env.SERP_API_KEY) {
             const lastUserIdx = messages.map((m, i) => ({ m, i })).filter((x) => x.m.role === "user").pop()?.i;
             const query = lastUserIdx !== undefined ? messages[lastUserIdx].content.trim() : "";
-            if (query) {
+            // "webSearch" now means "auto" mode — decide per-turn instead of always
+            // searching. A fast Groq classification keeps irrelevant turns (general
+            // knowledge, coding, math) from paying the search latency/cost at all.
+            // Fails open (search anyway) if the classifier call itself errors, or if
+            // no Groq key is configured to run it.
+            let worthSearching = true;
+            if (query && env.GROQ_API_KEY) {
+              try {
+                worthSearching = await shouldSearchWeb(env.GROQ_API_KEY, query);
+              } catch {
+                worthSearching = true;
+              }
+            }
+            if (query && worthSearching) {
               const toolId = crypto.randomUUID();
               controller.enqueue(
                 ndjsonLine({ toolCall: { id: toolId, name: "Web search", status: "running", input: { query } } })

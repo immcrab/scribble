@@ -5,7 +5,6 @@ import { ChatMessage } from "../components/ChatMessage";
 import { Composer } from "../components/Composer";
 import { VoteBar } from "../components/VoteBar";
 import { EffortSelector } from "../components/EffortSelector";
-import { WebSearchToggle } from "../components/WebSearchToggle";
 import { EmptyState } from "../components/EmptyState";
 import { ArtifactWorkspace } from "../components/ArtifactWorkspace";
 import { ChatWorkspaceSplit } from "../components/ChatWorkspaceSplit";
@@ -51,7 +50,6 @@ export function BattleMode({
   const settings = useChatStore((s) => s.settings);
   const { addMessage, setChatModels, patchChat, maybeAutoTitle, abort, setVote } = useChatStore();
   const [eagerWorkspace, setEagerWorkspace] = useState(false);
-  const [webSearch, setWebSearch] = useState(false);
   const chatEndRef = useAutoScroll<HTMLDivElement>(chat?.messages ?? []);
 
   if (!chat) return null;
@@ -123,8 +121,8 @@ export function BattleMode({
       { role: "user", content: text, attachments: userWireAttachments },
     ];
 
-    runAssistantStream({ chatId: chat.id, messageId: aMsg.id, model: modelA, history: historyA, effort, webSearch });
-    runAssistantStream({ chatId: chat.id, messageId: bMsg.id, model: modelB, history: historyB, effort, webSearch });
+    runAssistantStream({ chatId: chat.id, messageId: aMsg.id, model: modelA, history: historyA, effort, webSearch: settings.autoWebSearch });
+    runAssistantStream({ chatId: chat.id, messageId: bMsg.id, model: modelB, history: historyB, effort, webSearch: settings.autoWebSearch });
   };
 
   const stop = () => {
@@ -169,7 +167,6 @@ export function BattleMode({
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-center justify-end gap-2 border-b border-base-700/60 px-5 py-3">
-        <WebSearchToggle checked={webSearch} onChange={setWebSearch} />
         <EffortSelector value={effort} onChange={(e) => patchChat(chat.id, { effort: e })} />
       </div>
       <ChatWorkspaceSplit

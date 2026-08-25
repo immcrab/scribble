@@ -252,6 +252,12 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
                     onChange={(v) => updateSettings({ autoOpenCode: v })}
                   />
                   <ToggleSwitch
+                    label="Web search"
+                    description="Scribble decides per message whether a live web search would help, in every chat mode"
+                    checked={settings.autoWebSearch}
+                    onChange={(v) => updateSettings({ autoWebSearch: v })}
+                  />
+                  <ToggleSwitch
                     label="Reduce motion"
                     description="Turn off streaming/hover animations"
                     checked={settings.reduceMotion}

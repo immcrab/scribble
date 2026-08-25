@@ -1,4 +1,7 @@
-/** Cheap, fast Groq model used only to name chats — never surfaced as a selectable model. */
+/** Cheap, fast Groq model used only to name chats — never surfaced as a selectable model.
+ * It's a reasoning model, so `reasoning_effort: "low"` below is required — without it, the
+ * model spends the whole `max_tokens` budget on hidden chain-of-thought and returns empty
+ * content, which surfaced as every chat silently falling back to its truncated-prompt title. */
 const TITLE_MODEL = "openai/gpt-oss-20b";
 
 /**
@@ -16,8 +19,9 @@ export async function generateTitle({ apiKey, prompt }: { apiKey: string; prompt
     body: JSON.stringify({
       model: TITLE_MODEL,
       stream: false,
-      max_tokens: 20,
+      max_tokens: 100,
       temperature: 0.3,
+      reasoning_effort: "low",
       messages: [
         {
           role: "system",

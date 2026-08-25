@@ -5,7 +5,6 @@ import { ChatMessage } from "../components/ChatMessage";
 import { Composer } from "../components/Composer";
 import { ModelSelector } from "../components/ModelSelector";
 import { EffortSelector } from "../components/EffortSelector";
-import { WebSearchToggle } from "../components/WebSearchToggle";
 import { EmptyState } from "../components/EmptyState";
 import { ArtifactWorkspace } from "../components/ArtifactWorkspace";
 import { ChatWorkspaceSplit } from "../components/ChatWorkspaceSplit";
@@ -51,7 +50,6 @@ export function SideBySideMode({
   const settings = useChatStore((s) => s.settings);
   const { addMessage, setChatModels, patchChat, maybeAutoTitle, abort, removeMessagesAfter } = useChatStore();
   const [eagerWorkspace, setEagerWorkspace] = useState(false);
-  const [webSearch, setWebSearch] = useState(false);
   const chatEndRef = useAutoScroll<HTMLDivElement>(chat?.messages ?? []);
 
   if (!chat) return null;
@@ -121,8 +119,8 @@ export function SideBySideMode({
       { role: "user", content: text, attachments: userWireAttachments },
     ];
 
-    runAssistantStream({ chatId: chat.id, messageId: aMsg.id, model: modelA, history: historyA, effort, webSearch });
-    runAssistantStream({ chatId: chat.id, messageId: bMsg.id, model: modelB, history: historyB, effort, webSearch });
+    runAssistantStream({ chatId: chat.id, messageId: aMsg.id, model: modelA, history: historyA, effort, webSearch: settings.autoWebSearch });
+    runAssistantStream({ chatId: chat.id, messageId: bMsg.id, model: modelB, history: historyB, effort, webSearch: settings.autoWebSearch });
   };
 
   const stop = () => {
@@ -171,8 +169,8 @@ export function SideBySideMode({
       ...buildHistory("b", userId),
       { role: "user", content: userMsg.content, attachments: userWireAttachments },
     ];
-    runAssistantStream({ chatId: chat.id, messageId: aMsg.id, model: modelA, history: historyA, effort, webSearch });
-    runAssistantStream({ chatId: chat.id, messageId: bMsg.id, model: modelB, history: historyB, effort, webSearch });
+    runAssistantStream({ chatId: chat.id, messageId: aMsg.id, model: modelA, history: historyA, effort, webSearch: settings.autoWebSearch });
+    runAssistantStream({ chatId: chat.id, messageId: bMsg.id, model: modelB, history: historyB, effort, webSearch: settings.autoWebSearch });
   };
 
   /** Regenerate just one pane for the current round. */
@@ -200,7 +198,7 @@ export function SideBySideMode({
       ...buildHistory(pane, old.id),
       { role: "user", content: lastRound.user.content, attachments: userWireAttachments },
     ];
-    runAssistantStream({ chatId: chat.id, messageId: newMsg.id, model: old.model, history, effort, webSearch });
+    runAssistantStream({ chatId: chat.id, messageId: newMsg.id, model: old.model, history, effort, webSearch: settings.autoWebSearch });
   };
 
   useEffect(() => {
@@ -246,7 +244,6 @@ export function SideBySideMode({
           onChange={(m) => !locked && setChatModels(chat.id, { modelBId: m.modelId })}
         />
         <div className="ml-auto flex items-center gap-2">
-          <WebSearchToggle checked={webSearch} onChange={setWebSearch} />
           <EffortSelector value={effort} onChange={(e) => patchChat(chat.id, { effort: e })} />
         </div>
       </div>

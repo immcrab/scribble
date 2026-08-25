@@ -16,6 +16,10 @@ export interface ScribbleSettings {
   reduceMotion: boolean;
   /** Auto-open the code workspace panel for detected coding requests. */
   autoOpenCode: boolean;
+  /** When true, every chat turn (any mode) lets the Worker decide — via a fast
+   * classification call — whether the reply needs a live web search, and run one
+   * automatically if so. See worker/src/adapters/search.ts. */
+  autoWebSearch: boolean;
   /** Light/Dark/System — applied via frontend/src/lib/theme.ts. */
   theme: Theme;
   /** Global default reasoning effort for new chats — overridable per-chat (Chat.effort). */
@@ -35,6 +39,7 @@ const SETTINGS_DEFAULTS: Omit<ScribbleSettings, "workerUrl" | "password"> = {
   sendOnEnter: true,
   reduceMotion: false,
   autoOpenCode: true,
+  autoWebSearch: true,
   theme: "dark",
   effort: "medium",
   customProviders: [],
