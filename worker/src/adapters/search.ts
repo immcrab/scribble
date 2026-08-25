@@ -4,6 +4,17 @@ export interface SearchResult {
   snippet: string;
 }
 
+/** Plain arithmetic (nothing but digits/whitespace/math symbols), or a message
+ * containing a long run of consecutive digits — id-like number noise that a cheap
+ * classifier can misjudge as a lookup-worthy serial/tracking number even when it's
+ * wrapped in filler words ("what about 7282...098x 9"). Never worth a search either
+ * way, so this short-circuits before spending a Groq call to ask. */
+export function looksLikeArithmetic(query: string): boolean {
+  const trimmed = query.trim();
+  if (/^[\d\s+\-*/x×÷.,()^%=]+$/i.test(trimmed)) return true;
+  return /\d{10,}/.test(trimmed);
+}
+
 /** Same Groq model used for chat titles (adapters/title.ts) — a reasoning model, so
  * `reasoning_effort: "low"` plus a real `max_tokens` budget below are required or it
  * spends the whole budget on hidden chain-of-thought and returns empty content. */
@@ -32,7 +43,7 @@ export async function shouldSearchWeb(apiKey: string, query: string): Promise<bo
         {
           role: "system",
           content:
-            'Decide whether answering the user\'s message well would benefit from a live web search rather than a memorized guess. Search for: current events, prices, scores, recent releases, "today"/"latest"/"right now", anything that changes over time or postdates your training, and factual lookups a memorized answer would likely get wrong or only approximate — statistics, population/counts, rankings, specific real-world numbers, named real people/places/products you\'re unsure about. Don\'t search for: coding help, math, writing, brainstorming, opinions, or general conceptual knowledge a good answer doesn\'t hinge on a precise current number. When unsure, prefer searching. Reply with exactly one word: "yes" or "no".',
+            'Decide whether answering the user\'s message well requires a live web search for a specific real-world fact. Search for: current events, prices, scores, recent releases, "today"/"latest"/"right now", anything that changes over time or postdates your training, and factual lookups about real people/places/products/statistics a memorized answer would likely get wrong or outdated. Do NOT search for: arithmetic or math of any kind — no matter how large, long, or odd-looking the numbers are, a calculation is never a web search — nor coding, writing, brainstorming, opinions, hypotheticals, or general conceptual knowledge. If the message isn\'t clearly asking about a real-world fact, the answer is no. Reply with exactly one word: "yes" or "no".',
         },
         { role: "user", content: query.slice(0, 2000) },
       ],

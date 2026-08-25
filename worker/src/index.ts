@@ -9,7 +9,7 @@ import { openrouterStreamChat } from "./adapters/openrouter";
 import { customStreamChat } from "./adapters/custom";
 import { generateImage } from "./adapters/image";
 import { generateTitle } from "./adapters/title";
-import { searchWeb, shouldSearchWeb } from "./adapters/search";
+import { searchWeb, shouldSearchWeb, looksLikeArithmetic } from "./adapters/search";
 import { ndjsonLine } from "./adapters/base";
 
 // "custom" isn't in here — it has no Worker secret; its key comes from the
@@ -122,8 +122,12 @@ export default {
             // knowledge, coding, math) from paying the search latency/cost at all.
             // Fails open (search anyway) if the classifier call itself errors, or if
             // no Groq key is configured to run it.
-            let worthSearching = true;
-            if (query && env.GROQ_API_KEY) {
+            // A pure digits/operators string (plain arithmetic, or just numeric-looking
+            // noise) is never worth a search — skip it before ever asking the classifier,
+            // since a short garbled number-like string reads as ambiguous to a cheap
+            // model and can get misjudged as a lookup-worthy ID/serial number.
+            let worthSearching = !looksLikeArithmetic(query);
+            if (query && worthSearching && env.GROQ_API_KEY) {
               try {
                 worthSearching = await shouldSearchWeb(env.GROQ_API_KEY, query);
               } catch {
