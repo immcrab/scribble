@@ -1,4 +1,4 @@
-import type { ModelDef, Attachment, Effort } from "../types";
+import type { ModelDef, Attachment, Effort, ToolCallRecord } from "../types";
 
 export interface WireMessage {
   role: "user" | "assistant" | "system";
@@ -15,18 +15,24 @@ interface StreamChatParams {
   /** Required when model.provider === "custom" — the user's own endpoint + key, forwarded to the Worker per-request. */
   customProvider?: { baseUrl: string; apiKey: string };
   effort?: Effort;
+  /** Agent Mode's web-search toggle — see worker/src/index.ts. */
+  webSearch?: boolean;
 }
 
 /** One line of the Worker's NDJSON stream protocol. */
 type StreamEvent =
   | { delta: string }
   | { reasoning: string }
+  | { toolCall: ToolCallRecord }
   | { done: true }
   | { error: string };
 
 /** A single yielded chunk from streamChat — content is the answer text, reasoning is
  * the model's separately-streamed thinking (see worker/src/adapters/base.ts). */
-export type StreamChunk = { type: "content"; text: string } | { type: "reasoning"; text: string };
+export type StreamChunk =
+  | { type: "content"; text: string }
+  | { type: "reasoning"; text: string }
+  | { type: "toolCall"; toolCall: ToolCallRecord };
 
 export class WorkerClientError extends Error {}
 
@@ -37,7 +43,7 @@ export class WorkerClientError extends Error {}
  * know provider-specific wire formats.
  */
 export async function* streamChat(params: StreamChatParams): AsyncGenerator<StreamChunk> {
-  const { workerUrl, password, model, messages, signal, customProvider, effort } = params;
+  const { workerUrl, password, model, messages, signal, customProvider, effort, webSearch } = params;
   if (!workerUrl) {
     throw new WorkerClientError(
       "No Worker URL configured. Open Settings and paste your Cloudflare Worker URL."
@@ -62,6 +68,7 @@ export async function* streamChat(params: StreamChatParams): AsyncGenerator<Stre
       visionCapable: model.supportsVision,
       ...(customProvider ? { customProvider } : {}),
       ...(effort ? { effort } : {}),
+      ...(webSearch ? { webSearch } : {}),
     }),
     signal,
   });
@@ -104,6 +111,9 @@ export async function* streamChat(params: StreamChatParams): AsyncGenerator<Stre
       }
       if ("reasoning" in event) {
         yield { type: "reasoning", text: event.reasoning };
+      }
+      if ("toolCall" in event) {
+        yield { type: "toolCall", toolCall: event.toolCall };
       }
       if ("done" in event) {
         return;

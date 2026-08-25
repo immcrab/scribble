@@ -9,6 +9,8 @@ export interface Env {
   /** Cloudflare account id + Workers AI token, for /api/image/generate. */
   CF_ACCOUNT_ID?: string;
   CF_AI_TOKEN?: string;
+  /** SerpApi key — powers Agent Mode's web-search toggle. */
+  SERP_API_KEY?: string;
 }
 
 export type Provider = "xkiro" | "mistral" | "gemini" | "openrouter" | "custom";
@@ -47,6 +49,8 @@ export interface ChatRequestBody {
   /** Required when provider === "custom". */
   customProvider?: CustomProviderConfig;
   effort?: Effort;
+  /** Agent Mode's web-search toggle — runs one SerpApi lookup on the latest user message before the model replies. */
+  webSearch?: boolean;
 }
 
 export interface AdapterParams {

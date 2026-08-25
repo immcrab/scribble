@@ -5,6 +5,7 @@ import { ChatMessage } from "../components/ChatMessage";
 import { Composer } from "../components/Composer";
 import { ModelSelector } from "../components/ModelSelector";
 import { EffortSelector } from "../components/EffortSelector";
+import { WebSearchToggle } from "../components/WebSearchToggle";
 import { EmptyState } from "../components/EmptyState";
 import { ArtifactWorkspace } from "../components/ArtifactWorkspace";
 import { ChatWorkspaceSplit } from "../components/ChatWorkspaceSplit";
@@ -31,6 +32,7 @@ export function DirectMode({
   const settings = useChatStore((s) => s.settings);
   const { addMessage, setChatModels, patchChat, maybeAutoTitle, abort, removeMessagesAfter, updateMessage } = useChatStore();
   const [eagerWorkspace, setEagerWorkspace] = useState(false);
+  const [webSearch, setWebSearch] = useState(false);
   const chatEndRef = useAutoScroll<HTMLDivElement>(chat?.messages ?? []);
 
   if (!chat) return null;
@@ -85,7 +87,7 @@ export function DirectMode({
       ...buildHistory(),
       { role: "user", content: text, attachments: userWireAttachments },
     ];
-    runAssistantStream({ chatId: chat.id, messageId: assistantMsg.id, model: activeModel, history, effort });
+    runAssistantStream({ chatId: chat.id, messageId: assistantMsg.id, model: activeModel, history, effort, webSearch });
   };
 
   const regenerate = (assistantId: string, withModelId?: string) => {
@@ -102,7 +104,7 @@ export function DirectMode({
       streaming: true,
     };
     addMessage(chat.id, newAssistant);
-    runAssistantStream({ chatId: chat.id, messageId: newAssistant.id, model: runModel, history, effort });
+    runAssistantStream({ chatId: chat.id, messageId: newAssistant.id, model: runModel, history, effort, webSearch });
   };
 
   /** Edit a user message in-place and stream a fresh reply. */
@@ -127,7 +129,7 @@ export function DirectMode({
       streaming: true,
     };
     addMessage(chat.id, newAssistant);
-    runAssistantStream({ chatId: chat.id, messageId: newAssistant.id, model, history, effort });
+    runAssistantStream({ chatId: chat.id, messageId: newAssistant.id, model, history, effort, webSearch });
   };
 
   const stop = () => {
@@ -161,7 +163,8 @@ export function DirectMode({
           value={model}
           onChange={(m) => setChatModels(chat.id, { modelId: m.modelId })}
         />
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center gap-2">
+          <WebSearchToggle checked={webSearch} onChange={setWebSearch} />
           <EffortSelector value={effort} onChange={(e) => patchChat(chat.id, { effort: e })} />
         </div>
       </div>

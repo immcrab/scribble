@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
-import { Globe, FileSearch, Terminal, Lightbulb } from "lucide-react";
+import { FileSearch, Terminal, Lightbulb } from "lucide-react";
 import { useChatStore } from "../state/chatStore";
 import { getDefaultModel, findModel } from "../config/models";
 import { ChatMessage } from "../components/ChatMessage";
 import { Composer } from "../components/Composer";
 import { ModelSelector } from "../components/ModelSelector";
 import { EffortSelector } from "../components/EffortSelector";
+import { WebSearchToggle } from "../components/WebSearchToggle";
 import { EmptyState } from "../components/EmptyState";
 import { ArtifactWorkspace } from "../components/ArtifactWorkspace";
 import { ChatWorkspaceSplit } from "../components/ChatWorkspaceSplit";
@@ -19,19 +20,16 @@ import type { WireMessage } from "../providers";
 import type { InitialPrompt } from "../App";
 
 const PLANNED_TOOLS = [
-  { icon: Globe, label: "Web search" },
   { icon: FileSearch, label: "File analysis" },
   { icon: Terminal, label: "Code execution" },
 ];
 
 /**
- * Agent Mode today runs a normal streaming chat turn against the selected
- * model. The message schema (ChatMessage.toolCalls) and the ToolActivity UI
- * in ChatMessage.tsx already support rendering real tool invocations —
- * wiring an actual tool (web search, file analysis, code execution) means
- * having the Worker emit `tool_call`/`tool_result` NDJSON events in addition
- * to `delta`, and pushing them into message.toolCalls here. Nothing is
- * fabricated: until a tool is wired up, no tool activity is shown.
+ * Agent Mode runs a normal streaming chat turn against the selected model,
+ * plus an optional web-search tool: when the toggle is on, the Worker runs
+ * one SerpApi lookup on the latest user message before the model replies and
+ * emits a `toolCall` NDJSON event, rendered via the ToolActivity UI in
+ * ChatMessage.tsx. File analysis and code execution remain unwired.
  */
 export function AgentMode({
   chatId,
@@ -46,6 +44,7 @@ export function AgentMode({
   const settings = useChatStore((s) => s.settings);
   const { addMessage, setChatModels, patchChat, maybeAutoTitle, abort, removeMessagesAfter, updateMessage } = useChatStore();
   const [eagerWorkspace, setEagerWorkspace] = useState(false);
+  const [webSearch, setWebSearch] = useState(false);
   const chatEndRef = useAutoScroll<HTMLDivElement>(chat?.messages ?? []);
 
   if (!chat) return null;
@@ -95,7 +94,7 @@ export function AgentMode({
       ...buildHistory(),
       { role: "user", content: text, attachments: userWireAttachments },
     ];
-    runAssistantStream({ chatId: chat.id, messageId: assistantMsg.id, model: activeModel, history, effort });
+    runAssistantStream({ chatId: chat.id, messageId: assistantMsg.id, model: activeModel, history, effort, webSearch });
   };
 
   const regenerate = (assistantId: string, withModelId?: string) => {
@@ -113,7 +112,7 @@ export function AgentMode({
       toolCalls: [],
     };
     addMessage(chat.id, newAssistant);
-    runAssistantStream({ chatId: chat.id, messageId: newAssistant.id, model: runModel, history, effort });
+    runAssistantStream({ chatId: chat.id, messageId: newAssistant.id, model: runModel, history, effort, webSearch });
   };
 
   /** Edit a user message in-place and stream a fresh reply. */
@@ -137,7 +136,7 @@ export function AgentMode({
       toolCalls: [],
     };
     addMessage(chat.id, newAssistant);
-    runAssistantStream({ chatId: chat.id, messageId: newAssistant.id, model, history, effort });
+    runAssistantStream({ chatId: chat.id, messageId: newAssistant.id, model, history, effort, webSearch });
   };
 
   const stop = () => {
@@ -170,6 +169,7 @@ export function AgentMode({
         <ModelSelector value={model} onChange={(m) => setChatModels(chat.id, { modelId: m.modelId })} />
         <EffortSelector value={effort} onChange={(e) => patchChat(chat.id, { effort: e })} />
         <div className="ml-auto flex items-center gap-1.5">
+          <WebSearchToggle checked={webSearch} onChange={setWebSearch} />
           {PLANNED_TOOLS.map((t) => (
             <span
               key={t.label}
@@ -194,8 +194,8 @@ export function AgentMode({
                 <EmptyState heading="What would you like Scribble to do?" onPick={(p) => send(p, [])} />
                 <div className="mx-auto -mt-8 flex max-w-md items-start gap-2 rounded-xl border border-base-700/50 bg-base-900/40 px-3.5 py-2.5 text-xs text-slate-500">
                   <Lightbulb size={13} className="mt-0.5 shrink-0 text-accent-400" />
-                  Agent Mode is built for multi-step tasks. Tool use (web search, files, code) is
-                  architected in but not yet live — replies come from the selected model only.
+                  Agent Mode is built for multi-step tasks. Toggle Web search above to have replies
+                  start with a live search — file analysis and code execution are still on the way.
                 </div>
               </div>
             ) : (

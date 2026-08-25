@@ -26,6 +26,7 @@ import { useLiveArtifact } from "../lib/useLiveArtifact";
 import { modelsByProvider, PROVIDER_LABELS, isModelGated } from "../config/models";
 import { useAuthStore } from "../state/authStore";
 import { Dropdown } from "./Dropdown";
+import { GoogleLogo } from "./icons/GoogleLogo";
 
 /** Small chevron-trigger dropdown next to Regenerate — lets you re-run the
  * same turn against a different model instead of the one that answered. */
@@ -93,40 +94,69 @@ const TOOL_STATUS_ICON: Record<ToolCallRecord["status"], typeof Loader2> = {
   error: XCircle,
 };
 
+/** A "Web search" tool call still in flight gets its own live pill (globe
+ * replaced with the search engine's logo — always Google, see worker/src/adapters/search.ts)
+ * instead of sitting inside the collapsed activity list, so the query is visible
+ * the instant the search starts rather than only once it resolves. */
+function SearchingPill({ toolCall }: { toolCall: ToolCallRecord }) {
+  const query = typeof toolCall.input?.query === "string" ? toolCall.input.query : "";
+  return (
+    <div className="stream-prelude mb-2">
+      <GoogleLogo size={13} />
+      <span className="thinking-label animate-thinking-shimmer">
+        Searching {query && <span className="text-slate-300">{query}</span>}
+      </span>
+    </div>
+  );
+}
+
 function ToolActivity({ toolCalls }: { toolCalls: ToolCallRecord[] }) {
   const [open, setOpen] = useState(true);
+  const liveSearch = toolCalls.find((t) => t.name === "Web search" && t.status === "running");
+  const listed = toolCalls.filter((t) => t !== liveSearch);
+
   return (
-    <div className="mb-2 overflow-hidden rounded-xl border border-base-700/60 bg-base-900/50">
-      <button
-        onClick={() => setOpen((o) => !o)}
-        className="flex w-full items-center gap-1.5 px-3 py-2 text-left text-xs font-medium text-slate-400 hover:text-slate-200"
-      >
-        <ChevronRight size={12} className={`transition-transform ${open ? "rotate-90" : ""}`} />
-        <Wrench size={12} />
-        Agent activity ({toolCalls.length})
-      </button>
-      {open && (
-        <div className="space-y-1.5 border-t border-base-700/60 px-3 py-2">
-          {toolCalls.map((t) => {
-            const Icon = TOOL_STATUS_ICON[t.status];
-            return (
-              <div key={t.id} className="flex items-start gap-2 text-xs">
-                <Icon
-                  size={12}
-                  className={`mt-0.5 shrink-0 ${
-                    t.status === "running" || t.status === "pending" ? "animate-spin text-accent-400" : ""
-                  } ${t.status === "done" ? "text-emerald-400" : ""} ${t.status === "error" ? "text-red-400" : ""}`}
-                />
-                <span className="min-w-0 flex-1">
-                  <span className="font-medium text-slate-300">{t.name}</span>
-                  {t.output && <span className="block truncate text-slate-500">{t.output}</span>}
-                </span>
-              </div>
-            );
-          })}
+    <>
+      {liveSearch && <SearchingPill toolCall={liveSearch} />}
+      {listed.length > 0 && (
+        <div className="mb-2 overflow-hidden rounded-xl border border-base-700/60 bg-base-900/50">
+          <button
+            onClick={() => setOpen((o) => !o)}
+            className="flex w-full items-center gap-1.5 px-3 py-2 text-left text-xs font-medium text-slate-400 hover:text-slate-200"
+          >
+            <ChevronRight size={12} className={`transition-transform ${open ? "rotate-90" : ""}`} />
+            <Wrench size={12} />
+            Agent activity ({listed.length})
+          </button>
+          {open && (
+            <div className="space-y-1.5 border-t border-base-700/60 px-3 py-2">
+              {listed.map((t) => {
+                const Icon = TOOL_STATUS_ICON[t.status];
+                const isSearch = t.name === "Web search";
+                return (
+                  <div key={t.id} className="flex items-start gap-2 text-xs">
+                    {isSearch ? (
+                      <GoogleLogo size={12} />
+                    ) : (
+                      <Icon
+                        size={12}
+                        className={`mt-0.5 shrink-0 ${
+                          t.status === "running" || t.status === "pending" ? "animate-spin text-accent-400" : ""
+                        } ${t.status === "done" ? "text-emerald-400" : ""} ${t.status === "error" ? "text-red-400" : ""}`}
+                      />
+                    )}
+                    <span className="min-w-0 flex-1">
+                      <span className="font-medium text-slate-300">{t.name}</span>
+                      {t.output && <span className="block truncate text-slate-500">{t.output}</span>}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
-    </div>
+    </>
   );
 }
 
@@ -165,9 +195,9 @@ function formatDuration(ms: number, precise: boolean): string {
  * the turn ends, this collapses into a small "Thought for Xs" chip that
  * expands to show the full reasoning on demand.
  */
-function ThinkingBlock({ message }: { message: ChatMessageType }) {
+function ThinkingBlock({ message, suppressPrelude }: { message: ChatMessageType; suppressPrelude?: boolean }) {
   const [expanded, setExpanded] = useState(false);
-  const isThinking = !!message.streaming && !message.content;
+  const isThinking = !!message.streaming && !message.content && !suppressPrelude;
   const hasReasoning = !!message.reasoning && message.reasoning.trim().length > 0;
   const elapsedMs = useElapsedMs(isThinking, message.thinkingStartedAt, isThinking ? undefined : message.thinkingMs);
 
@@ -336,7 +366,12 @@ export function ChatMessage({
           } ${!isUser && message.streaming ? "border-accent-500/40" : ""}`}
         >
           {message.toolCalls && message.toolCalls.length > 0 && <ToolActivity toolCalls={message.toolCalls} />}
-          {!isUser && <ThinkingBlock message={message} />}
+          {!isUser && (
+            <ThinkingBlock
+              message={message}
+              suppressPrelude={message.toolCalls?.some((t) => t.name === "Web search" && t.status === "running")}
+            />
+          )}
           {message.error ? (
             <div className="flex items-start gap-2 text-sm text-red-400">
               <AlertTriangle size={15} className="mt-0.5 shrink-0" />

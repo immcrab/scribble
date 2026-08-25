@@ -18,8 +18,9 @@ export async function runAssistantStream(params: {
   model: ModelDef;
   history: WireMessage[];
   effort?: Effort;
+  webSearch?: boolean;
 }) {
-  const { chatId, messageId, model, history, effort } = params;
+  const { chatId, messageId, model, history, effort, webSearch } = params;
   const store = useChatStore.getState();
 
   if (isModelGated(model) && !auth.currentUser) {
@@ -51,9 +52,19 @@ export async function runAssistantStream(params: {
       signal: controller.signal,
       customProvider: customProvider ? { baseUrl: customProvider.baseUrl, apiKey: customProvider.apiKey } : undefined,
       effort,
+      webSearch,
     })) {
       if (chunk.type === "reasoning") {
         useChatStore.getState().appendMessageReasoning(chatId, messageId, chunk.text);
+        continue;
+      }
+      if (chunk.type === "toolCall") {
+        const current = useChatStore.getState().chats.find((c) => c.id === chatId)?.messages.find((m) => m.id === messageId);
+        const existing = current?.toolCalls ?? [];
+        const next = existing.some((t) => t.id === chunk.toolCall.id)
+          ? existing.map((t) => (t.id === chunk.toolCall.id ? chunk.toolCall : t))
+          : [...existing, chunk.toolCall];
+        useChatStore.getState().updateMessage(chatId, messageId, { toolCalls: next });
         continue;
       }
       if (!thinkingStamped) {

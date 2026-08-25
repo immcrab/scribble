@@ -20,6 +20,7 @@ interface StreamChatParams {
   signal: AbortSignal;
   customProvider?: { baseUrl: string; apiKey: string };
   effort?: Effort;
+  webSearch?: boolean;
 }
 
 export async function* streamChat(params: StreamChatParams): AsyncGenerator<StreamChunk> {

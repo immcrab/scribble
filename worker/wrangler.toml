@@ -17,3 +17,4 @@ ALLOWED_ORIGINS = "http://localhost:5173,https://immcrab.github.io,https://scrib
 #   SCRIBBLE_PASSWORD   (optional — omit to leave Scribble open/unauthenticated)
 #   CF_ACCOUNT_ID       (Cloudflare account id — powers /api/image/generate)
 #   CF_AI_TOKEN         (Workers AI-scoped API token — powers /api/image/generate)
+#   SERP_API_KEY        (SerpApi key — powers Agent Mode's web-search toggle)
