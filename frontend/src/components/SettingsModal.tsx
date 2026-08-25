@@ -259,7 +259,7 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-base-600/60 bg-base-850 shadow-panel animate-fade-in-up"
+        className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-base-600/60 bg-base-850 shadow-panel animate-fade-in-up"
       >
         <div className="flex items-center justify-between px-6 pb-4 pt-6">
           <h2 className="text-lg font-semibold text-white">Settings</h2>
@@ -268,12 +268,12 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
           </button>
         </div>
 
-        <div className="flex gap-1 overflow-x-auto border-b border-base-700/60 px-6 pb-0">
+        <div className="flex gap-1 overflow-x-auto border-b border-base-700/60 px-6 pb-0 sm:justify-between sm:gap-0">
           {TABS.map(({ id, label, icon: Icon }) => (
             <button
               key={id}
               onClick={() => setTab(id)}
-              className={`flex shrink-0 items-center gap-1.5 border-b-2 px-3 py-2.5 text-sm font-medium transition-colors ${
+              className={`flex shrink-0 items-center gap-1.5 border-b-2 px-2.5 py-2.5 text-sm font-medium transition-colors sm:flex-1 sm:justify-center ${
                 tab === id
                   ? "border-accent-500 text-white"
                   : "border-transparent text-slate-500 hover:text-slate-300"
