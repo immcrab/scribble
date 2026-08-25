@@ -3,7 +3,6 @@ import { corsHeaders } from "./cors";
 import { checkPassword } from "./auth";
 import { isRateLimited } from "./ratelimit";
 import { xkiroStreamChat } from "./adapters/xkiro";
-import { groqStreamChat } from "./adapters/groq";
 import { mistralStreamChat } from "./adapters/mistral";
 import { geminiStreamChat } from "./adapters/gemini";
 import { openrouterStreamChat } from "./adapters/openrouter";
@@ -15,7 +14,6 @@ import { generateTitle } from "./adapters/title";
 // request body instead (see the dispatch branch in the handler below).
 const ADAPTERS: Partial<Record<Provider, ProviderAdapter>> = {
   xkiro: xkiroStreamChat,
-  groq: groqStreamChat,
   mistral: mistralStreamChat,
   gemini: geminiStreamChat,
   openrouter: openrouterStreamChat,
@@ -23,7 +21,6 @@ const ADAPTERS: Partial<Record<Provider, ProviderAdapter>> = {
 
 const API_KEY_ENV: Partial<Record<Provider, keyof Env>> = {
   xkiro: "XKIRO_API_KEY",
-  groq: "GROQ_API_KEY",
   mistral: "MISTRAL_API_KEY",
   gemini: "GEMINI_API_KEY",
   openrouter: "OPENROUTER_API_KEY",
@@ -41,7 +38,7 @@ const VALID_EFFORTS = ["low", "medium", "high", "extra", "ultra"];
 function isValidBody(body: unknown): body is ChatRequestBody {
   if (!body || typeof body !== "object") return false;
   const b = body as Record<string, unknown>;
-  if (!["xkiro", "groq", "mistral", "gemini", "openrouter", "custom"].includes(b.provider as string)) return false;
+  if (!["xkiro", "mistral", "gemini", "openrouter", "custom"].includes(b.provider as string)) return false;
   if (typeof b.model !== "string" || !b.model) return false;
   if (!Array.isArray(b.messages) || b.messages.length === 0) return false;
   if (b.effort !== undefined && !VALID_EFFORTS.includes(b.effort as string)) return false;

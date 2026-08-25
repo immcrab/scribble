@@ -24,6 +24,9 @@ export interface ScribbleSettings {
   customProviders: CustomProvider[];
   /** User-added models, each pointing at a built-in provider or one of `customProviders` — same local-only treatment as `customProviders`. */
   customModels: ModelDef[];
+  /** Models the user has starred out of Puter.js's full live catalog (800+, see lib/puterClient.ts's
+   * listPuterModels) — only these show under the Puter.js group by default instead of the whole catalog. */
+  puterFavoriteModels: ModelDef[];
   /** Set whenever a genuine local edit is made — lets cloud sync pick the newer side on merge. 0 means "never explicitly saved". */
   updatedAt: number;
 }
@@ -36,6 +39,7 @@ const SETTINGS_DEFAULTS: Omit<ScribbleSettings, "workerUrl" | "password"> = {
   effort: "medium",
   customProviders: [],
   customModels: [],
+  puterFavoriteModels: [],
   updatedAt: 0,
 };
 

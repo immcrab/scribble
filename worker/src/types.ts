@@ -11,10 +11,10 @@ export interface Env {
   CF_AI_TOKEN?: string;
 }
 
-export type Provider = "xkiro" | "groq" | "mistral" | "gemini" | "openrouter" | "custom";
+export type Provider = "xkiro" | "mistral" | "gemini" | "openrouter" | "custom";
 
-/** Claude-Code-style reasoning depth. Groq/Gemini map it to a native
- * reasoning_effort/thinkingBudget param; providers without one (xKiro, Mistral,
+/** Claude-Code-style reasoning depth. Gemini maps it to a native
+ * thinkingBudget param; providers without one (xKiro, Mistral,
  * custom) get a system-prompt depth nudge instead — see adapters/base.ts. */
 export type Effort = "low" | "medium" | "high" | "extra" | "ultra";
 

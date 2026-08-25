@@ -32,7 +32,7 @@ export class WorkerClientError extends Error {}
 
 /**
  * Streams a chat completion through the Cloudflare Worker proxy. The Worker
- * normalizes every upstream provider (xKiro/Groq/Mistral/Gemini) into the
+ * normalizes every upstream provider (xKiro/Mistral/Gemini) into the
  * same newline-delimited JSON event stream, so the frontend never needs to
  * know provider-specific wire formats.
  */

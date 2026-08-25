@@ -11,6 +11,9 @@ import { ToggleSwitch } from "./ToggleSwitch";
 import { CustomModelsSection } from "./CustomModelsSection";
 import { AccountSection } from "./AccountSection";
 import { EffortSelector } from "./EffortSelector";
+import { PuterNoticeModal } from "./PuterNoticeModal";
+import { isPuterSignedIn } from "../lib/puterClient";
+import type { ModelDef } from "../types";
 
 function SectionLabel({ children }: { children: string }) {
   return <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">{children}</h3>;
@@ -75,6 +78,7 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
   const [workerUrl, setWorkerUrl] = useState(settings.workerUrl);
   const [password, setPassword] = useState(settings.password);
   const [status, setStatus] = useState<"idle" | "checking" | "ok" | "fail">("idle");
+  const [pendingPuterModel, setPendingPuterModel] = useState<ModelDef | null>(null);
 
   const save = () => {
     updateSettings({ workerUrl: workerUrl.trim(), password });
@@ -90,6 +94,7 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
   const defaultModel = getDefaultModel(settings.defaultModelId);
 
   return (
+    <>
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-fade-in"
       onClick={onClose}
@@ -206,6 +211,11 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
                                     signInWithGoogle();
                                     return;
                                   }
+                                  if (m.provider === "puter" && !isPuterSignedIn()) {
+                                    setPendingPuterModel(m);
+                                    close();
+                                    return;
+                                  }
                                   updateSettings({ defaultModelId: m.modelId });
                                   close();
                                 }}
@@ -283,5 +293,16 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
         </div>
       </div>
     </div>
+    {pendingPuterModel && (
+      <PuterNoticeModal
+        modelName={pendingPuterModel.displayName}
+        onCancel={() => setPendingPuterModel(null)}
+        onConfirm={() => {
+          updateSettings({ defaultModelId: pendingPuterModel.modelId });
+          setPendingPuterModel(null);
+        }}
+      />
+    )}
+    </>
   );
 }

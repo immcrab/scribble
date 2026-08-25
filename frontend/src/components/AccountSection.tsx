@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { LogIn, LogOut, Mail, Trash2, AlertTriangle, Loader2 } from "lucide-react";
+import { LogIn, LogOut, Mail, Trash2, AlertTriangle, Loader2, Sparkles } from "lucide-react";
 import { useAuthStore } from "../state/authStore";
 import { clearAllLocalData } from "../lib/storage";
+import { isPuterSignedIn, puterSignOut } from "../lib/puterClient";
 
 function SubLabel({ children }: { children: string }) {
   return <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">{children}</h4>;
@@ -15,6 +16,7 @@ export function AccountSection() {
   const [confirmingClear, setConfirmingClear] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [puterSignedIn, setPuterSignedIn] = useState(isPuterSignedIn());
 
   const runDeleteAccount = async () => {
     setDeleting(true);
@@ -68,6 +70,30 @@ export function AccountSection() {
             <LogIn size={15} /> Sign in with Google
           </button>
         )}
+      </div>
+
+      <div>
+        <SubLabel>Puter.js</SubLabel>
+        <div className="flex items-center gap-3 rounded-lg border border-base-600/60 bg-base-900/60 px-3 py-2.5">
+          <Sparkles size={15} className="shrink-0 text-accent-400" />
+          <span className="min-w-0 flex-1 text-sm text-slate-200">
+            {puterSignedIn ? "Signed in to Puter.js" : "Not signed in"}
+          </span>
+          {puterSignedIn && (
+            <button
+              onClick={() => {
+                puterSignOut();
+                setPuterSignedIn(false);
+              }}
+              className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs text-slate-400 hover:bg-base-700/60 hover:text-white"
+            >
+              <LogOut size={13} /> Sign out
+            </button>
+          )}
+        </div>
+        <p className="mt-1 text-xs text-slate-500">
+          Used for Puter.js models (Claude, GPT via Puter) — separate account and billing from Scribble.
+        </p>
       </div>
 
       <div>

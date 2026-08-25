@@ -1,77 +1,207 @@
 import type { ModelDef, Provider } from "../types";
-import { XKIRO_MODELS } from "./xkiroModels";
 
 // Adding a model here? Also add a one-line entry to modelDocs.ts — see ADD_NEW_MODEL.md.
 
 /**
- * Groq models — official free dev tier, OpenAI-compatible endpoint
- * https://api.groq.com/openai/v1/chat/completions
- * Verified live against a real Groq free-tier key (Aug 2026) — Groq's
- * catalog turns over fast, so re-check GET /openai/v1/models periodically.
+ * xKiro model catalog — EDIT THIS BLOCK ONLY to add/remove xKiro models.
+ * Nothing else in the app needs to change: xKiro is OpenAI-compatible, so any
+ * modelId listed here is sent as-is to https://api.xkiro.com/v1/chat/completions
+ * by the Worker's xkiro adapter.
+ *
+ * This list was verified live against a real xKiro free-plan key (Aug 2026):
+ * xKiro's full catalog is 80+ models, but most (Claude, GPT-5.x, Kimi, GLM,
+ * Grok, Nemotron, Gemini-via-xKiro, DeepSeek) return 403 "requires a paid
+ * account" on the free plan. The models below all returned real streamed
+ * completions on a free-plan key. Re-check with:
+ *   curl https://api.xkiro.com/v1/models -H "Authorization: Bearer $KEY"
+ * (that endpoint lists the full catalog, not just what's free — you still
+ * have to test individual models to know which are actually unlocked).
+ *
+ * QWEN FLAKINESS (2026-08-20): xKiro's Qwen route intermittently (~50% of
+ * calls, observed) 200s an SSE stream whose first frame is `data:
+ * {"error":"A server error occurred. Please try again."}` instead of real
+ * content — a transient failure on xKiro's end, not our adapter. The Worker's
+ * xkiro adapter (worker/src/adapters/xkiro.ts) now retries that specific
+ * error up to 3 times before surfacing it, which brought the observed
+ * end-to-end failure rate down to ~5% — in line with any other model's
+ * occasional hiccup, so these three don't carry a `knownBroken` flag. Only
+ * the three Qwen ids actually wanted are listed below; the other six xKiro
+ * Qwen ids stay out until asked for.
  */
-const GROQ_MODELS: ModelDef[] = [
+const XKIRO_MODELS: ModelDef[] = [
   {
-    provider: "groq",
-    modelId: "groq/compound",
-    displayName: "Compound",
-    icon: "Zap",
-    contextLength: 131072,
-    capabilities: ["text", "reasoning", "code"],
-    free: true,
-    supportsStreaming: true,
-    supportsVision: false,
-  },
-  {
-    provider: "groq",
-    modelId: "groq/compound-mini",
-    displayName: "Compound Mini",
-    icon: "Zap",
-    contextLength: 131072,
-    capabilities: ["text", "reasoning"],
-    free: true,
-    supportsStreaming: true,
-    supportsVision: false,
-  },
-  {
-    provider: "groq",
-    modelId: "openai/gpt-oss-120b",
-    displayName: "GPT-OSS 120B",
-    icon: "Zap",
-    contextLength: 131072,
-    capabilities: ["text", "reasoning"],
-    free: true,
-    supportsStreaming: true,
-    supportsVision: false,
-  },
-  {
-    provider: "groq",
-    modelId: "openai/gpt-oss-20b",
-    displayName: "GPT-OSS 20B",
-    icon: "Zap",
-    contextLength: 131072,
-    capabilities: ["text", "reasoning"],
-    free: true,
-    supportsStreaming: true,
-    supportsVision: false,
-  },
-  {
-    provider: "groq",
-    modelId: "llama-3.2-11b-vision-preview",
-    displayName: "Llama 3.2 11B Vision",
-    icon: "Zap",
-    contextLength: 128000,
-    capabilities: ["text", "vision", "reasoning"],
+    provider: "xkiro",
+    modelId: "qwen/qwen3.8-max",
+    displayName: "Qwen3.8 Max",
+    icon: "Sparkles",
+    contextLength: 1000000,
+    capabilities: ["text", "reasoning", "vision"],
     free: true,
     supportsStreaming: true,
     supportsVision: true,
   },
   {
-    provider: "groq",
-    modelId: "qwen/qwen3.6-27b",
-    displayName: "Qwen3.6 27B",
-    icon: "Zap",
-    contextLength: 131072,
-    capabilities: ["text", "reasoning", "code"],
+    provider: "xkiro",
+    modelId: "qwen/qwen3.5-flash",
+    displayName: "Qwen3.5 Flash",
+    icon: "Sparkles",
+    contextLength: 1000000,
+    capabilities: ["text", "vision"],
+    free: true,
+    supportsStreaming: true,
+    supportsVision: true,
+  },
+  {
+    provider: "xkiro",
+    modelId: "qwen/qwen3-coder-plus",
+    displayName: "Qwen3 Coder Plus",
+    icon: "Sparkles",
+    contextLength: 128000,
+    capabilities: ["text", "code", "vision"],
+    free: true,
+    supportsStreaming: true,
+    supportsVision: false,
+  },
+  {
+    provider: "xkiro",
+    modelId: "mistralai/mistral-small-2603",
+    displayName: "Mistral Small 4",
+    icon: "Sparkles",
+    contextLength: 32000,
+    capabilities: ["text", "code", "vision"],
+    free: true,
+    supportsStreaming: true,
+    supportsVision: true,
+  },
+  {
+    provider: "xkiro",
+    modelId: "mistralai/ministral-8b",
+    displayName: "Ministral 3 8B",
+    icon: "Sparkles",
+    contextLength: 128000,
+    capabilities: ["text"],
+    free: true,
+    supportsStreaming: true,
+    supportsVision: false,
+  },
+  {
+    provider: "xkiro",
+    modelId: "mistralai/ministral-3b",
+    displayName: "Ministral 3 3B",
+    icon: "Sparkles",
+    contextLength: 128000,
+    capabilities: ["text"],
+    free: true,
+    supportsStreaming: true,
+    supportsVision: false,
+  },
+  {
+    provider: "xkiro",
+    modelId: "mistralai/codestral-2508",
+    displayName: "Codestral",
+    icon: "Sparkles",
+    contextLength: 32000,
+    capabilities: ["code"],
+    free: true,
+    supportsStreaming: true,
+    supportsVision: false,
+  },
+  {
+    provider: "xkiro",
+    modelId: "mistralai/devstral-medium",
+    displayName: "Devstral 2",
+    icon: "Sparkles",
+    contextLength: 128000,
+    capabilities: ["code"],
+    free: true,
+    supportsStreaming: true,
+    supportsVision: false,
+  },
+  {
+    provider: "xkiro",
+    modelId: "xiaomi/mimo-v2.5",
+    displayName: "MiMo v2.5",
+    icon: "Sparkles",
+    contextLength: 128000,
+    capabilities: ["text"],
+    free: true,
+    supportsStreaming: true,
+    supportsVision: false,
+  },
+  {
+    provider: "xkiro",
+    modelId: "xiaomi/mimo-v2.5-pro",
+    displayName: "MiMo v2.5 Pro",
+    icon: "Sparkles",
+    contextLength: 128000,
+    capabilities: ["text"],
+    free: true,
+    supportsStreaming: true,
+    supportsVision: false,
+  },
+  {
+    provider: "xkiro",
+    modelId: "minimax/minimax-m2",
+    displayName: "MiniMax M2",
+    icon: "Sparkles",
+    contextLength: 128000,
+    capabilities: ["text"],
+    free: true,
+    supportsStreaming: true,
+    supportsVision: false,
+  },
+  {
+    provider: "xkiro",
+    modelId: "minimax/minimax-m2.1",
+    displayName: "MiniMax M2.1",
+    icon: "Sparkles",
+    contextLength: 204000,
+    capabilities: ["text"],
+    free: true,
+    supportsStreaming: true,
+    supportsVision: false,
+  },
+  {
+    provider: "xkiro",
+    modelId: "minimax/minimax-m2.7",
+    displayName: "MiniMax M2.7",
+    icon: "Sparkles",
+    contextLength: 128000,
+    capabilities: ["text"],
+    free: true,
+    supportsStreaming: true,
+    supportsVision: false,
+  },
+  {
+    provider: "xkiro",
+    modelId: "deepseek/deepseek-v4-pro",
+    displayName: "DeepSeek v4 Pro",
+    icon: "Sparkles",
+    contextLength: 1000000,
+    capabilities: ["text"],
+    free: true,
+    supportsStreaming: true,
+    supportsVision: false,
+  },
+  {
+    provider: "xkiro",
+    modelId: "deepseek/deepseek-v4-flash",
+    displayName: "DeepSeek v4 Flash",
+    icon: "Sparkles",
+    contextLength: 1000000,
+    capabilities: ["text"],
+    free: true,
+    supportsStreaming: true,
+    supportsVision: false,
+  },
+  {
+    provider: "xkiro",
+    modelId: "stealth/ox-alpha-free",
+    displayName: "OX Alpha",
+    icon: "Sparkles",
+    logoUrl: "https://cdn.xtrouter.com/tag-images/Stealth.svg",
+    contextLength: 1000000,
+    capabilities: ["text"],
     free: true,
     supportsStreaming: true,
     supportsVision: false,
@@ -273,9 +403,19 @@ const OPENROUTER_MODELS: ModelDef[] = [
   },
 ];
 
+/**
+ * Puter.js — https://js.puter.com/v2/, an in-browser SDK loaded directly by the frontend
+ * (see lib/puterClient.ts) rather than proxied through the Worker: Puter funds inference
+ * itself and authenticates the user with its own one-time sign-in popup, so no Worker
+ * secret or key of ours is involved. Puter's live catalog is 800+ models (fetched via
+ * puterClient.ts's listPuterModels) — far too many to curate here, so there's no static
+ * list: ModelSelector lets the user browse the full catalog and star ones to keep, and
+ * those starred picks (settings.puterFavoriteModels) are the only ones injected below via
+ * setPuterFavorites, the same way user-added `customModels` are.
+ */
+
 export const ALL_MODELS: ModelDef[] = [
   ...XKIRO_MODELS,
-  ...GROQ_MODELS,
   ...MISTRAL_MODELS,
   ...GEMINI_MODELS,
   ...OPENROUTER_MODELS,
@@ -292,10 +432,10 @@ export function isModelGated(model: Pick<ModelDef, "modelId" | "provider">): boo
 
 export const PROVIDER_LABELS: Record<Provider, string> = {
   xkiro: "xKiro",
-  groq: "Groq",
   mistral: "Mistral",
   gemini: "Google Gemini",
   openrouter: "OpenRouter",
+  puter: "Puter.js",
   custom: "Custom",
 };
 
@@ -316,8 +456,16 @@ export function setCustomModels(models: ModelDef[]): void {
   customModels = models;
 }
 
+/** Same pattern as `customModels` above, for the models the user has starred out of
+ * Puter.js's full live catalog — see ModelSelector's "Browse all Puter models" panel. */
+let puterFavorites: ModelDef[] = [];
+
+export function setPuterFavorites(models: ModelDef[]): void {
+  puterFavorites = models;
+}
+
 function allModels(): ModelDef[] {
-  return customModels.length ? [...ALL_MODELS, ...customModels] : ALL_MODELS;
+  return customModels.length || puterFavorites.length ? [...ALL_MODELS, ...customModels, ...puterFavorites] : ALL_MODELS;
 }
 
 /** Flat list of every selectable model — built-ins plus whatever the user added in Settings. */

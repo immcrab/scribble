@@ -11,7 +11,7 @@ const EFFORTS: { id: Effort; label: string; desc: string; icon: typeof Feather }
 ];
 
 /** Claude-Code-style reasoning-effort picker — dropped into each mode's header row
- * next to ModelSelector. Actual effect varies by provider (native knob on Groq/Gemini,
+ * next to ModelSelector. Actual effect varies by provider (native knob on Gemini,
  * a system-prompt depth nudge elsewhere) — see worker/src/adapters. */
 export function EffortSelector({ value, onChange }: { value: Effort; onChange: (e: Effort) => void }) {
   const current = EFFORTS.find((e) => e.id === value) ?? EFFORTS[1];

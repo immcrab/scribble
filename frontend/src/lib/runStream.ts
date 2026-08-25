@@ -3,6 +3,7 @@ import type { Effort, ModelDef } from "../types";
 import { useChatStore } from "../state/chatStore";
 import { isModelGated } from "../config/models";
 import { auth } from "./firebase";
+import { recordModelUsage } from "./modelStats";
 
 /**
  * Drives a single assistant message's streaming lifecycle: fetches tokens
@@ -62,6 +63,7 @@ export async function runAssistantStream(params: {
       useChatStore.getState().appendMessageContent(chatId, messageId, chunk.text);
     }
     useChatStore.getState().updateMessage(chatId, messageId, { streaming: false });
+    recordModelUsage(model);
   } catch (err) {
     if (controller.signal.aborted) {
       useChatStore.getState().updateMessage(chatId, messageId, { streaming: false });

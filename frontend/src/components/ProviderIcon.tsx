@@ -24,6 +24,13 @@ const LOGO_URLS = {
   mimo: "https://cdn.xtrouter.com/tag-images/0fe99040-c983-4e95-a208-d5ef6072cf83.png",
   minimax: "https://cdn.xtrouter.com/tag-images/minimax-logo.png",
   xkiro: "https://xkiro.com/images/logo/logo-xt-green.png",
+  // Zhipu AI's chat models ship under the "GLM" brand (z-ai/glm-* ids) — lobehub files the logo under the company name.
+  zhipu: `${LOBEHUB}/zhipu-color.png`,
+  poolside: `${LOBEHUB}/poolside-color.png`,
+  // Google's Gemma (open-weight) has its own mark, distinct from the Gemini logo above.
+  gemma: `${LOBEHUB}/gemma-color.png`,
+  // No lobehub entry for Puter — pulled straight from Puter's own CDN, same as xkiro above.
+  puter: "https://puter.com/logo.png",
 } as const;
 
 /** Guesses a known brand's logo for a user-added custom provider from its name/base URL — falls back to the generic plug icon when nothing matches. */
@@ -70,10 +77,6 @@ export function GeminiIcon({ size = 16, className = "" }: { size?: number; class
 
 export function MistralIcon({ size = 16, className = "" }: { size?: number; className?: string }) {
   return <LogoImage src={LOGO_URLS.mistral} size={size} className={className} />;
-}
-
-export function GroqIcon({ size = 16, className = "" }: { size?: number; className?: string }) {
-  return <LogoImage src={LOGO_URLS.groq} size={size} className={className} />;
 }
 
 export function XKiroIcon({ size = 16, className = "" }: { size?: number; className?: string }) {
@@ -141,6 +144,23 @@ export function MiniMaxIcon({ size = 16, className = "" }: { size?: number; clas
   return <LogoImage src={LOGO_URLS.minimax} size={size} className={className} />;
 }
 
+/** Zhipu AI is the company behind the GLM model family. */
+export function GlmIcon({ size = 16, className = "" }: { size?: number; className?: string }) {
+  return <LogoImage src={LOGO_URLS.zhipu} size={size} className={className} />;
+}
+
+export function PoolsideIcon({ size = 16, className = "" }: { size?: number; className?: string }) {
+  return <LogoImage src={LOGO_URLS.poolside} size={size} className={className} />;
+}
+
+export function GemmaIcon({ size = 16, className = "" }: { size?: number; className?: string }) {
+  return <LogoImage src={LOGO_URLS.gemma} size={size} className={className} />;
+}
+
+export function PuterIcon({ size = 16, className = "" }: { size?: number; className?: string }) {
+  return <LogoImage src={LOGO_URLS.puter} size={size} className={className} />;
+}
+
 export function ProviderFavicon({
   provider,
   logoUrl,
@@ -161,12 +181,12 @@ export function ProviderFavicon({
       return <GeminiIcon size={size} className={className} />;
     case "mistral":
       return <MistralIcon size={size} className={className} />;
-    case "groq":
-      return <GroqIcon size={size} className={className} />;
     case "xkiro":
       return <XKiroIcon size={size} className={className} />;
     case "openrouter":
       return <OpenRouterIcon size={size} className={className} />;
+    case "puter":
+      return <PuterIcon size={size} className={className} />;
     case "custom":
       return <Plug size={size} className={`shrink-0 text-slate-400 ${className}`} />;
     default:
@@ -238,8 +258,18 @@ export function ModelFavicon({
   if (idLower.startsWith("minimax/")) {
     return <MiniMaxIcon size={size} className={className} />;
   }
+  if (idLower.startsWith("z-ai/") || idLower.startsWith("zhipu") || idLower.includes("glm-") || idLower.includes("chatglm")) {
+    return <GlmIcon size={size} className={className} />;
+  }
+  if (idLower.startsWith("poolside/") || idLower.includes("laguna")) {
+    return <PoolsideIcon size={size} className={className} />;
+  }
   if (idLower.startsWith("mistralai/") || idLower.includes("mistral") || idLower.includes("codestral") || idLower.includes("devstral")) {
     return <MistralIcon size={size} className={className} />;
+  }
+  // Gemma is Google's separate open-weight line — check before the generic Gemini match below.
+  if (idLower.startsWith("google/gemma") || idLower.includes("gemma")) {
+    return <GemmaIcon size={size} className={className} />;
   }
   if (idLower.startsWith("gemini-") || idLower.includes("gemini")) {
     return <GeminiIcon size={size} className={className} />;

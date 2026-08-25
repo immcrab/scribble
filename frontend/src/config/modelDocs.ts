@@ -1,21 +1,13 @@
 /**
  * Short blurbs for the public /docs/{model} pages (src/pages/DocsPage.tsx).
  *
- * IMPORTANT: when a new model is added to models.ts or xkiroModels.ts, add a
+ * IMPORTANT: when a new model is added to models.ts, add a
  * matching entry here too, keyed by the exact same `modelId`. See
  * ADD_NEW_MODEL.md in this folder for the full checklist. A model without an
  * entry here still shows up in the app and gets an auto-generated docs page
  * from its `capabilities` — but a hand-written one-liner reads much better.
  */
 export const MODEL_DOCS: Record<string, string> = {
-  // Groq
-  "groq/compound": "Groq's tool-using agentic model — built-in web search and code execution, served at Groq's signature speed.",
-  "groq/compound-mini": "Lighter, faster version of Compound — same built-in tool use, smaller footprint.",
-  "openai/gpt-oss-120b": "OpenAI's open-weight 120B reasoning model, served on Groq's LPU hardware for very fast inference.",
-  "openai/gpt-oss-20b": "Smaller open-weight OpenAI model — quick reasoning without the 120B model's latency.",
-  "llama-3.2-11b-vision-preview": "Meta's Llama 3.2 with vision — reads images and charts alongside text, low latency on Groq.",
-  "qwen/qwen3.6-27b": "Alibaba's Qwen 3.6 — solid all-rounder for text, reasoning, and code at 27B scale.",
-
   // Mistral
   "mistral-small-latest": "Mistral's compact everyday model — fast, cheap, good for straightforward text and code tasks.",
   "mistral-large-latest": "Mistral's flagship — strongest reasoning and code in their lineup.",

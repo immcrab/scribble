@@ -160,7 +160,7 @@
       <h2>What happens when you send a message</h2>
       <p>
         Your message (and any attachment) is sent to Scribble's own Cloudflare Worker, which forwards it
-        to whichever AI model provider you selected — xKiro, Groq, Mistral, or Google Gemini — and streams
+        to whichever AI model provider you selected — xKiro, Mistral, or Google Gemini — and streams
         the reply back. The Worker doesn't write your conversations to a log or database of its own; it's
         a pass-through. Once a response finishes streaming, the Worker holds nothing.
       </p>
@@ -169,6 +169,10 @@
         way it would through their own product. How long they retain it, and whether it's used to improve
         their models, is governed by that provider's own privacy policy, not this one — check theirs if
         that matters to you.
+      </p>
+      <p>
+        Separately, the first message of a new chat is also sent to Groq to generate a short sidebar
+        title — this happens regardless of which model you picked for the conversation itself.
       </p>
 
       <h2>Image generation</h2>

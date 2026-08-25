@@ -10,7 +10,7 @@ ALLOWED_ORIGINS = "http://localhost:5173,https://immcrab.github.io,https://scrib
 
 # Secrets (never commit real values — set these with `wrangler secret put NAME`):
 #   XKIRO_API_KEY
-#   GROQ_API_KEY
+#   GROQ_API_KEY        (not a selectable provider — only powers chat-title generation)
 #   MISTRAL_API_KEY
 #   GEMINI_API_KEY
 #   OPENROUTER_API_KEY

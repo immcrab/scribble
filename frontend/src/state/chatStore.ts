@@ -1,11 +1,12 @@
 import { create } from "zustand";
 import type { Chat, ChatMessage, Mode, Vote } from "../types";
-import { getDefaultModel, setCustomModels } from "../config/models";
+import { getDefaultModel, setCustomModels, setPuterFavorites } from "../config/models";
 import { loadChats, saveChats, loadSettings, saveSettings, titleFromPrompt } from "../lib/storage";
 import type { ScribbleSettings } from "../lib/storage";
 import { startCloudSync, stopCloudSync, pushChatsToCloud, pushChatsPublic, pushSettingsToCloud, deleteChatFromCloud } from "../lib/cloudSync";
 import { generateChatTitle } from "../lib/workerClient";
 import { uid } from "../lib/id";
+import { estimateTokenCount } from "../lib/tokenCount";
 
 let persistTimer: ReturnType<typeof setTimeout> | null = null;
 function debouncedPersist(chats: Chat[]) {
@@ -44,6 +45,7 @@ function createInitialChat(mode: Mode = "direct"): Chat {
 
 const initialSettings = loadSettings();
 setCustomModels(initialSettings.customModels);
+setPuterFavorites(initialSettings.puterFavoriteModels);
 
 const loadedChats = loadChats();
 const initialChats = loadedChats.length > 0 ? loadedChats : [createInitialChat("direct")];
@@ -244,9 +246,11 @@ export const useChatStore = create<ChatStore>((set, get) => ({
         c.id === chatId
           ? {
               ...c,
-              messages: c.messages.map((m) =>
-                m.id === messageId ? { ...m, content: m.content + delta } : m
-              ),
+              messages: c.messages.map((m) => {
+                if (m.id !== messageId) return m;
+                const content = m.content + delta;
+                return { ...m, content, tokenCount: estimateTokenCount(content) + estimateTokenCount(m.reasoning ?? "") };
+              }),
             }
           : c
       );
@@ -261,9 +265,11 @@ export const useChatStore = create<ChatStore>((set, get) => ({
         c.id === chatId
           ? {
               ...c,
-              messages: c.messages.map((m) =>
-                m.id === messageId ? { ...m, reasoning: (m.reasoning ?? "") + delta } : m
-              ),
+              messages: c.messages.map((m) => {
+                if (m.id !== messageId) return m;
+                const reasoning = (m.reasoning ?? "") + delta;
+                return { ...m, reasoning, tokenCount: estimateTokenCount(reasoning) + estimateTokenCount(m.content) };
+              }),
             }
           : c
       );
@@ -299,6 +305,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     set((s) => {
       const settings = { ...s.settings, ...patch, updatedAt: Date.now() };
       setCustomModels(settings.customModels);
+      setPuterFavorites(settings.puterFavoriteModels);
       saveSettings(settings);
       pushSettingsToCloud(settings);
       return { settings };

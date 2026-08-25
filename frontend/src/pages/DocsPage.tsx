@@ -1,19 +1,48 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, Search, Eye, Video, Code2, Brain, Type, Zap, Lock, ArrowUp, ChevronDown } from "lucide-react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  ArrowLeft,
+  Search,
+  Eye,
+  Video,
+  Code2,
+  Brain,
+  Type,
+  Zap,
+  Lock,
+  ArrowUp,
+  ChevronDown,
+  ChevronRight,
+  Check,
+  Copy,
+  Server,
+  BookOpen,
+  Terminal,
+  Layers,
+  Trophy,
+  Medal,
+} from "lucide-react";
 import { getAllModels, PROVIDER_LABELS, isModelGated } from "../config/models";
 import { getModelDescription } from "../config/modelDocs";
-import { ModelFavicon } from "../components/ProviderIcon";
+import { ModelFavicon, ProviderFavicon } from "../components/ProviderIcon";
 import { AdUnit } from "../components/AdUnit";
 import { LogoMark } from "../components/Logo";
 import { docsPath } from "../lib/router";
-import type { ModelCapability, ModelDef } from "../types";
+import { modelSlug } from "../lib/modelSlug";
+import { monthKey, fetchMonthStats, type MonthStats } from "../lib/modelStats";
+import type { ModelCapability, ModelDef, Provider } from "../types";
 
 /**
  * Docs section: one big file, every model rendered from the same ALL_MODELS +
  * modelDocs.ts data (see ADD_NEW_MODEL.md) rather than a hand-authored page
- * per model. Two views live here — the index (slug === "") and a single
- * model's page (slug === that model's slug) — chosen by the caller (App.tsx)
- * based on the current URL, matching the "/c/{id}" pattern in lib/router.ts.
+ * per model. Views live here — the homepage (slug === ""), the model catalog
+ * (slug === "models"), the provider list (slug === "providers"), the monthly
+ * usage leaderboard (slug === "top-models"), a single model's page (slug ===
+ * that model's slug), and the Worker deploy guide (slug === "worker") —
+ * chosen by the caller (App.tsx) based on the current URL, matching the
+ * "/c/{id}" pattern in lib/router.ts. Reserved slugs ("models", "providers",
+ * "top-models", "worker") shadow any model whose generated slug happened to
+ * collide, so keep new sections' slugs out of modelSlug()'s output space
+ * (see ADD_NEW_MODEL.md) if that's ever a risk.
  */
 
 /**
@@ -107,13 +136,6 @@ function BackToTop({ visible, onClick }: { visible: boolean; onClick: () => void
   );
 }
 
-export function modelSlug(modelId: string): string {
-  return modelId
-    .toLowerCase()
-    .replace(/[/:._]+/g, "-")
-    .replace(/[^a-z0-9-]/g, "");
-}
-
 const CAPABILITY_META: Record<ModelCapability, { label: string; icon: typeof Eye }> = {
   text: { label: "Text", icon: Type },
   vision: { label: "Vision", icon: Eye },
@@ -133,22 +155,51 @@ function CapabilityBadge({ capability }: { capability: ModelCapability }) {
   );
 }
 
-function DocsHeader({ onExit }: { onExit: () => void }) {
+const DOCS_NAV = [
+  { slug: "", label: "Home" },
+  { slug: "models", label: "Models" },
+  { slug: "providers", label: "Providers" },
+  { slug: "top-models", label: "Top models" },
+  { slug: "worker", label: "Deploy a Worker" },
+] as const;
+
+function DocsHeader({ slug, onNavigate, onExit }: { slug: string; onNavigate: (slug: string) => void; onExit: () => void }) {
+  // Model pages don't match any nav slug, but they're logically under "Models" —
+  // highlight that tab rather than none.
+  const isModelPage = slug !== "" && !DOCS_NAV.some((n) => n.slug === slug);
   return (
-    <header className="flex items-center justify-between gap-3 border-b border-base-700/60 px-4 py-3 sm:px-6">
-      <button onClick={onExit} className="flex items-center gap-2 text-sm text-slate-300 hover:text-white">
-        <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-gradient-to-br from-accent-500 to-accent-700">
-          <LogoMark size={13} className="text-base-950" />
-        </div>
-        <span className="font-serif text-base font-semibold tracking-tight text-white">Scribble Docs</span>
-      </button>
-      <button
-        onClick={onExit}
-        className="flex items-center gap-1.5 rounded-lg border border-base-600/60 bg-base-800/60 px-3 py-1.5 text-xs font-medium text-slate-300 hover:border-accent-500/50 hover:text-white"
-      >
-        <ArrowLeft size={13} />
-        Back to app
-      </button>
+    <header className="flex flex-col gap-2 border-b border-base-700/60 px-4 py-3 sm:px-6">
+      <div className="flex items-center justify-between gap-3">
+        <button onClick={() => onNavigate("")} className="flex items-center gap-2 text-sm text-slate-300 hover:text-white">
+          <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-gradient-to-br from-accent-500 to-accent-700">
+            <LogoMark size={13} className="text-base-950" />
+          </div>
+          <span className="font-serif text-base font-semibold tracking-tight text-white">Scribble Docs</span>
+        </button>
+        <button
+          onClick={onExit}
+          className="flex items-center gap-1.5 rounded-lg border border-base-600/60 bg-base-800/60 px-3 py-1.5 text-xs font-medium text-slate-300 hover:border-accent-500/50 hover:text-white"
+        >
+          <ArrowLeft size={13} />
+          Back to app
+        </button>
+      </div>
+      <nav className="flex flex-wrap items-center gap-1">
+        {DOCS_NAV.map((item) => {
+          const active = item.slug === slug || (item.slug === "models" && isModelPage);
+          return (
+            <button
+              key={item.slug || "home"}
+              onClick={() => onNavigate(item.slug)}
+              className={`rounded-lg px-2.5 py-1 text-xs font-medium transition-colors ${
+                active ? "bg-accent-500/15 text-accent-400" : "text-slate-400 hover:text-white"
+              }`}
+            >
+              {item.label}
+            </button>
+          );
+        })}
+      </nav>
     </header>
   );
 }
@@ -174,6 +225,278 @@ function ModelCard({ model, onOpen }: { model: ModelDef; onOpen: (slug: string) 
         ))}
       </div>
     </button>
+  );
+}
+
+/** Copy-to-clipboard shell command block, used throughout the Worker deploy guide. */
+function CodeBlock({ children }: { children: string }) {
+  const [copied, setCopied] = useState(false);
+  const copy = () => {
+    navigator.clipboard.writeText(children).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    });
+  };
+  return (
+    <div className="relative mt-2 rounded-lg border border-base-700/60 bg-base-950/60">
+      <button
+        onClick={copy}
+        aria-label="Copy command"
+        className="absolute right-2 top-2 flex items-center gap-1 rounded-md border border-base-600/60 bg-base-800/80 px-1.5 py-1 text-[10px] text-slate-400 hover:text-white"
+      >
+        {copied ? <Check size={11} /> : <Copy size={11} />}
+      </button>
+      <pre className="overflow-x-auto p-3 pr-14 text-xs leading-relaxed text-slate-300">
+        <code>{children}</code>
+      </pre>
+    </div>
+  );
+}
+
+function GuideStep({ n, title, children }: { n: number; title: string; children: ReactNode }) {
+  return (
+    <div className="flex gap-3 border-b border-base-700/50 py-5 first:pt-0 last:border-b-0">
+      <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-base-800 text-xs font-semibold text-accent-400">
+        {n}
+      </div>
+      <div className="min-w-0 flex-1">
+        <h3 className="text-sm font-semibold text-white">{title}</h3>
+        <div className="mt-1.5 text-sm leading-relaxed text-slate-400">{children}</div>
+      </div>
+    </div>
+  );
+}
+
+function WorkerGuidePage({ onOpen }: { onOpen: (slug: string) => void }) {
+  return (
+    <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
+      <div className="flex items-center gap-2">
+        <Server size={20} className="text-accent-400" />
+        <h1 className="font-serif text-2xl font-semibold text-white sm:text-3xl">Deploy your own Worker</h1>
+      </div>
+      <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-400">
+        Scribble's frontend is static — it never talks to a model provider directly. Every chat request goes through a
+        small Cloudflare Worker (<code className="rounded bg-base-800 px-1 py-0.5 text-xs text-slate-300">worker/</code>{" "}
+        in the repo) that holds your API keys and normalizes each provider into the same streaming format. Deploying
+        your own Worker means your keys stay yours, and you control which providers are enabled.
+      </p>
+
+      <section className="mt-8 rounded-xl border border-base-700/60 bg-base-900/40 p-4 sm:p-5">
+        <h2 className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">What you'll need</h2>
+        <ul className="mt-3 space-y-1.5 text-sm text-slate-300">
+          <li className="flex items-start gap-2">
+            <ChevronRight size={14} className="mt-0.5 shrink-0 text-slate-600" />A free Cloudflare account
+          </li>
+          <li className="flex items-start gap-2">
+            <ChevronRight size={14} className="mt-0.5 shrink-0 text-slate-600" />
+            Node.js installed locally
+          </li>
+          <li className="flex items-start gap-2">
+            <ChevronRight size={14} className="mt-0.5 shrink-0 text-slate-600" />
+            An API key from at least one provider (xKiro, Mistral, Gemini, or OpenRouter)
+          </li>
+          <li className="flex items-start gap-2">
+            <ChevronRight size={14} className="mt-0.5 shrink-0 text-slate-600" />A clone of the Scribble repo
+          </li>
+        </ul>
+      </section>
+
+      <section className="mt-8">
+        <h2 className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Step by step</h2>
+
+        <GuideStep n={1} title="Install dependencies">
+          <p>From the repo root, install the Worker's dependencies.</p>
+          <CodeBlock>{"cd worker\nnpm install"}</CodeBlock>
+        </GuideStep>
+
+        <GuideStep n={2} title="Log in to Cloudflare">
+          <p>Wrangler (Cloudflare's CLI) will open a browser tab to authenticate.</p>
+          <CodeBlock>npx wrangler login</CodeBlock>
+        </GuideStep>
+
+        <GuideStep n={3} title="Allow your frontend's origin">
+          <p>
+            Open <code className="rounded bg-base-800 px-1 py-0.5 text-xs text-slate-300">worker/wrangler.toml</code> and
+            edit <code className="rounded bg-base-800 px-1 py-0.5 text-xs text-slate-300">ALLOWED_ORIGINS</code> under{" "}
+            <code className="rounded bg-base-800 px-1 py-0.5 text-xs text-slate-300">[vars]</code> to a comma-separated
+            list including wherever your copy of the frontend is hosted (GitHub Pages, a custom domain, etc). Requests
+            from origins not on this list are rejected by CORS.
+          </p>
+        </GuideStep>
+
+        <GuideStep n={4} title="Add your provider API key(s)">
+          <p>
+            Each provider's key is a Worker secret, never committed to the repo. Set one for every provider you want
+            enabled — you only need one to get started:
+          </p>
+          <CodeBlock>
+            {[
+              "npx wrangler secret put XKIRO_API_KEY",
+              "npx wrangler secret put MISTRAL_API_KEY",
+              "npx wrangler secret put GEMINI_API_KEY",
+              "npx wrangler secret put OPENROUTER_API_KEY",
+            ].join("\n")}
+          </CodeBlock>
+          <p className="mt-2">
+            Each command prompts for the key's value, then stores it encrypted — it's never written to disk or to
+            wrangler.toml. One more secret, <code className="rounded bg-base-800 px-1 py-0.5 text-xs text-slate-300">GROQ_API_KEY</code>,
+            isn't tied to a selectable model — it only powers automatic chat-title generation and is optional (chats
+            fall back to a truncated-prompt title without it).
+          </p>
+        </GuideStep>
+
+        <GuideStep n={5} title="(Optional) Lock it down with a password">
+          <p>
+            Without this, anyone who has your Worker's URL can use it — and burn your API budget. Set{" "}
+            <code className="rounded bg-base-800 px-1 py-0.5 text-xs text-slate-300">SCRIBBLE_PASSWORD</code> to require
+            a password from the frontend's Settings panel before the Worker will respond.
+          </p>
+          <CodeBlock>npx wrangler secret put SCRIBBLE_PASSWORD</CodeBlock>
+        </GuideStep>
+
+        <GuideStep n={6} title="(Optional) Enable image generation">
+          <p>
+            The image mode uses Cloudflare Workers AI directly and needs two more secrets: your Cloudflare account ID
+            and a Workers AI-scoped API token (create one under My Profile → API Tokens in the Cloudflare dashboard).
+          </p>
+          <CodeBlock>{"npx wrangler secret put CF_ACCOUNT_ID\nnpx wrangler secret put CF_AI_TOKEN"}</CodeBlock>
+        </GuideStep>
+
+        <GuideStep n={7} title="Deploy">
+          <p>This publishes the Worker to a *.workers.dev URL and prints it at the end.</p>
+          <CodeBlock>npm run deploy</CodeBlock>
+        </GuideStep>
+
+        <GuideStep n={8} title="Point Scribble at it">
+          <p>
+            Back in the app, open <strong className="text-slate-300">Settings → Worker URL</strong> and paste the URL
+            from the previous step. If you set a password in step 5, enter it in{" "}
+            <strong className="text-slate-300">Access password</strong> too. Settings has a test-connection check that
+            pings the Worker's <code className="rounded bg-base-800 px-1 py-0.5 text-xs text-slate-300">/api/health</code>{" "}
+            endpoint — use it to confirm the Worker is reachable before sending your first chat.
+          </p>
+        </GuideStep>
+      </section>
+
+      <section className="mt-8 rounded-xl border border-base-700/60 bg-base-900/40 p-4 sm:p-5">
+        <h2 className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Troubleshooting</h2>
+        <div className="mt-2 space-y-3 text-sm">
+          <div>
+            <p className="font-medium text-slate-200">CORS error in the browser console</p>
+            <p className="mt-0.5 text-slate-400">
+              The frontend's origin isn't in <code className="rounded bg-base-800 px-1 py-0.5 text-xs">ALLOWED_ORIGINS</code>
+              . Add it in wrangler.toml and redeploy.
+            </p>
+          </div>
+          <div>
+            <p className="font-medium text-slate-200">"is not configured on this Worker (missing API key secret)"</p>
+            <p className="mt-0.5 text-slate-400">
+              The model you picked belongs to a provider whose secret isn't set yet — run the matching{" "}
+              <code className="rounded bg-base-800 px-1 py-0.5 text-xs">wrangler secret put</code> command from step 4.
+            </p>
+          </div>
+          <div>
+            <p className="font-medium text-slate-200">"Invalid or missing Scribble password"</p>
+            <p className="mt-0.5 text-slate-400">
+              The Worker has <code className="rounded bg-base-800 px-1 py-0.5 text-xs">SCRIBBLE_PASSWORD</code> set, and
+              Scribble's Settings either has no password or the wrong one.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <button
+        onClick={() => onOpen("models")}
+        className="mt-8 flex items-center gap-1.5 text-xs text-slate-400 hover:text-white"
+      >
+        Browse the model catalog
+        <ChevronRight size={13} />
+      </button>
+    </div>
+  );
+}
+
+function HomeCard({
+  onClick,
+  icon,
+  eyebrow,
+  title,
+  description,
+  cta,
+}: {
+  onClick: () => void;
+  icon: ReactNode;
+  eyebrow: string;
+  title: string;
+  description: ReactNode;
+  cta: string;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className="group flex flex-col gap-2 rounded-xl border border-base-700/60 bg-base-900/40 p-5 text-left transition-colors hover:border-accent-500/50 hover:bg-base-800/50"
+    >
+      <div className="flex items-center gap-2 text-accent-400">
+        {icon}
+        <span className="text-xs font-semibold uppercase tracking-wide">{eyebrow}</span>
+      </div>
+      <h2 className="text-lg font-semibold text-white">{title}</h2>
+      <p className="text-sm text-slate-400">{description}</p>
+      <span className="mt-1 flex items-center gap-1 text-xs font-medium text-accent-400 group-hover:gap-1.5">
+        {cta} <ChevronRight size={13} />
+      </span>
+    </button>
+  );
+}
+
+function HomePage({ onOpen }: { onOpen: (slug: string) => void }) {
+  const modelCount = getAllModels().length;
+  const providerCount = new Set(getAllModels().map((m) => m.provider)).size;
+  return (
+    <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6 sm:py-14">
+      <h1 className="font-serif text-3xl font-semibold text-white sm:text-4xl">Scribble Docs</h1>
+      <p className="mt-3 max-w-xl text-sm leading-relaxed text-slate-400">
+        Scribble is a free, open chat frontend that talks to your choice of model provider through a Cloudflare Worker
+        you control. These docs cover what's available and how to run your own Worker behind it.
+      </p>
+
+      <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <HomeCard
+          onClick={() => onOpen("models")}
+          icon={<BookOpen size={18} />}
+          eyebrow="Reference"
+          title="Model catalog"
+          description={`Every one of the ${modelCount} models Scribble supports — capabilities, context length, and whether it needs sign-in.`}
+          cta="Browse models"
+        />
+        <HomeCard
+          onClick={() => onOpen("providers")}
+          icon={<Layers size={18} />}
+          eyebrow="Reference"
+          title="Providers"
+          description={`The ${providerCount} providers behind those models — what each one is and how Scribble talks to it.`}
+          cta="Browse providers"
+        />
+        <HomeCard
+          onClick={() => onOpen("top-models")}
+          icon={<Trophy size={18} />}
+          eyebrow="Live data"
+          title="Top models"
+          description="Which model is finishing the most replies this month, tallied anonymously across every Scribble user."
+          cta="See the leaderboard"
+        />
+        <HomeCard
+          onClick={() => onOpen("worker")}
+          icon={<Terminal size={18} />}
+          eyebrow="Guide"
+          title="Deploy your own Worker"
+          description="Step-by-step setup for the Cloudflare Worker that holds your API keys and proxies chat requests to providers."
+          cta="Start deploying"
+        />
+      </div>
+
+      <FaqSection />
+    </div>
   );
 }
 
@@ -227,8 +550,235 @@ function DocsIndex({ onOpen }: { onOpen: (slug: string) => void }) {
       ))}
 
       {filtered.length === 0 && <p className="mt-10 text-center text-sm text-slate-500">No models match "{query}"</p>}
+    </div>
+  );
+}
 
-      <FaqSection />
+/** What each provider actually is, in Scribble's own terms — grounded in how
+ * lib/workerClient.ts, lib/puterClient.ts, and worker/src/index.ts treat it, not
+ * marketing copy. Every entry in the Provider union (types.ts) needs one here. */
+const PROVIDERS_META: Record<Provider, { description: string; link?: { href: string; label: string } }> = {
+  xkiro: {
+    description:
+      "Scribble's own provider tier. It's home to the app's default model — the only one that works with no sign-in and no Worker configuration.",
+  },
+  mistral: {
+    description: "Mistral AI's own hosted models, called directly through Mistral's API.",
+    link: { href: "https://mistral.ai", label: "mistral.ai" },
+  },
+  gemini: {
+    description: "Google's Gemini model family, called directly through Google's Generative Language API.",
+    link: { href: "https://ai.google.dev", label: "ai.google.dev" },
+  },
+  openrouter: {
+    description:
+      "A gateway that proxies many upstream model providers behind one API — how Scribble reaches models it has no direct integration for.",
+    link: { href: "https://openrouter.ai", label: "openrouter.ai" },
+  },
+  puter: {
+    description:
+      "Puter.js, an in-browser AI SDK. Requests go straight from your browser to Puter with its own sign-in and billing — they never touch Scribble's Worker or its provider keys.",
+    link: { href: "https://js.puter.com", label: "js.puter.com" },
+  },
+  custom: {
+    description:
+      "Any OpenAI-compatible endpoint you add yourself from Settings → Custom Models. Not covered by these docs since Scribble has no way to verify what a custom endpoint actually runs.",
+  },
+};
+
+function ProviderSection({ provider, models }: { provider: Provider; models: ModelDef[] }) {
+  const meta = PROVIDERS_META[provider];
+  const gatedCount = models.filter((m) => isModelGated(m)).length;
+  return (
+    <section className="rounded-xl border border-base-700/60 bg-base-900/40 p-4 sm:p-5">
+      <div className="flex items-start gap-3">
+        <ProviderFavicon provider={provider} size={24} />
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+            <h2 className="text-base font-semibold text-white">{PROVIDER_LABELS[provider]}</h2>
+            <span className="text-xs text-slate-500">
+              {models.length} model{models.length === 1 ? "" : "s"}
+            </span>
+          </div>
+          <p className="mt-1.5 text-sm leading-relaxed text-slate-400">{meta.description}</p>
+          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
+            {gatedCount < models.length && (
+              <span className="inline-flex items-center gap-1 text-accent-400">
+                <Zap size={11} />
+                {models.length - gatedCount} free, no sign-in
+              </span>
+            )}
+            {gatedCount > 0 && (
+              <span className="inline-flex items-center gap-1">
+                <Lock size={11} />
+                {gatedCount} need sign-in
+              </span>
+            )}
+            {meta.link && (
+              <a
+                href={meta.link.href}
+                target="_blank"
+                rel="noreferrer noopener"
+                className="text-slate-400 underline decoration-base-600 underline-offset-2 hover:text-white"
+              >
+                {meta.link.label}
+              </a>
+            )}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function ProvidersPage({ onOpen }: { onOpen: (slug: string) => void }) {
+  const grouped = useMemo(() => {
+    const map = new Map<Provider, ModelDef[]>();
+    for (const m of getAllModels()) {
+      const list = map.get(m.provider) ?? [];
+      list.push(m);
+      map.set(m.provider, list);
+    }
+    return map;
+  }, []);
+
+  return (
+    <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
+      <div className="flex items-center gap-2">
+        <Layers size={20} className="text-accent-400" />
+        <h1 className="font-serif text-2xl font-semibold text-white sm:text-3xl">Providers</h1>
+      </div>
+      <p className="mt-2 max-w-2xl text-sm text-slate-400">
+        Every model in Scribble belongs to one of these providers — what actually runs the model, and how Scribble
+        talks to it under the hood.
+      </p>
+
+      <div className="mt-6 space-y-3">
+        {[...grouped.entries()].map(([provider, models]) => (
+          <ProviderSection key={provider} provider={provider} models={models} />
+        ))}
+      </div>
+
+      <button onClick={() => onOpen("models")} className="mt-8 flex items-center gap-1.5 text-xs text-slate-400 hover:text-white">
+        Browse the model catalog
+        <ChevronRight size={13} />
+      </button>
+    </div>
+  );
+}
+
+/** "2026-08" -> "August 2026". monthKey() always produces a valid "YYYY-MM", so the
+ * Date it builds (day 2, to dodge UTC-vs-local rollover at the month boundary) is
+ * never invalid — no fallback string needed. */
+function formatMonthLabel(month: string): string {
+  const [year, m] = month.split("-").map(Number);
+  return new Date(year, m - 1, 2).toLocaleDateString(undefined, { month: "long", year: "numeric" });
+}
+
+interface LeaderboardRow {
+  model: ModelDef;
+  count: number;
+}
+
+function TopModelsPage({ onOpen }: { onOpen: (slug: string) => void }) {
+  const [state, setState] = useState<"loading" | "ready" | "unavailable">("loading");
+  const [rows, setRows] = useState<LeaderboardRow[]>([]);
+  const month = monthKey();
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchMonthStats(month).then((stats) => {
+      if (cancelled) return;
+      if (!stats) {
+        setState("unavailable");
+        return;
+      }
+      const allModels = getAllModels();
+      const bySlug = new Map(allModels.map((m) => [modelSlug(m.modelId), m]));
+      const resolved = Object.entries(stats)
+        .map(([slug, count]) => ({ model: bySlug.get(slug), count }))
+        .filter((r): r is LeaderboardRow => !!r.model)
+        .sort((a, b) => b.count - a.count);
+      setRows(resolved);
+      setState("ready");
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [month]);
+
+  const top = rows[0];
+
+  return (
+    <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
+      <div className="flex items-center gap-2">
+        <Trophy size={20} className="text-accent-400" />
+        <h1 className="font-serif text-2xl font-semibold text-white sm:text-3xl">Top models</h1>
+      </div>
+      <p className="mt-2 max-w-2xl text-sm text-slate-400">
+        Which model is finishing the most replies across every Scribble user this month — tallied anonymously, with no
+        account or chat content attached to a single count. Custom endpoints aren't included since they're per-user.
+      </p>
+      <p className="mt-1 text-xs text-slate-600">{formatMonthLabel(month)}</p>
+
+      {state === "loading" && <p className="mt-10 text-center text-sm text-slate-500">Loading this month's counts…</p>}
+
+      {state === "unavailable" && (
+        <p className="mt-10 text-center text-sm text-slate-500">
+          Couldn't reach the leaderboard right now — it needs a connection to Scribble's usage database. Try again in a
+          moment.
+        </p>
+      )}
+
+      {state === "ready" && rows.length === 0 && (
+        <p className="mt-10 text-center text-sm text-slate-500">
+          No completed replies logged yet for {formatMonthLabel(month)} — check back once some chats have run.
+        </p>
+      )}
+
+      {state === "ready" && top && (
+        <section className="mt-6 rounded-xl border border-accent-500/30 bg-accent-500/5 p-5">
+          <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-accent-400">
+            <Medal size={13} />
+            Top model this month
+          </div>
+          <div className="mt-2 flex items-center gap-3">
+            <ModelFavicon model={top.model} size={28} />
+            <div className="min-w-0">
+              <p className="truncate text-lg font-semibold text-white">{top.model.displayName}</p>
+              <p className="text-xs text-slate-500">{PROVIDER_LABELS[top.model.provider]}</p>
+            </div>
+          </div>
+          <p className="mt-2 text-sm text-slate-400">
+            {top.count.toLocaleString()} completed {top.count === 1 ? "reply" : "replies"} so far.
+          </p>
+        </section>
+      )}
+
+      {state === "ready" && rows.length > 1 && (
+        <section className="mt-6">
+          <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Full leaderboard</h2>
+          <div className="divide-y divide-base-700/50 rounded-xl border border-base-700/60 bg-base-900/40">
+            {rows.map((row, i) => (
+              <button
+                key={row.model.modelId}
+                onClick={() => onOpen(modelSlug(row.model.modelId))}
+                className="flex w-full items-center gap-3 p-3 text-left hover:bg-base-800/50"
+              >
+                <span className="w-5 shrink-0 text-center text-xs font-semibold text-slate-500">{i + 1}</span>
+                <ModelFavicon model={row.model} size={18} />
+                <span className="min-w-0 flex-1 truncate text-sm font-medium text-white">{row.model.displayName}</span>
+                <span className="shrink-0 text-xs text-slate-500">{row.count.toLocaleString()}</span>
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
+
+      <button onClick={() => onOpen("models")} className="mt-8 flex items-center gap-1.5 text-xs text-slate-400 hover:text-white">
+        Browse the model catalog
+        <ChevronRight size={13} />
+      </button>
     </div>
   );
 }
@@ -338,13 +888,22 @@ export function DocsPage({ slug, onExit }: { slug: string; onExit: () => void })
     window.history.pushState(null, "", docsPath(target));
     window.dispatchEvent(new PopStateEvent("popstate"));
   };
-  const backToIndex = () => navigate("");
+  const backToIndex = () => navigate("models");
 
-  const model = slug ? getAllModels().find((m) => modelSlug(m.modelId) === slug) : undefined;
+  const RESERVED_SLUGS = ["", "models", "providers", "top-models", "worker"];
+  const isReserved = RESERVED_SLUGS.includes(slug);
+  const model = !isReserved ? getAllModels().find((m) => modelSlug(m.modelId) === slug) : undefined;
 
   useEffect(() => {
-    document.title = model ? `${model.displayName} — Scribble Docs` : "Model catalog — Scribble Docs";
-  }, [model]);
+    const RESERVED_TITLES: Record<string, string> = {
+      "": "Scribble Docs",
+      models: "Model catalog — Scribble Docs",
+      providers: "Providers — Scribble Docs",
+      "top-models": "Top models — Scribble Docs",
+      worker: "Deploy your own Worker — Scribble Docs",
+    };
+    document.title = model ? `${model.displayName} — Scribble Docs` : (RESERVED_TITLES[slug] ?? "Scribble Docs");
+  }, [model, slug]);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const [scrollPct, setScrollPct] = useState(0);
@@ -365,7 +924,7 @@ export function DocsPage({ slug, onExit }: { slug: string; onExit: () => void })
       <div className="fixed inset-x-0 top-0 z-20 h-[2px] bg-base-800/60">
         <div className="h-full bg-accent-500 transition-[width]" style={{ width: `${scrollPct * 100}%` }} />
       </div>
-      <DocsHeader onExit={onExit} />
+      <DocsHeader slug={slug} onNavigate={navigate} onExit={onExit} />
 
       <div className="flex justify-center border-b border-base-700/40 bg-base-900/20 px-4 py-4">
         <AdUnit slot={AD_SLOTS.top} width={728} height={90} className="w-full" />
@@ -374,9 +933,13 @@ export function DocsPage({ slug, onExit }: { slug: string; onExit: () => void })
       <div className="mx-auto flex w-full max-w-[1400px] flex-1 flex-col gap-6 px-4 py-6 lg:flex-row lg:items-start lg:px-8">
         <AdRail slots={AD_SLOTS.left} order="order-2 lg:order-1" />
         <div className="min-w-0 flex-1 order-1 lg:order-2">
-          {!slug && <DocsIndex onOpen={navigate} />}
-          {slug && model && <ModelPage model={model} onOpen={navigate} onBackToIndex={backToIndex} />}
-          {slug && !model && <NotFound onBackToIndex={backToIndex} />}
+          {slug === "" && <HomePage onOpen={navigate} />}
+          {slug === "models" && <DocsIndex onOpen={navigate} />}
+          {slug === "providers" && <ProvidersPage onOpen={navigate} />}
+          {slug === "top-models" && <TopModelsPage onOpen={navigate} />}
+          {slug === "worker" && <WorkerGuidePage onOpen={navigate} />}
+          {!isReserved && model && <ModelPage model={model} onOpen={navigate} onBackToIndex={backToIndex} />}
+          {!isReserved && !model && <NotFound onBackToIndex={backToIndex} />}
         </div>
         <AdRail slots={AD_SLOTS.right} order="order-3" />
       </div>

@@ -1,11 +1,34 @@
 /**
  * Frontend-side provider abstraction. The UI never branches on `provider` —
  * every mode calls this single function with a ModelDef and gets a uniform
- * token stream back. The actual per-provider request shaping (xKiro/Groq/
- * Mistral/Gemini) lives server-side in worker/src/adapters, since that's
+ * token stream back. Per-provider request shaping for xKiro/Mistral/
+ * Gemini/OpenRouter lives server-side in worker/src/adapters, since that's
  * where the real API differences (auth headers, payload shape, SSE format)
- * live. This keeps the browser bundle provider-agnostic and API keys never
- * touch client code.
+ * live and where our provider keys are held. Puter is the one exception —
+ * it's an in-browser SDK with its own auth/billing, so it's called directly
+ * from lib/puterClient.ts, bypassing the Worker entirely.
  */
-export { streamChat, checkWorkerHealth, WorkerClientError } from "../lib/workerClient";
-export type { WireMessage, StreamChunk } from "../lib/workerClient";
+import { streamChat as workerStreamChat, checkWorkerHealth, WorkerClientError, type WireMessage, type StreamChunk } from "../lib/workerClient";
+import { puterStreamChat } from "../lib/puterClient";
+import type { Effort, ModelDef } from "../types";
+
+interface StreamChatParams {
+  workerUrl: string;
+  password?: string;
+  model: ModelDef;
+  messages: WireMessage[];
+  signal: AbortSignal;
+  customProvider?: { baseUrl: string; apiKey: string };
+  effort?: Effort;
+}
+
+export async function* streamChat(params: StreamChatParams): AsyncGenerator<StreamChunk> {
+  if (params.model.provider === "puter") {
+    yield* puterStreamChat({ model: params.model, messages: params.messages, signal: params.signal, effort: params.effort });
+    return;
+  }
+  yield* workerStreamChat(params);
+}
+
+export { checkWorkerHealth, WorkerClientError };
+export type { WireMessage, StreamChunk };

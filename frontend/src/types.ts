@@ -1,4 +1,4 @@
-export type Provider = "xkiro" | "groq" | "mistral" | "gemini" | "openrouter" | "custom";
+export type Provider = "xkiro" | "mistral" | "gemini" | "openrouter" | "puter" | "custom";
 
 /** Claude-Code-style reasoning depth, sent to the Worker and mapped to a
  * per-provider native param (or a system-prompt nudge) — see worker/src/adapters. */
@@ -81,6 +81,8 @@ export interface ChatMessage {
   thinkingStartedAt?: number;
   /** Elapsed ms from thinkingStartedAt to the first real content token — frozen once set. */
   thinkingMs?: number;
+  /** Estimated token count (~4 chars/token) of reasoning + content, updated live as chunks arrive. */
+  tokenCount?: number;
 }
 
 export type Mode = "battle" | "agent" | "side-by-side" | "direct" | "image";

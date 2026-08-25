@@ -3,7 +3,7 @@ import { openAICompatibleStream, formatOpenAIMessages, MAX_OUTPUT_TOKENS } from 
 
 /**
  * User-defined OpenAI-compatible endpoint (Settings → Custom Models). Same
- * wire format as xKiro/Groq/Mistral, but the base URL and API key come from
+ * wire format as xKiro/Mistral, but the base URL and API key come from
  * the request body instead of a Worker secret — this is the user's own key,
  * proxied only to dodge browser CORS, never stored server-side.
  */

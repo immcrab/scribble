@@ -181,6 +181,7 @@ function ThinkingBlock({ message }: { message: ChatMessageType }) {
           <span className="thinking-label animate-thinking-shimmer">
             {elapsedMs > 0 ? `Thinking for ${formatDuration(elapsedMs, false)}…` : "Thinking…"}
           </span>
+          {!!message.tokenCount && <span className="text-xs text-slate-500">~{message.tokenCount} tokens</span>}
         </div>
         {hasReasoning && (
           <div className="mt-1.5 max-h-32 overflow-y-auto rounded-lg border border-base-700/40 bg-base-900/40 px-3 py-2 text-xs italic leading-relaxed text-slate-500 whitespace-pre-wrap">
@@ -391,6 +392,14 @@ export function ChatMessage({
             <span className="text-sm italic text-slate-500">No response — try regenerating.</span>
           ) : null}
         </div>
+
+        {/* Token count — live estimate while generating, frozen once the turn ends.
+            Hidden during the pure "Thinking…" phase, where ThinkingBlock shows it instead. */}
+        {!isUser && !!message.tokenCount && (!message.streaming || !!message.content) && (
+          <div className="mt-1 px-1 text-[11px] text-slate-500">
+            {message.streaming ? `~${message.tokenCount} tokens` : `${message.tokenCount} tokens`}
+          </div>
+        )}
 
         {/* Action buttons — always visible on touch devices via CSS (see index.css),
             shown on hover for mouse. Made large enough for tappable use. */}

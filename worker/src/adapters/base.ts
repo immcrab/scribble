@@ -4,7 +4,7 @@ const encoder = new TextEncoder();
 
 /** Depth nudge appended to the system prompt for providers with no native
  * reasoning-effort/thinking-budget knob (xKiro, Mistral, custom endpoints) —
- * see groq.ts/gemini.ts for the native versions used on those two providers. */
+ * see gemini.ts for the native version used on that provider. */
 const EFFORT_NUDGE: Record<Effort, string> = {
   low: " Keep your reasoning brief — answer directly and concisely, without extended deliberation.",
   medium: " Think through the problem at a normal, practical depth before answering.",
@@ -267,7 +267,7 @@ function extractDeltaReasoning(delta: unknown): string {
  * Converts an upstream OpenAI-compatible SSE chat-completions stream
  * (`data: {...}\n\n` frames, `[DONE]` sentinel) into Scribble's normalized
  * NDJSON wire protocol: one `{"delta": "..."}` line per token, then
- * `{"done": true}`. Shared by xKiro, Groq, and Mistral — all three speak
+ * `{"done": true}`. Shared by xKiro and Mistral — both speak
  * the same OpenAI-style streaming format.
  *
  * A one-time `sanitizeDelta` pass strips any leaked system-prompt preamble
