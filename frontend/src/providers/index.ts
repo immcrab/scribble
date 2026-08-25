@@ -10,7 +10,7 @@
  */
 import { streamChat as workerStreamChat, checkWorkerHealth, WorkerClientError, type WireMessage, type StreamChunk } from "../lib/workerClient";
 import { puterStreamChat } from "../lib/puterClient";
-import type { Effort, ModelDef } from "../types";
+import type { ClientContext, Effort, ModelDef } from "../types";
 
 interface StreamChatParams {
   workerUrl: string;
@@ -21,11 +21,18 @@ interface StreamChatParams {
   customProvider?: { baseUrl: string; apiKey: string };
   effort?: Effort;
   webSearch?: boolean;
+  clientContext?: ClientContext;
 }
 
 export async function* streamChat(params: StreamChatParams): AsyncGenerator<StreamChunk> {
   if (params.model.provider === "puter") {
-    yield* puterStreamChat({ model: params.model, messages: params.messages, signal: params.signal, effort: params.effort });
+    yield* puterStreamChat({
+      model: params.model,
+      messages: params.messages,
+      signal: params.signal,
+      effort: params.effort,
+      clientContext: params.clientContext,
+    });
     return;
   }
   yield* workerStreamChat(params);

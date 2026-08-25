@@ -45,6 +45,13 @@ function isValidBody(body: unknown): body is ChatRequestBody {
   if (!Array.isArray(b.messages) || b.messages.length === 0) return false;
   if (b.effort !== undefined && !VALID_EFFORTS.includes(b.effort as string)) return false;
   if (b.webSearch !== undefined && typeof b.webSearch !== "boolean") return false;
+  if (b.clientContext !== undefined) {
+    if (typeof b.clientContext !== "object" || b.clientContext === null) return false;
+    const cc = b.clientContext as Record<string, unknown>;
+    if (cc.localTime !== undefined && typeof cc.localTime !== "string") return false;
+    if (cc.timezone !== undefined && typeof cc.timezone !== "string") return false;
+    if (cc.location !== undefined && typeof cc.location !== "string") return false;
+  }
   if (b.provider === "custom") {
     const cp = b.customProvider as Record<string, unknown> | undefined;
     if (!cp || typeof cp !== "object") return false;
@@ -189,6 +196,7 @@ export default {
                     messages,
                     visionCapable: !!body.visionCapable,
                     effort: body.effort,
+                    clientContext: body.clientContext,
                   })
                 : await ADAPTERS[body.provider]!({
                     apiKey: apiKey!,
@@ -196,6 +204,7 @@ export default {
                     messages,
                     visionCapable: !!body.visionCapable,
                     effort: body.effort,
+                    clientContext: body.clientContext,
                   });
             const reader = upstream.getReader();
             while (true) {

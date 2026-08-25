@@ -1,4 +1,4 @@
-import type { Effort, WireAttachment, WireMessage } from "../types";
+import type { ClientContext, Effort, WireAttachment, WireMessage } from "../types";
 
 const encoder = new TextEncoder();
 
@@ -29,6 +29,29 @@ export const SYSTEM_PROMPT =
   'When writing code, always finish what you start — never cut a file or function off mid-statement; a long response is fine, an incomplete one is not. ' +
   'When asked to modify, fix, or add to existing code, change only what is necessary and leave the rest exactly as it was — then output the complete updated file, not just the changed lines. ' +
   'When a task needs more than one file, put each file in its own fenced code block, and give every file a real, specific name (never "file", "file1", "code", or similar) — write it in bold on its own line immediately above that fence, like "**index.html**" or "**src/utils.py**", using the exact filename that project would actually have.';
+
+/**
+ * Appends ambient client info (local date/time, timezone, opt-in approximate location) and the
+ * effort nudge to SYSTEM_PROMPT. Kept separate from SYSTEM_PROMPT itself since the leak-detection
+ * patterns in sanitizeDelta are written against the fixed instructional text — a per-request
+ * suffix here never needs to be recognized as a "leak".
+ */
+export function buildSystemPrompt(effort?: Effort, clientContext?: ClientContext): string {
+  let prompt = SYSTEM_PROMPT;
+  if (clientContext?.localTime) {
+    prompt +=
+      ` The user's current local date and time is ${clientContext.localTime}` +
+      (clientContext.timezone ? ` (timezone: ${clientContext.timezone})` : "") +
+      `. Use this for anything time-relative — don't say you don't know the date.`;
+  }
+  if (clientContext?.location) {
+    prompt +=
+      ` The user's approximate location is ${clientContext.location}. Use it only to make answers ` +
+      `more relevant (local time, nearby places, units, etc.) — don't mention it unless it's relevant.`;
+  }
+  if (effort) prompt += EFFORT_NUDGE[effort];
+  return prompt;
+}
 
 /** Generous enough for a full multi-file response without truncating, small enough to stay well
  * inside every supported model's max output — providers default to much lower caps (often ~1-2k)
@@ -198,14 +221,19 @@ function describeAttachment(att: WireAttachment, visionCapable: boolean): { imag
  * A single Scribble system message is prepended so the model always gets
  * explicit, controlled instructions regardless of the provider's defaults.
  */
-export function formatOpenAIMessages(messages: WireMessage[], visionCapable: boolean, effort?: Effort): Array<{
+export function formatOpenAIMessages(
+  messages: WireMessage[],
+  visionCapable: boolean,
+  effort?: Effort,
+  clientContext?: ClientContext
+): Array<{
   role: "user" | "assistant" | "system";
   content: string | Array<{ type: "text"; text: string } | { type: "image_url"; image_url: { url: string } }>;
 }> {
   const result: Array<{
     role: "user" | "assistant" | "system";
     content: string | Array<{ type: "text"; text: string } | { type: "image_url"; image_url: { url: string } }>;
-  }> = [{ role: "system", content: SYSTEM_PROMPT + (effort ? EFFORT_NUDGE[effort] : "") }];
+  }> = [{ role: "system", content: buildSystemPrompt(effort, clientContext) }];
 
   for (const m of messages) {
     if (m.role === "system") continue; // skip any existing system messages — ours takes precedence

@@ -2,8 +2,8 @@ import type { AdapterParams } from "../types";
 import { openAICompatibleStream, formatOpenAIMessages, MAX_OUTPUT_TOKENS } from "./base";
 
 /** Mistral La Plateforme is OpenAI-compatible — https://api.mistral.ai/v1/chat/completions */
-export async function mistralStreamChat({ apiKey, model, messages, visionCapable, effort }: AdapterParams): Promise<ReadableStream<Uint8Array>> {
-  const formattedMessages = formatOpenAIMessages(messages, visionCapable, effort);
+export async function mistralStreamChat({ apiKey, model, messages, visionCapable, effort, clientContext }: AdapterParams): Promise<ReadableStream<Uint8Array>> {
+  const formattedMessages = formatOpenAIMessages(messages, visionCapable, effort, clientContext);
   const res = await fetch("https://api.mistral.ai/v1/chat/completions", {
     method: "POST",
     headers: {

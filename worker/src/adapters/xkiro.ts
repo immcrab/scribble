@@ -84,8 +84,8 @@ function concatBytes(a: Uint8Array, b: Uint8Array): Uint8Array {
 }
 
 /** xKiro is OpenAI-compatible — https://api.xkiro.com/v1/chat/completions */
-export async function xkiroStreamChat({ apiKey, model, messages, visionCapable, effort }: AdapterParams): Promise<ReadableStream<Uint8Array>> {
-  const formattedMessages = formatOpenAIMessages(messages, visionCapable, effort);
+export async function xkiroStreamChat({ apiKey, model, messages, visionCapable, effort, clientContext }: AdapterParams): Promise<ReadableStream<Uint8Array>> {
+  const formattedMessages = formatOpenAIMessages(messages, visionCapable, effort, clientContext);
   const res = await fetchWithRetry(apiKey, model, formattedMessages);
 
   if (!res.ok) {

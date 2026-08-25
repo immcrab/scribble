@@ -1,4 +1,4 @@
-import type { Effort, WireMessage } from "../types";
+import type { ClientContext, Effort, WireMessage } from "../types";
 import { openAICompatibleStream, formatOpenAIMessages, MAX_OUTPUT_TOKENS } from "./base";
 
 /**
@@ -14,6 +14,7 @@ export async function customStreamChat({
   messages,
   visionCapable,
   effort,
+  clientContext,
 }: {
   apiKey: string;
   baseUrl: string;
@@ -21,8 +22,9 @@ export async function customStreamChat({
   messages: WireMessage[];
   visionCapable: boolean;
   effort?: Effort;
+  clientContext?: ClientContext;
 }): Promise<ReadableStream<Uint8Array>> {
-  const formattedMessages = formatOpenAIMessages(messages, visionCapable, effort);
+  const formattedMessages = formatOpenAIMessages(messages, visionCapable, effort, clientContext);
   const url = `${baseUrl.replace(/\/$/, "")}/chat/completions`;
   const res = await fetch(url, {
     method: "POST",

@@ -1,4 +1,4 @@
-import type { ModelDef, Attachment, Effort, ToolCallRecord } from "../types";
+import type { ModelDef, Attachment, ClientContext, Effort, ToolCallRecord } from "../types";
 
 export interface WireMessage {
   role: "user" | "assistant" | "system";
@@ -17,6 +17,8 @@ interface StreamChatParams {
   effort?: Effort;
   /** Agent Mode's web-search toggle — see worker/src/index.ts. */
   webSearch?: boolean;
+  /** Local date/time, timezone, and (opt-in) approximate location — see lib/clientContext.ts. */
+  clientContext?: ClientContext;
 }
 
 /** One line of the Worker's NDJSON stream protocol. */
@@ -43,7 +45,7 @@ export class WorkerClientError extends Error {}
  * know provider-specific wire formats.
  */
 export async function* streamChat(params: StreamChatParams): AsyncGenerator<StreamChunk> {
-  const { workerUrl, password, model, messages, signal, customProvider, effort, webSearch } = params;
+  const { workerUrl, password, model, messages, signal, customProvider, effort, webSearch, clientContext } = params;
   if (!workerUrl) {
     throw new WorkerClientError(
       "No Worker URL configured. Open Settings and paste your Cloudflare Worker URL."
@@ -69,6 +71,7 @@ export async function* streamChat(params: StreamChatParams): AsyncGenerator<Stre
       ...(customProvider ? { customProvider } : {}),
       ...(effort ? { effort } : {}),
       ...(webSearch ? { webSearch } : {}),
+      ...(clientContext ? { clientContext } : {}),
     }),
     signal,
   });

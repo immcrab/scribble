@@ -43,6 +43,15 @@ export interface CustomProvider {
   logoUrl?: string;
 }
 
+/** Ambient info about the user's own device/environment, gathered client-side and sent with
+ * each chat request so the model can answer time/location-relative questions without the user
+ * having to state them — see lib/clientContext.ts. Mirrors worker/src/types.ts's ClientContext. */
+export interface ClientContext {
+  localTime?: string;
+  timezone?: string;
+  location?: string;
+}
+
 export type Role = "user" | "assistant" | "system" | "tool";
 
 export interface Attachment {

@@ -263,6 +263,12 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
                     checked={settings.reduceMotion}
                     onChange={(v) => updateSettings({ reduceMotion: v })}
                   />
+                  <ToggleSwitch
+                    label="Share approximate location"
+                    description="Lets Scribble give locally-relevant answers. Your browser will ask permission before sharing anything — off by default"
+                    checked={settings.shareLocation}
+                    onChange={(v) => updateSettings({ shareLocation: v })}
+                  />
                 </div>
               </div>
             </div>

@@ -4,6 +4,7 @@ import { useChatStore } from "../state/chatStore";
 import { isModelGated } from "../config/models";
 import { auth } from "./firebase";
 import { recordModelUsage } from "./modelStats";
+import { getClientContext } from "./clientContext";
 
 /**
  * Drives a single assistant message's streaming lifecycle: fetches tokens
@@ -43,6 +44,8 @@ export async function runAssistantStream(params: {
   store.updateMessage(chatId, messageId, { thinkingStartedAt });
   let thinkingStamped = false;
 
+  const clientContext = await getClientContext(store.settings.shareLocation);
+
   try {
     for await (const chunk of streamChat({
       workerUrl: store.settings.workerUrl,
@@ -53,6 +56,7 @@ export async function runAssistantStream(params: {
       customProvider: customProvider ? { baseUrl: customProvider.baseUrl, apiKey: customProvider.apiKey } : undefined,
       effort,
       webSearch,
+      clientContext,
     })) {
       if (chunk.type === "reasoning") {
         useChatStore.getState().appendMessageReasoning(chatId, messageId, chunk.text);

@@ -1,4 +1,4 @@
-import type { Effort, ModelDef } from "../types";
+import type { ClientContext, Effort, ModelDef } from "../types";
 import type { StreamChunk, WireMessage } from "./workerClient";
 import { WorkerClientError } from "./workerClient";
 
@@ -116,8 +116,21 @@ function describeAttachment(att: NonNullable<WireMessage["attachments"]>[number]
   return `\n\n[Attached file "${name}" (${type || "unknown type"}) — not readable by this model]`;
 }
 
-function buildMessages(messages: WireMessage[], effort?: Effort): { role: string; content: string }[] {
-  const result = [{ role: "system", content: SYSTEM_PROMPT + (effort ? EFFORT_NUDGE[effort] : "") }];
+function buildMessages(messages: WireMessage[], effort?: Effort, clientContext?: ClientContext): { role: string; content: string }[] {
+  let systemContent = SYSTEM_PROMPT;
+  if (clientContext?.localTime) {
+    systemContent +=
+      ` The user's current local date and time is ${clientContext.localTime}` +
+      (clientContext.timezone ? ` (timezone: ${clientContext.timezone})` : "") +
+      `. Use this for anything time-relative — don't say you don't know the date.`;
+  }
+  if (clientContext?.location) {
+    systemContent +=
+      ` The user's approximate location is ${clientContext.location}. Use it only to make answers ` +
+      `more relevant (local time, nearby places, units, etc.) — don't mention it unless it's relevant.`;
+  }
+  if (effort) systemContent += EFFORT_NUDGE[effort];
+  const result = [{ role: "system", content: systemContent }];
   for (const m of messages) {
     if (m.role === "system") continue; // ours takes precedence, same as the Worker adapters
     let content = m.content || "";
@@ -174,12 +187,13 @@ export async function* puterStreamChat(params: {
   messages: WireMessage[];
   signal: AbortSignal;
   effort?: Effort;
+  clientContext?: ClientContext;
 }): AsyncGenerator<StreamChunk> {
-  const { model, messages, signal, effort } = params;
+  const { model, messages, signal, effort, clientContext } = params;
   if (signal.aborted) return;
 
   const puter = await loadPuter();
-  const chatMessages = buildMessages(messages, effort);
+  const chatMessages = buildMessages(messages, effort, clientContext);
 
   let stream: AsyncIterable<PuterChatChunk>;
   try {

@@ -32,6 +32,19 @@ export interface WireMessage {
   attachments?: WireAttachment[];
 }
 
+/** Ambient info about the user's own device/environment, gathered client-side and folded
+ * into the system prompt (see adapters/base.ts's buildSystemPrompt) so the model can answer
+ * "what time is it", "how far away is X", etc. without the user having to state it. */
+export interface ClientContext {
+  /** Human-readable local date/time, formatted client-side (e.g. "Tuesday, August 25, 2026, 3:42 PM PDT"). */
+  localTime?: string;
+  /** IANA timezone name, e.g. "America/Los_Angeles". */
+  timezone?: string;
+  /** Coarse "lat, lon" coordinates, only present when the user opted in via Settings and granted
+   * browser location permission — see frontend/src/lib/clientContext.ts. */
+  location?: string;
+}
+
 /** A user-defined OpenAI-compatible endpoint, sent by the client with each request when
  * `provider === "custom"` — unlike the built-in providers, this key is never stored as a
  * Worker secret; it travels with the request and is forwarded straight through. */
@@ -53,6 +66,8 @@ export interface ChatRequestBody {
    * Groq classifier whether the latest user message actually needs a live search, and
    * only then runs the SerpApi lookup — see the /api/chat/stream handler. */
   webSearch?: boolean;
+  /** Local date/time, timezone, and (opt-in) approximate location — see ClientContext. */
+  clientContext?: ClientContext;
 }
 
 export interface AdapterParams {
@@ -61,6 +76,7 @@ export interface AdapterParams {
   messages: WireMessage[];
   visionCapable: boolean;
   effort?: Effort;
+  clientContext?: ClientContext;
 }
 
 export type ProviderAdapter = (params: AdapterParams) => Promise<ReadableStream<Uint8Array>>;

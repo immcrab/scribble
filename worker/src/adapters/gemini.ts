@@ -1,5 +1,5 @@
 import type { AdapterParams, Effort, WireMessage } from "../types";
-import { ndjsonLine, SYSTEM_PROMPT, sanitizeDelta, MAX_OUTPUT_TOKENS } from "./base";
+import { ndjsonLine, buildSystemPrompt, sanitizeDelta, MAX_OUTPUT_TOKENS } from "./base";
 
 interface GeminiPart {
   text?: string;
@@ -169,10 +169,10 @@ function geminiSSEStream(upstream: Response): ReadableStream<Uint8Array> {
  * from the OpenAI-style providers: roles are "user"/"model" (not
  * "assistant"), and system prompts are a separate `systemInstruction` field.
  *
- * We inject Scribble's own SYSTEM_PROMPT as the systemInstruction so the
- * model is guided by explicit, controlled instructions.
+ * We inject Scribble's own system prompt (SYSTEM_PROMPT + ambient client context) as the
+ * systemInstruction so the model is guided by explicit, controlled instructions.
  */
-export async function geminiStreamChat({ apiKey, model, messages, visionCapable, effort }: AdapterParams): Promise<ReadableStream<Uint8Array>> {
+export async function geminiStreamChat({ apiKey, model, messages, visionCapable, effort, clientContext }: AdapterParams): Promise<ReadableStream<Uint8Array>> {
   const contents = buildGeminiContents(messages, visionCapable);
 
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(
@@ -183,7 +183,7 @@ export async function geminiStreamChat({ apiKey, model, messages, visionCapable,
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+      systemInstruction: { parts: [{ text: buildSystemPrompt(undefined, clientContext) }] },
       contents,
       generationConfig: {
         // thinkingBudget is drawn from the same maxOutputTokens pool, not on top of it —
