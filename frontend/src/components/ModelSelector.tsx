@@ -211,7 +211,16 @@ export function ModelSelector({
   }
 
   const providers = (Object.keys(grouped) as Provider[]).filter((p) => p !== "puter");
-  const favoritedPuterModels = grouped.puter ?? [];
+  // `grouped.puter` includes every puter-provider model from any source — ALL_MODELS,
+  // customModels, and sessionPuterModels (a model merely *selected*, not starred, still
+  // needs to resolve via findModel — see registerSessionPuterModel in config/models.ts).
+  // The starred/pinned section must only ever show genuine favorites, sourced straight
+  // from settings, or a picked-but-unstarred model would render there pre-filled with an
+  // "Unstar" star that does nothing visible when clicked (it's not actually in the list
+  // isFavorited checks against). Custom models targeting "puter" still get a plain row,
+  // same as every other provider, just without the star.
+  const favoritedPuterModels = puterFavorites;
+  const customPuterModels = (grouped.puter ?? []).filter((m) => m.isCustom && !isFavorited(m.modelId));
 
   return (
     <>
@@ -296,7 +305,17 @@ export function ModelSelector({
               />
             ))}
 
-            {favoritedPuterModels.length === 0 && (
+            {customPuterModels.map((m) => (
+              <ModelRow
+                key={m.modelId}
+                model={m}
+                active={value?.modelId === m.modelId}
+                locked={isModelGated(m) && !user}
+                onSelect={() => selectModel(m, close)}
+              />
+            ))}
+
+            {favoritedPuterModels.length === 0 && customPuterModels.length === 0 && (
               <p className="px-3.5 py-1.5 text-xs text-slate-500">
                 Puter.js has 800+ free models — star some to pin them here.
               </p>
