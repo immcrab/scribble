@@ -21,6 +21,7 @@ interface StreamChatParams {
   customProvider?: { baseUrl: string; apiKey: string };
   effort?: Effort;
   webSearch?: boolean;
+  memoryEnabled?: boolean;
   clientContext?: ClientContext;
 }
 

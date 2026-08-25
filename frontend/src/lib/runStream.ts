@@ -5,6 +5,7 @@ import { isModelGated } from "../config/models";
 import { auth } from "./firebase";
 import { recordModelUsage } from "./modelStats";
 import { getClientContext } from "./clientContext";
+import { playNotificationSound } from "./notificationSound";
 
 /**
  * Drives a single assistant message's streaming lifecycle: fetches tokens
@@ -45,7 +46,12 @@ export async function runAssistantStream(params: {
   let thinkingStamped = false;
 
   const lastUserMessage = [...history].reverse().find((m) => m.role === "user")?.content;
-  const clientContext = await getClientContext(store.settings.locationConsent, lastUserMessage);
+  const clientContext = await getClientContext(
+    store.settings.locationConsent,
+    lastUserMessage,
+    store.settings.customSystemPrompt,
+    store.settings.memoryEnabled ? store.memories.map((m) => m.content) : undefined
+  );
 
   try {
     for await (const chunk of streamChat({
@@ -57,6 +63,7 @@ export async function runAssistantStream(params: {
       customProvider: customProvider ? { baseUrl: customProvider.baseUrl, apiKey: customProvider.apiKey } : undefined,
       effort,
       webSearch,
+      memoryEnabled: store.settings.memoryEnabled,
       clientContext,
     })) {
       if (chunk.type === "reasoning") {
@@ -70,6 +77,9 @@ export async function runAssistantStream(params: {
           ? existing.map((t) => (t.id === chunk.toolCall.id ? chunk.toolCall : t))
           : [...existing, chunk.toolCall];
         useChatStore.getState().updateMessage(chatId, messageId, { toolCalls: next });
+        if (chunk.toolCall.name === "Memory" && chunk.toolCall.status === "done" && chunk.toolCall.output) {
+          useChatStore.getState().addMemory(chunk.toolCall.output);
+        }
         continue;
       }
       if (!thinkingStamped) {
@@ -80,6 +90,7 @@ export async function runAssistantStream(params: {
     }
     useChatStore.getState().updateMessage(chatId, messageId, { streaming: false });
     recordModelUsage(model);
+    if (store.settings.notificationSound) playNotificationSound();
   } catch (err) {
     if (controller.signal.aborted) {
       useChatStore.getState().updateMessage(chatId, messageId, { streaming: false });

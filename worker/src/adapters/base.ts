@@ -49,6 +49,15 @@ export function buildSystemPrompt(effort?: Effort, clientContext?: ClientContext
       ` The user's approximate location is ${clientContext.location}. Use it only to make answers ` +
       `more relevant (local time, nearby places, units, etc.) — don't mention it unless it's relevant.`;
   }
+  if (clientContext?.memories && clientContext.memories.length > 0) {
+    const facts = clientContext.memories.slice(0, 50).join(" | ");
+    prompt +=
+      ` Things you remember about this user from past conversations: ${facts}. Use them naturally ` +
+      `when relevant — don't mention that you're recalling stored memory unless asked.`;
+  }
+  if (clientContext?.customSystemPrompt) {
+    prompt += ` Additional instructions from the user: ${clientContext.customSystemPrompt.slice(0, 2000)}`;
+  }
   if (effort) prompt += EFFORT_NUDGE[effort];
   return prompt;
 }

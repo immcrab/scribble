@@ -4,15 +4,22 @@ import { Sidebar } from "./components/Sidebar";
 import { ModeSelector } from "./components/ModeSelector";
 import { Composer } from "./components/Composer";
 import { EmptyState } from "./components/EmptyState";
-import { SettingsModal } from "./components/SettingsModal";
 import { PWAInstallPrompt } from "./components/PWAInstallPrompt";
 import { LocationConsentPrompt } from "./components/LocationConsentPrompt";
 import { ConsentGate } from "./components/ConsentGate";
 import { SharedChatView } from "./components/SharedChatView";
 import { hasAcceptedTerms } from "./lib/storage";
 import { applyTheme, watchSystemTheme } from "./lib/theme";
-import { parseChatIdFromLocation, syncUrlToChat, onPopState, parseDocsSlugFromLocation } from "./lib/router";
+import {
+  parseChatIdFromLocation,
+  syncUrlToChat,
+  onPopState,
+  parseDocsSlugFromLocation,
+  parseSettingsTabFromLocation,
+  settingsPath,
+} from "./lib/router";
 import { DocsPage } from "./pages/DocsPage";
+import { SettingsPage } from "./pages/SettingsPage";
 import { fetchPublicChat } from "./lib/cloudSync";
 import { DirectMode } from "./modes/DirectMode";
 import { BattleMode } from "./modes/BattleMode";
@@ -51,10 +58,10 @@ export default function App() {
   const settings = useChatStore((s) => s.settings);
   const activeChat = chats.find((c) => c.id === activeChatId);
 
-  const [settingsOpen, setSettingsOpen] = useState(false);
   const [pending, setPending] = useState<InitialPrompt | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [docsSlug, setDocsSlug] = useState<string | null>(() => parseDocsSlugFromLocation());
+  const [settingsTab, setSettingsTab] = useState<string | null>(() => parseSettingsTabFromLocation());
   const [accepted, setAccepted] = useState(hasAcceptedTerms);
   const [shareState, setShareState] = useState<ShareState>(() => {
     const urlId = parseChatIdFromLocation();
@@ -71,6 +78,11 @@ export default function App() {
     applyTheme(settings.theme);
     watchSystemTheme(settings.theme);
   }, [settings.theme]);
+
+  useEffect(() => {
+    document.documentElement.dataset.textSize = settings.textSize;
+    document.documentElement.dataset.density = settings.density;
+  }, [settings.textSize, settings.density]);
 
   // Keep the tab title in sync with whatever's actually on screen — the active
   // chat, a shared chat someone sent us, or the docs section — instead of the
@@ -123,12 +135,21 @@ export default function App() {
     return () => window.removeEventListener("popstate", listener);
   }, []);
 
+  // Settings is the same kind of separate section (see pages/SettingsPage.tsx) — same
+  // popstate-driven tracking as docs above, including the synthetic popstate the Sidebar
+  // dispatches after a pushState (see components/Sidebar.tsx).
+  useEffect(() => {
+    const listener = () => setSettingsTab(parseSettingsTabFromLocation());
+    window.addEventListener("popstate", listener);
+    return () => window.removeEventListener("popstate", listener);
+  }, []);
+
   // Keep the address bar pointed at whichever chat is active — this is what gives every
   // chat its own "/c/{id}" URL. Suspended while viewing someone else's shared chat, or docs.
   useEffect(() => {
-    if (shareState.status !== "idle" || !activeChatId || docsSlug !== null) return;
+    if (shareState.status !== "idle" || !activeChatId || docsSlug !== null || settingsTab !== null) return;
     syncUrlToChat(activeChatId);
-  }, [activeChatId, shareState.status, docsSlug]);
+  }, [activeChatId, shareState.status, docsSlug, settingsTab]);
 
   // Picking a chat from the sidebar (or starting a new one) while viewing a shared/unresolved
   // chat should always drop back into the normal app — those actions only ever fire from
@@ -196,10 +217,25 @@ export default function App() {
     return <ConsentGate onAccept={() => setAccepted(true)} />;
   }
 
+  if (settingsTab !== null) {
+    return (
+      <SettingsPage
+        tab={settingsTab}
+        onExit={() => {
+          window.history.pushState(null, "", import.meta.env.BASE_URL);
+          setSettingsTab(null);
+        }}
+      />
+    );
+  }
+
   return (
     <div className={`flex h-dvh w-full overflow-hidden bg-base-950 ${settings.reduceMotion ? "motion-reduce-force" : ""}`}>
       <Sidebar
-        onOpenSettings={() => setSettingsOpen(true)}
+        onOpenSettings={() => {
+          window.history.pushState(null, "", settingsPath());
+          window.dispatchEvent(new PopStateEvent("popstate"));
+        }}
         mobileOpen={mobileMenuOpen}
         onCloseMobile={() => setMobileMenuOpen(false)}
       />
@@ -287,7 +323,6 @@ export default function App() {
 
       <PWAInstallPrompt />
       <LocationConsentPrompt />
-      {settingsOpen && <SettingsModal onClose={() => setSettingsOpen(false)} />}
     </div>
   );
 }

@@ -50,6 +50,20 @@ export interface ClientContext {
   localTime?: string;
   timezone?: string;
   location?: string;
+  /** User-configured custom instructions (settings.customSystemPrompt), appended to the base
+   * system prompt server-side — see worker/src/adapters/base.ts's buildSystemPrompt. */
+  customSystemPrompt?: string;
+  /** Stored memory facts (settings.memoryEnabled), sent so the model can use them this turn —
+   * the Worker decides per-turn whether they're actually relevant before including them. */
+  memories?: string[];
+}
+
+/** A remembered fact about the user, either extracted by the AI (explicit "remember that..."
+ * ask or a durable fact it decided was worth keeping) or added manually in Settings. */
+export interface MemoryEntry {
+  id: string;
+  content: string;
+  createdAt: number;
 }
 
 export type Role = "user" | "assistant" | "system" | "tool";

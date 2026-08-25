@@ -1,12 +1,24 @@
 import { create } from "zustand";
-import type { Chat, ChatMessage, Mode, Vote } from "../types";
+import type { Chat, ChatMessage, MemoryEntry, Mode, Vote } from "../types";
 import { getDefaultModel, setCustomModels, setPuterFavorites } from "../config/models";
-import { loadChats, saveChats, loadSettings, saveSettings, titleFromPrompt } from "../lib/storage";
+import { loadChats, saveChats, loadSettings, saveSettings, loadMemories, saveMemories, titleFromPrompt } from "../lib/storage";
 import type { ScribbleSettings } from "../lib/storage";
-import { startCloudSync, stopCloudSync, pushChatsToCloud, pushChatsPublic, pushSettingsToCloud, deleteChatFromCloud } from "../lib/cloudSync";
+import {
+  startCloudSync,
+  stopCloudSync,
+  pushChatsToCloud,
+  pushChatsPublic,
+  pushSettingsToCloud,
+  pushMemoriesToCloud,
+  deleteChatFromCloud,
+} from "../lib/cloudSync";
 import { generateChatTitle } from "../lib/workerClient";
 import { uid } from "../lib/id";
 import { estimateTokenCount } from "../lib/tokenCount";
+
+/** Stored memory list is capped so it stays cheap to ship with every chat request
+ * (see lib/clientContext.ts) and doesn't grow unbounded. */
+const MAX_MEMORIES = 200;
 
 let persistTimer: ReturnType<typeof setTimeout> | null = null;
 function debouncedPersist(chats: Chat[]) {
@@ -49,12 +61,14 @@ setPuterFavorites(initialSettings.puterFavoriteModels);
 
 const loadedChats = loadChats();
 const initialChats = loadedChats.length > 0 ? loadedChats : [createInitialChat("direct")];
+const initialMemories = loadMemories();
 
 interface ChatStore {
   chats: Chat[];
   activeChatId: string | null;
   sidebarOpen: boolean;
   settings: ScribbleSettings;
+  memories: MemoryEntry[];
   abortControllers: Map<string, AbortController>;
 
   activeChat: () => Chat | undefined;
@@ -78,6 +92,9 @@ interface ChatStore {
   toggleSidebar: () => void;
   updateSettings: (patch: Partial<ScribbleSettings>) => void;
 
+  addMemory: (content: string) => void;
+  deleteMemory: (id: string) => void;
+
   registerAbort: (key: string, controller: AbortController) => void;
   abort: (key: string) => void;
   abortAll: (chatId: string) => void;
@@ -91,6 +108,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   activeChatId: initialChats[0]?.id ?? null,
   sidebarOpen: true,
   settings: initialSettings,
+  memories: initialMemories,
   abortControllers: new Map(),
 
   activeChat: () => get().chats.find((c) => c.id === get().activeChatId),
@@ -312,6 +330,25 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     });
   },
 
+  addMemory: (content) => {
+    set((s) => {
+      const entry: MemoryEntry = { id: uid(), content, createdAt: Date.now() };
+      const memories = [...s.memories, entry].slice(-MAX_MEMORIES);
+      saveMemories(memories);
+      pushMemoriesToCloud(memories);
+      return { memories };
+    });
+  },
+
+  deleteMemory: (id) => {
+    set((s) => {
+      const memories = s.memories.filter((m) => m.id !== id);
+      saveMemories(memories);
+      pushMemoriesToCloud(memories);
+      return { memories };
+    });
+  },
+
   registerAbort: (key, controller) => {
     get().abortControllers.set(key, controller);
   },
@@ -332,7 +369,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   startCloudSync: (uid) => {
     void startCloudSync(
       uid,
-      () => ({ chats: get().chats, settings: get().settings }),
+      () => ({ chats: get().chats, settings: get().settings, memories: get().memories }),
       (patch) => set(patch)
     );
   },

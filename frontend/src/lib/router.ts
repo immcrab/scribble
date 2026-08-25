@@ -66,3 +66,25 @@ export function docsPath(slug?: string): string {
 export function pushDocsPath(slug?: string): void {
   window.history.pushState(null, "", docsPath(slug));
 }
+
+/**
+ * Settings lives at "<base>/settings" (default tab) and "<base>/settings/{tab}" — same
+ * deep-link mechanism as docs above. `null` means "not a settings URL", `""` means the
+ * default tab.
+ */
+export function parseSettingsTabFromLocation(): string | null {
+  const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+  const path = window.location.pathname;
+  if (path === `${base}/settings` || path === `${base}/settings/`) return "";
+  const match = path.match(/\/settings\/([^/]+)\/?$/);
+  return match ? normalizeId(match[1]) : null;
+}
+
+export function settingsPath(tab?: string): string {
+  const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+  return tab ? `${base}/settings/${encodeURIComponent(tab)}` : `${base}/settings`;
+}
+
+export function pushSettingsPath(tab?: string): void {
+  window.history.pushState(null, "", settingsPath(tab));
+}

@@ -1,9 +1,10 @@
-import type { Chat, CustomProvider, Effort, ModelDef } from "../types";
+import type { Chat, CustomProvider, Effort, MemoryEntry, ModelDef } from "../types";
 import type { Theme } from "./theme";
 
 const CHATS_KEY = "scribble:chats";
 const SETTINGS_KEY = "scribble:settings";
 const CONSENT_KEY = "scribble:consent";
+const MEMORIES_KEY = "scribble:memories";
 
 export interface ScribbleSettings {
   workerUrl: string;
@@ -38,6 +39,20 @@ export interface ScribbleSettings {
   /** Models the user has starred out of Puter.js's full live catalog (800+, see lib/puterClient.ts's
    * listPuterModels) — only these show under the Puter.js group by default instead of the whole catalog. */
   puterFavoriteModels: ModelDef[];
+  /** Chat text size — see the `data-text-size` attribute applied in App.tsx and styles/index.css. */
+  textSize: "small" | "medium" | "large";
+  /** Message bubble spacing — see the `data-density` attribute applied in App.tsx. */
+  density: "comfortable" | "compact";
+  /** User-authored instructions appended to the base system prompt for every request —
+   * see worker/src/adapters/base.ts's buildSystemPrompt. */
+  customSystemPrompt: string;
+  /** Play a short chime when an assistant reply finishes streaming — see lib/notificationSound.ts. */
+  notificationSound: boolean;
+  /** Opt-in: lets the AI remember facts across chats (explicit "remember that..." asks, or
+   * durable facts it decides on its own are worth keeping) and recall them in later chats.
+   * Off by default — same opt-in spirit as locationConsent. See lib/cloudSync.ts's memoriesJson
+   * and worker/src/adapters/memory.ts. */
+  memoryEnabled: boolean;
   /** Set whenever a genuine local edit is made — lets cloud sync pick the newer side on merge. 0 means "never explicitly saved". */
   updatedAt: number;
 }
@@ -53,6 +68,11 @@ const SETTINGS_DEFAULTS: Omit<ScribbleSettings, "workerUrl" | "password"> = {
   customProviders: [],
   customModels: [],
   puterFavoriteModels: [],
+  textSize: "medium",
+  density: "comfortable",
+  customSystemPrompt: "",
+  notificationSound: false,
+  memoryEnabled: false,
   updatedAt: 0,
 };
 
@@ -71,6 +91,24 @@ export function saveChats(chats: Chat[]): void {
     localStorage.setItem(CHATS_KEY, JSON.stringify(chats));
   } catch {
     // storage full or unavailable — chat still works in-memory for this session
+  }
+}
+
+export function loadMemories(): MemoryEntry[] {
+  try {
+    const raw = localStorage.getItem(MEMORIES_KEY);
+    if (!raw) return [];
+    return JSON.parse(raw) as MemoryEntry[];
+  } catch {
+    return [];
+  }
+}
+
+export function saveMemories(memories: MemoryEntry[]): void {
+  try {
+    localStorage.setItem(MEMORIES_KEY, JSON.stringify(memories));
+  } catch {
+    // storage full or unavailable — memory still works in-memory for this session
   }
 }
 

@@ -116,6 +116,12 @@ body {
   line-height: 1.65;
   overflow-wrap: anywhere;
 }
+:root[data-text-size="small"] .prose-scribble {
+  font-size: 0.85rem;
+}
+:root[data-text-size="large"] .prose-scribble {
+  font-size: 1.05rem;
+}
 .prose-scribble p {
   margin: 0.5em 0;
 }

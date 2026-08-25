@@ -43,6 +43,13 @@ export interface ClientContext {
   /** Coarse "lat, lon" coordinates, only present when the user opted in via Settings and granted
    * browser location permission — see frontend/src/lib/clientContext.ts. */
   location?: string;
+  /** User-authored instructions from Settings, appended to the base system prompt — see
+   * adapters/base.ts's buildSystemPrompt. */
+  customSystemPrompt?: string;
+  /** Stored memory facts the client has for this user (settings.memoryEnabled). The
+   * /api/chat/stream handler decides per-turn (via adapters/memory.ts's shouldRecallMemory)
+   * whether they're relevant before letting them reach buildSystemPrompt. */
+  memories?: string[];
 }
 
 /** A user-defined OpenAI-compatible endpoint, sent by the client with each request when
@@ -66,7 +73,12 @@ export interface ChatRequestBody {
    * Groq classifier whether the latest user message actually needs a live search, and
    * only then runs the SerpApi lookup — see the /api/chat/stream handler. */
   webSearch?: boolean;
-  /** Local date/time, timezone, and (opt-in) approximate location — see ClientContext. */
+  /** The client's "memory" setting. When true, the Worker asks a fast Groq classifier
+   * whether the latest user message contains something worth remembering, and if so,
+   * reports it back as a "Memory" tool call — see adapters/memory.ts. */
+  memoryEnabled?: boolean;
+  /** Local date/time, timezone, (opt-in) approximate location, custom instructions, and
+   * stored memory facts — see ClientContext. */
   clientContext?: ClientContext;
 }
 

@@ -74,7 +74,9 @@ async function getLocation(): Promise<string | undefined> {
  */
 export async function getClientContext(
   locationConsent: ScribbleSettings["locationConsent"],
-  lastUserMessage?: string
+  lastUserMessage?: string,
+  customSystemPrompt?: string,
+  memories?: string[]
 ): Promise<ClientContext> {
   const now = new Date();
   const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -97,5 +99,11 @@ export async function getClientContext(
     useLocationPrompt.getState().request();
   }
 
-  return { localTime, timezone, location };
+  return {
+    localTime,
+    timezone,
+    location,
+    ...(customSystemPrompt ? { customSystemPrompt } : {}),
+    ...(memories && memories.length > 0 ? { memories } : {}),
+  };
 }

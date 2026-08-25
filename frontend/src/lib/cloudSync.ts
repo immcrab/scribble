@@ -1,7 +1,7 @@
 import { get as dbGet, onValue, ref, set as dbSet } from "firebase/database";
 import { getRtdb } from "./firebase";
-import { saveChats, saveSettings, type ScribbleSettings } from "./storage";
-import type { Chat } from "../types";
+import { saveChats, saveSettings, saveMemories, type ScribbleSettings } from "./storage";
+import type { Chat, MemoryEntry } from "../types";
 
 /**
  * Cross-device continuity: the same JSON already used for localStorage
@@ -35,12 +35,25 @@ export function mergeSettings(local: ScribbleSettings, remote: ScribbleSettings 
   return { ...winner, password: local.password, customProviders: local.customProviders, customModels: local.customModels };
 }
 
+/** Memories don't carry a per-entry `updatedAt` — they're append/delete, not edited in place —
+ * so merging is a plain union by id (each device's own new entries just get added). A memory
+ * deleted on one device while another device is offline can resurface on next sync; an
+ * acceptable tradeoff given how low-stakes and easily re-deleted a stray memory entry is. */
+export function mergeMemories(local: MemoryEntry[], remote: MemoryEntry[]): MemoryEntry[] {
+  const byId = new Map<string, MemoryEntry>();
+  for (const m of local) byId.set(m.id, m);
+  for (const m of remote) if (!byId.has(m.id)) byId.set(m.id, m);
+  return Array.from(byId.values()).sort((a, b) => a.createdAt - b.createdAt);
+}
+
 let activeUid: string | null = null;
 let unsubscribers: Array<() => void> = [];
 let lastChatsJson: string | null = null;
 let lastSettingsJson: string | null = null;
+let lastMemoriesJson: string | null = null;
 let chatsPushTimer: ReturnType<typeof setTimeout> | null = null;
 let settingsPushTimer: ReturnType<typeof setTimeout> | null = null;
+let memoriesPushTimer: ReturnType<typeof setTimeout> | null = null;
 
 /**
  * Called once on sign-in. Reads whatever's already in the cloud, merges it
@@ -55,8 +68,8 @@ let settingsPushTimer: ReturnType<typeof setTimeout> | null = null;
  */
 export async function startCloudSync(
   uid: string,
-  getState: () => { chats: Chat[]; settings: ScribbleSettings },
-  setState: (patch: { chats?: Chat[]; settings?: ScribbleSettings }) => void
+  getState: () => { chats: Chat[]; settings: ScribbleSettings; memories: MemoryEntry[] },
+  setState: (patch: { chats?: Chat[]; settings?: ScribbleSettings; memories?: MemoryEntry[] }) => void
 ): Promise<void> {
   activeUid = uid;
 
@@ -64,25 +77,31 @@ export async function startCloudSync(
   if (!db) return;
   const chatsRef = ref(db, `users/${uid}/chatsJson`);
   const settingsRef = ref(db, `users/${uid}/settingsJson`);
+  const memoriesRef = ref(db, `users/${uid}/memoriesJson`);
 
   try {
-    const [chatsSnap, settingsSnap] = await Promise.all([dbGet(chatsRef), dbGet(settingsRef)]);
+    const [chatsSnap, settingsSnap, memoriesSnap] = await Promise.all([dbGet(chatsRef), dbGet(settingsRef), dbGet(memoriesRef)]);
     if (activeUid !== uid) return; // signed out again before this resolved
 
     const remoteChats: Chat[] = chatsSnap.exists() ? JSON.parse(chatsSnap.val()) : [];
     const remoteSettings: ScribbleSettings | null = settingsSnap.exists() ? JSON.parse(settingsSnap.val()) : null;
+    const remoteMemories: MemoryEntry[] = memoriesSnap.exists() ? JSON.parse(memoriesSnap.val()) : [];
 
     const mergedChats = mergeChats(getState().chats, remoteChats);
     const mergedSettings = mergeSettings(getState().settings, remoteSettings);
+    const mergedMemories = mergeMemories(getState().memories, remoteMemories);
 
     lastChatsJson = JSON.stringify(mergedChats);
     lastSettingsJson = JSON.stringify(mergedSettings);
+    lastMemoriesJson = JSON.stringify(mergedMemories);
     saveChats(mergedChats);
     saveSettings(mergedSettings);
-    setState({ chats: mergedChats, settings: mergedSettings });
+    saveMemories(mergedMemories);
+    setState({ chats: mergedChats, settings: mergedSettings, memories: mergedMemories });
 
     dbSet(chatsRef, lastChatsJson).catch(() => {});
     dbSet(settingsRef, lastSettingsJson).catch(() => {});
+    dbSet(memoriesRef, lastMemoriesJson).catch(() => {});
   } catch {
     // Offline, permission-denied, database not provisioned, etc. — sync
     // just doesn't happen this session; local data still works.
@@ -132,7 +151,28 @@ export async function startCloudSync(
       }
     );
 
-    unsubscribers = [unsubChats, unsubSettings];
+    const unsubMemories = onValue(
+      memoriesRef,
+      (snap) => {
+        if (activeUid !== uid || !snap.exists()) return;
+        const json = snap.val() as string;
+        if (json === lastMemoriesJson) return;
+        try {
+          const remoteMemories: MemoryEntry[] = JSON.parse(json);
+          const merged = mergeMemories(getState().memories, remoteMemories);
+          lastMemoriesJson = JSON.stringify(merged);
+          saveMemories(merged);
+          setState({ memories: merged });
+        } catch {
+          // malformed remote payload — ignore, keep local state
+        }
+      },
+      () => {
+        // listen canceled (permission/connectivity) — stay local-only
+      }
+    );
+
+    unsubscribers = [unsubChats, unsubSettings, unsubMemories];
   } catch {
     // onValue itself threw synchronously — stay local-only
   }
@@ -144,10 +184,13 @@ export function stopCloudSync(): void {
   unsubscribers = [];
   if (chatsPushTimer) clearTimeout(chatsPushTimer);
   if (settingsPushTimer) clearTimeout(settingsPushTimer);
+  if (memoriesPushTimer) clearTimeout(memoriesPushTimer);
   chatsPushTimer = null;
   settingsPushTimer = null;
+  memoriesPushTimer = null;
   lastChatsJson = null;
   lastSettingsJson = null;
+  lastMemoriesJson = null;
 }
 
 /** Debounced push, skipped entirely while any message is actively streaming so tokens don't hammer RTDB. */
@@ -179,6 +222,21 @@ export function pushSettingsToCloud(settings: ScribbleSettings): void {
     if (activeUid !== uid) return; // signed out (or switched accounts) before this fired
     lastSettingsJson = json;
     dbSet(ref(db, `users/${uid}/settingsJson`), json).catch(() => {});
+  }, 2000);
+}
+
+export function pushMemoriesToCloud(memories: MemoryEntry[]): void {
+  if (!activeUid) return;
+  const db = getRtdb();
+  if (!db) return;
+  const json = JSON.stringify(memories);
+  if (json === lastMemoriesJson) return;
+  const uid = activeUid;
+  if (memoriesPushTimer) clearTimeout(memoriesPushTimer);
+  memoriesPushTimer = setTimeout(() => {
+    if (activeUid !== uid) return; // signed out (or switched accounts) before this fired
+    lastMemoriesJson = json;
+    dbSet(ref(db, `users/${uid}/memoriesJson`), json).catch(() => {});
   }, 2000);
 }
 

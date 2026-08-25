@@ -10,6 +10,7 @@ import { customStreamChat } from "./adapters/custom";
 import { generateImage } from "./adapters/image";
 import { generateTitle } from "./adapters/title";
 import { searchWeb, shouldSearchWeb, looksLikeArithmetic, isOwnLocationAlreadyKnown } from "./adapters/search";
+import { extractMemory, shouldRecallMemory } from "./adapters/memory";
 import { ndjsonLine } from "./adapters/base";
 
 // "custom" isn't in here — it has no Worker secret; its key comes from the
@@ -45,12 +46,15 @@ function isValidBody(body: unknown): body is ChatRequestBody {
   if (!Array.isArray(b.messages) || b.messages.length === 0) return false;
   if (b.effort !== undefined && !VALID_EFFORTS.includes(b.effort as string)) return false;
   if (b.webSearch !== undefined && typeof b.webSearch !== "boolean") return false;
+  if (b.memoryEnabled !== undefined && typeof b.memoryEnabled !== "boolean") return false;
   if (b.clientContext !== undefined) {
     if (typeof b.clientContext !== "object" || b.clientContext === null) return false;
     const cc = b.clientContext as Record<string, unknown>;
     if (cc.localTime !== undefined && typeof cc.localTime !== "string") return false;
     if (cc.timezone !== undefined && typeof cc.timezone !== "string") return false;
     if (cc.location !== undefined && typeof cc.location !== "string") return false;
+    if (cc.customSystemPrompt !== undefined && typeof cc.customSystemPrompt !== "string") return false;
+    if (cc.memories !== undefined && (!Array.isArray(cc.memories) || !cc.memories.every((m) => typeof m === "string"))) return false;
   }
   if (b.provider === "custom") {
     const cp = b.customProvider as Record<string, unknown> | undefined;
@@ -120,10 +124,12 @@ export default {
       const responseStream = new ReadableStream<Uint8Array>({
         async start(controller) {
           let messages = body.messages;
+          let clientContext = body.clientContext;
+
+          const lastUserIdx = messages.map((m, i) => ({ m, i })).filter((x) => x.m.role === "user").pop()?.i;
+          const query = lastUserIdx !== undefined ? messages[lastUserIdx].content.trim() : "";
 
           if (body.webSearch && env.SERP_API_KEY) {
-            const lastUserIdx = messages.map((m, i) => ({ m, i })).filter((x) => x.m.role === "user").pop()?.i;
-            const query = lastUserIdx !== undefined ? messages[lastUserIdx].content.trim() : "";
             // "webSearch" now means "auto" mode — decide per-turn instead of always
             // searching. A fast Groq classification keeps irrelevant turns (general
             // knowledge, coding, math) from paying the search latency/cost at all.
@@ -190,6 +196,55 @@ export default {
             }
           }
 
+          // Memory recall: don't unconditionally inject stored facts (and show a "Memory
+          // recall" badge) on every single turn once any memory exists — ask a fast Groq
+          // classifier whether this specific turn would actually benefit from them. Fails
+          // open (keeps the facts in) if the classifier call itself errors, since leaving
+          // harmless context in is safer than silently dropping it.
+          if (clientContext?.memories?.length && env.GROQ_API_KEY && query) {
+            try {
+              const relevant = await shouldRecallMemory(env.GROQ_API_KEY, query, clientContext.memories);
+              if (relevant) {
+                const n = clientContext.memories.length;
+                controller.enqueue(
+                  ndjsonLine({
+                    toolCall: {
+                      id: crypto.randomUUID(),
+                      name: "Memory recall",
+                      status: "done",
+                      input: {},
+                      output: `${n} memor${n === 1 ? "y" : "ies"}`,
+                    },
+                  })
+                );
+              } else {
+                clientContext = { ...clientContext, memories: undefined };
+              }
+            } catch {
+              // classifier failed — leave the memories in (fail open), just skip the badge
+            }
+          }
+
+          // Memory write: decide whether this message contains something worth remembering.
+          // Only emit a tool-call event when there's actually a fact to show — most turns
+          // yield nothing, and a badge for every "nothing to remember" turn (or a spinner
+          // that has to resolve to a no-op) would be noise rather than signal.
+          if (body.memoryEnabled && env.GROQ_API_KEY && query) {
+            try {
+              const fact = await extractMemory(env.GROQ_API_KEY, query);
+              if (fact) {
+                controller.enqueue(
+                  ndjsonLine({
+                    toolCall: { id: crypto.randomUUID(), name: "Memory", status: "done", input: {}, output: fact },
+                  })
+                );
+              }
+            } catch {
+              // classifier failed — skip remembering this turn rather than surfacing an error
+              // for a background, best-effort feature
+            }
+          }
+
           try {
             const upstream =
               body.provider === "custom"
@@ -200,7 +255,7 @@ export default {
                     messages,
                     visionCapable: !!body.visionCapable,
                     effort: body.effort,
-                    clientContext: body.clientContext,
+                    clientContext,
                   })
                 : await ADAPTERS[body.provider]!({
                     apiKey: apiKey!,
@@ -208,7 +263,7 @@ export default {
                     messages,
                     visionCapable: !!body.visionCapable,
                     effort: body.effort,
-                    clientContext: body.clientContext,
+                    clientContext,
                   });
             const reader = upstream.getReader();
             while (true) {

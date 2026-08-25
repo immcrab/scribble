@@ -25,6 +25,7 @@ import { ModelFavicon, ProviderFavicon } from "./ProviderIcon";
 import { useLiveArtifact } from "../lib/useLiveArtifact";
 import { modelsByProvider, PROVIDER_LABELS, isModelGated } from "../config/models";
 import { useAuthStore } from "../state/authStore";
+import { useChatStore } from "../state/chatStore";
 import { Dropdown } from "./Dropdown";
 import { GoogleLogo } from "./icons/GoogleLogo";
 
@@ -264,6 +265,7 @@ export function ChatMessage({
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
   const isUser = message.role === "user";
+  const compact = useChatStore((s) => s.settings.density === "compact");
 
   const copy = async () => {
     await navigator.clipboard.writeText(message.content);
@@ -296,7 +298,7 @@ export function ChatMessage({
   };
 
   return (
-    <div className={`group animate-fade-in-up flex gap-3 ${isUser ? "flex-row-reverse" : ""}`}>
+    <div className={`group animate-fade-in-up flex ${compact ? "gap-2" : "gap-3"} ${isUser ? "flex-row-reverse" : ""}`}>
       <div
         className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg transition-transform duration-300 ${
           isUser
@@ -359,7 +361,7 @@ export function ChatMessage({
 
         {/* Message bubble — always editable/visible, never suppressed by hover */}
         <div
-          className={`rounded-2xl px-4 py-2.5 break-words transition-all duration-200 ${
+          className={`rounded-2xl break-words transition-all duration-200 ${compact ? "px-3 py-1.5" : "px-4 py-2.5"} ${
             isUser
               ? "bg-accent-600/90 text-base-950"
               : "border border-base-700/60 bg-base-850/70 text-slate-100"
