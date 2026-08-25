@@ -96,7 +96,6 @@ function ModelRow({
   );
 }
 
-const CATALOG_PAGE_SIZE = 150;
 const MOBILE_BREAKPOINT = 640; // matches Tailwind's `sm` — below this, the flyout can't fit beside the menu
 const FLYOUT_WIDTH = 320;
 const FLYOUT_HEIGHT = 420;
@@ -184,11 +183,20 @@ export function ModelSelector({
     return puterFavorites.some((m) => m.modelId === modelId);
   }
 
+  // Reads the store fresh rather than closing over the `puterFavorites` render
+  // variable — two of these can fire back-to-back (e.g. unstar immediately
+  // followed by picking another Puter model) faster than React re-renders,
+  // and a stale closure would silently resurrect the model just removed.
+  function currentPuterFavorites(): ModelDef[] {
+    return useChatStore.getState().settings.puterFavoriteModels;
+  }
+
   function toggleFavorite(model: ModelDef) {
+    const favorites = currentPuterFavorites();
     updateSettings({
-      puterFavoriteModels: isFavorited(model.modelId)
-        ? puterFavorites.filter((m) => m.modelId !== model.modelId)
-        : [...puterFavorites, model],
+      puterFavoriteModels: favorites.some((m) => m.modelId === model.modelId)
+        ? favorites.filter((m) => m.modelId !== model.modelId)
+        : [...favorites, model],
     });
   }
 
@@ -206,7 +214,10 @@ export function ModelSelector({
     // chats only persist a modelId string and look it up via findModel(), which searches
     // the curated catalog plus favorites/custom models, not Puter's full live catalog.
     if (m.provider === "puter" && !isFavorited(m.modelId)) {
-      updateSettings({ puterFavoriteModels: [...puterFavorites, m] });
+      const favorites = currentPuterFavorites();
+      if (!favorites.some((f) => f.modelId === m.modelId)) {
+        updateSettings({ puterFavoriteModels: [...favorites, m] });
+      }
     }
     onChange(m);
     close();
@@ -384,7 +395,7 @@ export function ModelSelector({
               )}
               {!catalogLoading &&
                 !catalogError &&
-                matchingCatalog.slice(0, CATALOG_PAGE_SIZE).map((info) => {
+                matchingCatalog.map((info) => {
                   const starred = isFavorited(info.id);
                   return (
                     <button
@@ -411,12 +422,6 @@ export function ModelSelector({
                 <p className="px-2 py-2 text-xs text-slate-500">No matches.</p>
               )}
             </div>
-
-            {!catalogLoading && !catalogError && matchingCatalog.length > CATALOG_PAGE_SIZE && (
-              <p className="border-t border-base-700/40 px-3.5 py-1.5 text-[11px] text-slate-500">
-                Showing first {CATALOG_PAGE_SIZE} of {matchingCatalog.length} matches — refine your search.
-              </p>
-            )}
           </div>
         </>,
         document.body
@@ -427,8 +432,9 @@ export function ModelSelector({
         modelName={pendingPuterModel.displayName}
         onCancel={() => setPendingPuterModel(null)}
         onConfirm={() => {
-          if (!isFavorited(pendingPuterModel.modelId)) {
-            updateSettings({ puterFavoriteModels: [...puterFavorites, pendingPuterModel] });
+          const favorites = currentPuterFavorites();
+          if (!favorites.some((f) => f.modelId === pendingPuterModel.modelId)) {
+            updateSettings({ puterFavoriteModels: [...favorites, pendingPuterModel] });
           }
           onChange(pendingPuterModel);
           setPendingPuterModel(null);
