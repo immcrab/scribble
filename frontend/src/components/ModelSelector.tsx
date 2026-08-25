@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { ChevronDown, ChevronRight, Eye, Check, Sparkles, Star, Lock, TriangleAlert, Loader2, X } from "lucide-react";
 import type { ModelDef, Provider } from "../types";
-import { modelsByProvider, PROVIDER_LABELS, isModelGated } from "../config/models";
+import { modelsByProvider, PROVIDER_LABELS, isModelGated, registerSessionPuterModel } from "../config/models";
 import { ModelFavicon, ProviderFavicon } from "./ProviderIcon";
 import { Dropdown } from "./Dropdown";
 import { PuterNoticeModal } from "./PuterNoticeModal";
@@ -13,6 +13,18 @@ import { isPuterSignedIn, listPuterModels, type PuterModelInfo } from "../lib/pu
 export function ModelIcon({ name, model, size = 15 }: { name?: string; model?: ModelDef; size?: number }) {
   if (model) return <ModelFavicon model={model} size={size} />;
   return <Sparkles size={size} />;
+}
+
+/** Dropdown only renders its menu content while open — mounting/unmounting it each time —
+ * so this picks up the unmount as the signal that the main dropdown just closed, and uses
+ * it to close the Puter flyout too instead of leaving it open (and stateful) in the background. */
+function CloseOnUnmount({ onUnmount }: { onUnmount: () => void }) {
+  const ref = useRef(onUnmount);
+  ref.current = onUnmount;
+  // Empty deps: the cleanup must only fire on true unmount, not on every re-render —
+  // the ref is what keeps it calling the latest `onUnmount` despite that.
+  useEffect(() => () => ref.current(), []);
+  return null;
 }
 
 function puterInfoToModelDef(info: PuterModelInfo): ModelDef {
@@ -181,6 +193,10 @@ export function ModelSelector({
   }
 
   function selectModel(m: ModelDef, close: () => void) {
+    // Chats only persist a modelId string and resolve it back via findModel() — an
+    // unstarred catalog pick needs registering here or it'd be unresolvable and silently
+    // fall back to the default model the moment this dropdown closes.
+    if (m.provider === "puter") registerSessionPuterModel(m);
     if (isModelGated(m) && !user) {
       signInWithGoogle();
       return;
@@ -231,6 +247,7 @@ export function ModelSelector({
         closeMenuRef.current = close;
         return (
         <>
+          <CloseOnUnmount onUnmount={() => setPuterBrowseOpen(false)} />
           {providers.map((provider) => (
             <div key={provider} className="py-1.5 border-b border-base-700/40 last:border-b-0">
               <div className="flex items-center gap-1.5 px-3.5 pb-1 pt-1.5">
