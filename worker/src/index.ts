@@ -55,6 +55,7 @@ function isValidBody(body: unknown): body is ChatRequestBody {
     if (cc.location !== undefined && typeof cc.location !== "string") return false;
     if (cc.customSystemPrompt !== undefined && typeof cc.customSystemPrompt !== "string") return false;
     if (cc.memories !== undefined && (!Array.isArray(cc.memories) || !cc.memories.every((m) => typeof m === "string"))) return false;
+    if (cc.replyLanguage !== undefined && typeof cc.replyLanguage !== "string") return false;
   }
   if (b.provider === "custom") {
     const cp = b.customProvider as Record<string, unknown> | undefined;

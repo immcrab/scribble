@@ -129,6 +129,11 @@ function buildMessages(messages: WireMessage[], effort?: Effort, clientContext?:
       ` The user's approximate location is ${clientContext.location}. Use it only to make answers ` +
       `more relevant (local time, nearby places, units, etc.) — don't mention it unless it's relevant.`;
   }
+  if (clientContext?.replyLanguage) {
+    systemContent +=
+      ` Always write your reply in ${clientContext.replyLanguage}, regardless of the language the user writes in,` +
+      ` unless they explicitly ask for a different language.`;
+  }
   if (effort) systemContent += EFFORT_NUDGE[effort];
   const result = [{ role: "system", content: systemContent }];
   for (const m of messages) {

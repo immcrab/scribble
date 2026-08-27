@@ -50,6 +50,9 @@ export interface ClientContext {
    * /api/chat/stream handler decides per-turn (via adapters/memory.ts's shouldRecallMemory)
    * whether they're relevant before letting them reach buildSystemPrompt. */
   memories?: string[];
+  /** English name of the language every reply should be written in (frontend settings.replyLanguage);
+   * absent when the user leaves it on "auto". Folded into the system prompt by buildSystemPrompt. */
+  replyLanguage?: string;
 }
 
 /** A user-defined OpenAI-compatible endpoint, sent by the client with each request when

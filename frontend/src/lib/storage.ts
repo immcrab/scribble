@@ -43,6 +43,19 @@ export interface ScribbleSettings {
   textSize: "small" | "medium" | "large";
   /** Message bubble spacing — see the `data-density` attribute applied in App.tsx. */
   density: "comfortable" | "compact";
+  /** UI font family — id from lib/appearance.ts's FONT_OPTIONS, applied as the `data-font`
+   * attribute on <html> (styles/index.css maps each id to a font stack). */
+  fontFamily: string;
+  /** Heavier base font weight across the whole UI — `data-bold="true"` on <html>. */
+  boldText: boolean;
+  /** Color theme — id from lib/appearance.ts's THEME_PALETTE_OPTIONS, applied as `data-palette`
+   * on <html>. Independent of `theme` (light/dark/system), which stays the light/dark mode. */
+  themePalette: string;
+  /** Language Scribble should always reply in, regardless of the language the user writes in.
+   * "auto" = match the user's language (default). Any other value is the English name of the
+   * language ("Spanish", "Japanese", …), sent in ClientContext.replyLanguage and folded into the
+   * system prompt — see worker/src/adapters/base.ts's buildSystemPrompt. */
+  replyLanguage: string;
   /** User-authored instructions appended to the base system prompt for every request —
    * see worker/src/adapters/base.ts's buildSystemPrompt. */
   customSystemPrompt: string;
@@ -70,6 +83,10 @@ const SETTINGS_DEFAULTS: Omit<ScribbleSettings, "workerUrl" | "password"> = {
   puterFavoriteModels: [],
   textSize: "medium",
   density: "comfortable",
+  fontFamily: "inter",
+  boldText: false,
+  themePalette: "mono",
+  replyLanguage: "auto",
   customSystemPrompt: "",
   notificationSound: false,
   memoryEnabled: false,

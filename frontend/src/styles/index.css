@@ -72,6 +72,121 @@
   color-scheme: light;
 }
 
+/*
+ * Color palettes — layered on top of the light/dark base above. `data-palette`
+ * on <html> (set by lib/appearance.ts) only ever overrides the four --accent-*
+ * channels; "mono" is the default look and needs no block. Each color ships a
+ * dark variant and a `.light` variant so it reads well in both modes.
+ */
+:root[data-palette="blue"] {
+  --accent-400: 96 165 250;
+  --accent-500: 59 130 246;
+  --accent-600: 37 99 235;
+  --accent-700: 29 78 216;
+}
+:root[data-palette="blue"].light {
+  --accent-400: 59 130 246;
+  --accent-500: 37 99 235;
+  --accent-600: 29 78 216;
+  --accent-700: 30 64 175;
+}
+:root[data-palette="violet"] {
+  --accent-400: 167 139 250;
+  --accent-500: 139 92 246;
+  --accent-600: 124 58 237;
+  --accent-700: 109 40 217;
+}
+:root[data-palette="violet"].light {
+  --accent-400: 139 92 246;
+  --accent-500: 124 58 237;
+  --accent-600: 109 40 217;
+  --accent-700: 91 33 182;
+}
+:root[data-palette="emerald"] {
+  --accent-400: 52 211 153;
+  --accent-500: 16 185 129;
+  --accent-600: 5 150 105;
+  --accent-700: 4 120 87;
+}
+:root[data-palette="emerald"].light {
+  --accent-400: 16 185 129;
+  --accent-500: 5 150 105;
+  --accent-600: 4 120 87;
+  --accent-700: 6 95 70;
+}
+:root[data-palette="rose"] {
+  --accent-400: 251 113 133;
+  --accent-500: 244 63 94;
+  --accent-600: 225 29 72;
+  --accent-700: 190 18 60;
+}
+:root[data-palette="rose"].light {
+  --accent-400: 244 63 94;
+  --accent-500: 225 29 72;
+  --accent-600: 190 18 60;
+  --accent-700: 159 18 57;
+}
+:root[data-palette="amber"] {
+  --accent-400: 251 191 36;
+  --accent-500: 245 158 11;
+  --accent-600: 217 119 6;
+  --accent-700: 180 83 9;
+}
+:root[data-palette="amber"].light {
+  --accent-400: 245 158 11;
+  --accent-500: 217 119 6;
+  --accent-600: 180 83 9;
+  --accent-700: 146 64 14;
+}
+:root[data-palette="cyan"] {
+  --accent-400: 34 211 238;
+  --accent-500: 6 182 212;
+  --accent-600: 8 145 178;
+  --accent-700: 14 116 144;
+}
+:root[data-palette="cyan"].light {
+  --accent-400: 6 182 212;
+  --accent-500: 8 145 178;
+  --accent-600: 14 116 144;
+  --accent-700: 21 94 117;
+}
+
+/*
+ * UI font — `data-font` on <html> (lib/appearance.ts) picks the stack via
+ * --app-font, which `body` (and everything under it, including .prose-scribble
+ * and form controls) inherits. Code blocks keep their own monospace stack.
+ */
+:root {
+  --app-font: "Inter", ui-sans-serif, system-ui, sans-serif;
+}
+:root[data-font="system"] {
+  --app-font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+:root[data-font="claude-serif"] {
+  --app-font: "Source Serif 4", ui-serif, Georgia, Cambria, "Times New Roman", serif;
+}
+:root[data-font="newsreader"] {
+  --app-font: "Newsreader", ui-serif, Georgia, serif;
+}
+:root[data-font="lora"] {
+  --app-font: "Lora", ui-serif, Georgia, serif;
+}
+:root[data-font="plex"] {
+  --app-font: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+}
+:root[data-font="atkinson"] {
+  --app-font: "Atkinson Hyperlegible", ui-sans-serif, system-ui, sans-serif;
+}
+:root[data-font="space-grotesk"] {
+  --app-font: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+}
+:root[data-font="georgia"] {
+  --app-font: Georgia, Cambria, "Times New Roman", serif;
+}
+:root[data-font="mono"] {
+  --app-font: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+
 html,
 body,
 #root {
@@ -80,8 +195,20 @@ body,
 }
 
 body {
-  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--app-font, "Inter", ui-sans-serif, system-ui, sans-serif);
   background: rgb(var(--base-950));
+}
+
+/* "Bolder" appearance toggle — nudges the whole UI up one weight step. */
+:root[data-bold="true"] body {
+  font-weight: 500;
+}
+:root[data-bold="true"] .prose-scribble {
+  font-weight: 500;
+}
+:root[data-bold="true"] .prose-scribble strong,
+:root[data-bold="true"] .prose-scribble b {
+  font-weight: 700;
 }
 
 ::selection {

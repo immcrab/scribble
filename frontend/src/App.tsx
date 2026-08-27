@@ -12,6 +12,7 @@ import { SharedChatView } from "./components/SharedChatView";
 import { NotFoundPage } from "./components/NotFoundPage";
 import { hasAcceptedTerms } from "./lib/storage";
 import { applyTheme, watchSystemTheme } from "./lib/theme";
+import { applyAppearance } from "./lib/appearance";
 import {
   parseChatIdFromLocation,
   syncUrlToChat,
@@ -118,6 +119,10 @@ export default function App() {
     document.documentElement.dataset.textSize = settings.textSize;
     document.documentElement.dataset.density = settings.density;
   }, [settings.textSize, settings.density]);
+
+  useEffect(() => {
+    applyAppearance(settings);
+  }, [settings.fontFamily, settings.boldText, settings.themePalette]);
 
   // Keep the tab title in sync with whatever's actually on screen — the active
   // chat, a shared chat someone sent us, or the docs section — instead of the

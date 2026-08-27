@@ -19,12 +19,14 @@ import {
   Plus,
   Type,
   AlignJustify,
+  Languages,
 } from "lucide-react";
 import { useChatStore } from "../state/chatStore";
 import { useAuthStore } from "../state/authStore";
 import { checkWorkerHealth } from "../lib/workerClient";
 import { getAllModels, getDefaultModel, isModelGated } from "../config/models";
 import type { Theme } from "../lib/theme";
+import { FONT_OPTIONS, THEME_PALETTE_OPTIONS, REPLY_LANGUAGE_OPTIONS } from "../lib/appearance";
 import { ModelFavicon } from "./ProviderIcon";
 import { Dropdown } from "./Dropdown";
 import { ToggleSwitch } from "./ToggleSwitch";
@@ -93,6 +95,85 @@ function AppearanceSection() {
       </div>
 
       <div>
+        <SectionLabel>Theme color</SectionLabel>
+        <div className="flex flex-wrap gap-2">
+          {THEME_PALETTE_OPTIONS.map(({ id, label, swatch }) => (
+            <button
+              key={id}
+              onClick={() => updateSettings({ themePalette: id })}
+              title={label}
+              className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-medium transition-colors ${
+                (settings.themePalette ?? "mono") === id
+                  ? "border-accent-500/60 bg-accent-500/10 text-white"
+                  : "border-base-600/60 bg-base-900/60 text-slate-400 hover:border-base-500/60 hover:text-slate-200"
+              }`}
+            >
+              <span
+                className="h-4 w-4 shrink-0 rounded-full border border-white/10"
+                style={{ background: swatch }}
+              />
+              {label}
+            </button>
+          ))}
+        </div>
+        <p className="mt-2 text-xs text-slate-500">Tints buttons, links, and highlights — works in both light and dark.</p>
+      </div>
+
+      <div>
+        <SectionLabel>Font</SectionLabel>
+        <Dropdown
+          menuClassName="w-full max-w-[calc(100vw-4rem)]"
+          trigger={({ open, toggle }) => {
+            const current = FONT_OPTIONS.find((f) => f.id === (settings.fontFamily ?? "inter")) ?? FONT_OPTIONS[0];
+            return (
+              <button
+                onClick={toggle}
+                className="flex w-full items-center gap-2 rounded-lg border border-base-600/60 bg-base-900 px-3 py-2 text-sm text-white transition-colors hover:border-accent-500/50"
+              >
+                <Type size={15} className="shrink-0 text-slate-400" />
+                <span className="min-w-0 flex-1 truncate text-left">{current.label}</span>
+                <ChevronDown size={13} className={`text-slate-500 transition-transform ${open ? "rotate-180" : ""}`} />
+              </button>
+            );
+          }}
+        >
+          {({ close }) => (
+            <div className="max-h-64 w-full overflow-y-auto py-1">
+              {FONT_OPTIONS.map((f) => {
+                const isSelected = (settings.fontFamily ?? "inter") === f.id;
+                return (
+                  <button
+                    key={f.id}
+                    onClick={() => {
+                      updateSettings({ fontFamily: f.id });
+                      close();
+                    }}
+                    className={`flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-sm transition-colors hover:bg-base-700/50 ${
+                      isSelected ? "bg-accent-500/10 font-medium text-white" : "text-slate-300"
+                    }`}
+                  >
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate">{f.label}</span>
+                      <span className="block truncate text-[11px] text-slate-500">{f.note}</span>
+                    </span>
+                    {isSelected && <Check size={13} className="shrink-0 text-accent-400" />}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </Dropdown>
+        <div className="mt-3">
+          <ToggleSwitch
+            label="Bolder text"
+            description="Heavier weight across the whole UI"
+            checked={settings.boldText ?? false}
+            onChange={(v) => updateSettings({ boldText: v })}
+          />
+        </div>
+      </div>
+
+      <div>
         <SectionLabel>Text size</SectionLabel>
         <div className="grid grid-cols-3 gap-2">
           {TEXT_SIZE_OPTIONS.map(({ id, label }) => (
@@ -130,6 +211,53 @@ function AppearanceSection() {
             </button>
           ))}
         </div>
+      </div>
+
+      <div>
+        <SectionLabel>Reply language</SectionLabel>
+        <Dropdown
+          menuClassName="w-full max-w-[calc(100vw-4rem)]"
+          trigger={({ open, toggle }) => {
+            const current =
+              REPLY_LANGUAGE_OPTIONS.find((l) => l.id === (settings.replyLanguage ?? "auto")) ?? REPLY_LANGUAGE_OPTIONS[0];
+            return (
+              <button
+                onClick={toggle}
+                className="flex w-full items-center gap-2 rounded-lg border border-base-600/60 bg-base-900 px-3 py-2 text-sm text-white transition-colors hover:border-accent-500/50"
+              >
+                <Languages size={15} className="shrink-0 text-slate-400" />
+                <span className="min-w-0 flex-1 truncate text-left">{current.label}</span>
+                <ChevronDown size={13} className={`text-slate-500 transition-transform ${open ? "rotate-180" : ""}`} />
+              </button>
+            );
+          }}
+        >
+          {({ close }) => (
+            <div className="max-h-64 w-full overflow-y-auto py-1">
+              {REPLY_LANGUAGE_OPTIONS.map((l) => {
+                const isSelected = (settings.replyLanguage ?? "auto") === l.id;
+                return (
+                  <button
+                    key={l.id}
+                    onClick={() => {
+                      updateSettings({ replyLanguage: l.id });
+                      close();
+                    }}
+                    className={`flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-sm transition-colors hover:bg-base-700/50 ${
+                      isSelected ? "bg-accent-500/10 font-medium text-white" : "text-slate-300"
+                    }`}
+                  >
+                    <span className="min-w-0 flex-1 truncate">{l.label}</span>
+                    {isSelected && <Check size={13} className="shrink-0 text-accent-400" />}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </Dropdown>
+        <p className="mt-2 text-xs text-slate-500">
+          Scribble always answers in this language, whatever language you write in. Auto matches you.
+        </p>
       </div>
 
       <div>

@@ -56,6 +56,9 @@ export interface ClientContext {
   /** Stored memory facts (settings.memoryEnabled), sent so the model can use them this turn —
    * the Worker decides per-turn whether they're actually relevant before including them. */
   memories?: string[];
+  /** English name of the language the user wants every reply in (settings.replyLanguage),
+   * omitted when "auto" — see worker/src/adapters/base.ts's buildSystemPrompt. */
+  replyLanguage?: string;
 }
 
 /** A remembered fact about the user, either extracted by the AI (explicit "remember that..."

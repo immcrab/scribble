@@ -58,6 +58,11 @@ export function buildSystemPrompt(effort?: Effort, clientContext?: ClientContext
   if (clientContext?.customSystemPrompt) {
     prompt += ` Additional instructions from the user: ${clientContext.customSystemPrompt.slice(0, 2000)}`;
   }
+  if (clientContext?.replyLanguage) {
+    prompt +=
+      ` Always write your reply in ${clientContext.replyLanguage.slice(0, 40)}, regardless of the language the user` +
+      ` writes in, unless they explicitly ask for a different language.`;
+  }
   if (effort) prompt += EFFORT_NUDGE[effort];
   return prompt;
 }

@@ -76,7 +76,8 @@ export async function getClientContext(
   locationConsent: ScribbleSettings["locationConsent"],
   lastUserMessage?: string,
   customSystemPrompt?: string,
-  memories?: string[]
+  memories?: string[],
+  replyLanguage?: string
 ): Promise<ClientContext> {
   const now = new Date();
   const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -105,5 +106,6 @@ export async function getClientContext(
     location,
     ...(customSystemPrompt ? { customSystemPrompt } : {}),
     ...(memories && memories.length > 0 ? { memories } : {}),
+    ...(replyLanguage && replyLanguage !== "auto" ? { replyLanguage } : {}),
   };
 }

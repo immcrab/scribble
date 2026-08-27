@@ -50,7 +50,8 @@ export async function runAssistantStream(params: {
     store.settings.locationConsent,
     lastUserMessage,
     store.settings.customSystemPrompt,
-    store.settings.memoryEnabled ? store.memories.map((m) => m.content) : undefined
+    store.settings.memoryEnabled ? store.memories.map((m) => m.content) : undefined,
+    store.settings.replyLanguage
   );
 
   try {
