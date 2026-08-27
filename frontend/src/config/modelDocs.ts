@@ -24,13 +24,25 @@ export const MODEL_DOCS: Record<string, string> = {
   "gemini-3.5-flash-lite": "Lighter/faster Gemini — trades some capability for speed and cost, still reads images.",
   "gemini-3.1-flash-lite": "Frontier-class performance at reduced cost — the budget Flash-Lite option, 1M context, reads images.",
 
-  // OpenRouter (only models the catalog currently marks ":free")
+  // OpenRouter (every model OpenRouter's catalog currently lists as free)
+  "z-ai/glm-5.2:free": "Zhipu's GLM 5.2 via OpenRouter — strong general and code model with a 256K context window.",
+  "minimax/minimax-m3:free": "MiniMax M3 — natively multimodal, 1M context, reasoning-capable.",
   "thinkingmachines/inkling:free": "Thinking Machines' Inkling via OpenRouter — multimodal reasoning model with a ~1M-token context window.",
-  "thinkingmachines/inkling-small:free": "The smaller Inkling — multimodal, ~1M context, lighter and faster than full Inkling.",
+  "thinkingmachines/inkling-small:free": "The smaller Inkling — multimodal reasoning, ~1M context, lighter and faster than full Inkling.",
+  "minimax/minimax-m2.7:free": "MiniMax M2.7 — reasoning model built for autonomous, agentic productivity tasks.",
+  "nvidia/nemotron-3-ultra-550b-a55b:free": "NVIDIA's largest Nemotron — huge 1M context for long-document reasoning.",
+  "google/gemma-4-31b-it:free": "Google's open Gemma 4, instruction-tuned — reads text and images, 262K context.",
+  "google/gemma-4-26b-a4b-it:free": "Gemma 4 26B A4B — a smaller mixture-of-experts Gemma 4, still multimodal.",
   "nvidia/nemotron-3.5-lightning:free": "NVIDIA's speed-tuned Nemotron — 1M context, reasoning-capable, optimized for low latency.",
-  "dots-studio/dots-3-note-preview:free": "Dots Studio's Dots3-Note preview — multimodal model with a 512K context window.",
-  "poolside/laguna-s-2.1:free": "Poolside's Laguna model — 256K context geared toward code-heavy work.",
+  "cohere/north-mini-code:free": "Cohere's North Mini Code — compact model tuned for code and tool use, 256K context.",
   "liquid/lfm-2.5-2.6b:free": "LiquidAI's LFM2.5 2.6B — a very small, fast text model for lightweight tasks.",
+  "stealth/ox-alpha": "An unbranded \"stealth\" model routed free through OpenRouter — multimodal, 1M context, capabilities unconfirmed.",
+  "dots-studio/dots-3-note-preview:free": "Dots Studio's Dots3-Note preview — multimodal model with a 512K context window.",
+  "poolside/laguna-s-2.1:free": "Poolside's Laguna model — 262K context geared toward code-heavy work.",
+  "poolside/laguna-xs-2.1:free": "Laguna XS 2.1 — the extra-small Laguna, same 262K context, tuned for lighter code tasks.",
+  "nvidia/nemotron-3-super-120b-a12b:free": "Mid-size NVIDIA Nemotron — 262K context, reasoning-capable general model.",
+  "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free": "Small NVIDIA omni-modal Nemotron with an explicit reasoning mode — reads images, 256K context.",
+  "openrouter/free": "OpenRouter's own router — picks a free upstream model for each request, so quality varies but you never hit a paywall.",
 
   // xKiro
   "qwen/qwen3.8-max:free": "Qwen's largest current model via xKiro — top-tier reasoning and vision at 1M context.",

@@ -599,13 +599,38 @@ const GEMINI_MODELS: ModelDef[] = [
  * OpenRouter — single OpenAI-compatible endpoint that proxies to many
  * upstream providers, model ids namespaced as "{provider}/{model}":
  * https://openrouter.ai/api/v1/chat/completions
- * Only ":free" variants belong here. This is the complete set OpenRouter's
- * public catalog marks ":free" (GET https://openrouter.ai/api/v1/models,
- * Aug 2026) — that list is small and turns over fast (free slots get pulled
- * and replaced weekly), so re-run:
- *   curl -s https://openrouter.ai/api/v1/models | jq '[.data[] | select(.id|endswith(":free")) | .id]'
+ * Only free variants belong here — that's the ":free"-suffixed ids plus a
+ * couple ("stealth/ox-alpha", "openrouter/free") OpenRouter lists as free
+ * without the suffix. This mirrors OpenRouter's live free-models listing
+ * (openrouter.ai/models?fmt=table&supported_parameters=free, Aug 2026); the
+ * free tier turns over fast, so re-check against:
+ *   curl -s https://openrouter.ai/api/v1/models | jq '[.data[] | select((.id|endswith(":free")) or (.pricing.prompt=="0")) | .id]'
+ * Content-safety / moderation classifiers on that list (e.g.
+ * nvidia/nemotron-3.5-content-safety:free) are deliberately left out — not chat models.
  */
 const OPENROUTER_MODELS: ModelDef[] = [
+  {
+    provider: "openrouter",
+    modelId: "z-ai/glm-5.2:free",
+    displayName: "GLM 5.2",
+    icon: "Route",
+    contextLength: 256000,
+    capabilities: ["text", "code", "reasoning"],
+    free: true,
+    supportsStreaming: true,
+    supportsVision: false,
+  },
+  {
+    provider: "openrouter",
+    modelId: "minimax/minimax-m3:free",
+    displayName: "MiniMax M3",
+    icon: "Route",
+    contextLength: 1000000,
+    capabilities: ["text", "vision", "reasoning"],
+    free: true,
+    supportsStreaming: true,
+    supportsVision: true,
+  },
   {
     provider: "openrouter",
     modelId: "thinkingmachines/inkling:free",
@@ -623,6 +648,50 @@ const OPENROUTER_MODELS: ModelDef[] = [
     displayName: "Inkling Small",
     icon: "Route",
     contextLength: 1048576,
+    capabilities: ["text", "vision", "reasoning"],
+    free: true,
+    supportsStreaming: true,
+    supportsVision: true,
+  },
+  {
+    provider: "openrouter",
+    modelId: "minimax/minimax-m2.7:free",
+    displayName: "MiniMax M2.7",
+    icon: "Route",
+    contextLength: 204800,
+    capabilities: ["text", "reasoning"],
+    free: true,
+    supportsStreaming: true,
+    supportsVision: false,
+  },
+  {
+    provider: "openrouter",
+    modelId: "nvidia/nemotron-3-ultra-550b-a55b:free",
+    displayName: "Nemotron 3 Ultra",
+    icon: "Route",
+    contextLength: 1000000,
+    capabilities: ["text", "reasoning"],
+    free: true,
+    supportsStreaming: true,
+    supportsVision: false,
+  },
+  {
+    provider: "openrouter",
+    modelId: "google/gemma-4-31b-it:free",
+    displayName: "Gemma 4 31B",
+    icon: "Route",
+    contextLength: 262144,
+    capabilities: ["text", "vision"],
+    free: true,
+    supportsStreaming: true,
+    supportsVision: true,
+  },
+  {
+    provider: "openrouter",
+    modelId: "google/gemma-4-26b-a4b-it:free",
+    displayName: "Gemma 4 26B A4B",
+    icon: "Route",
+    contextLength: 262144,
     capabilities: ["text", "vision"],
     free: true,
     supportsStreaming: true,
@@ -638,6 +707,39 @@ const OPENROUTER_MODELS: ModelDef[] = [
     free: true,
     supportsStreaming: true,
     supportsVision: false,
+  },
+  {
+    provider: "openrouter",
+    modelId: "cohere/north-mini-code:free",
+    displayName: "North Mini Code",
+    icon: "Route",
+    contextLength: 256000,
+    capabilities: ["text", "code"],
+    free: true,
+    supportsStreaming: true,
+    supportsVision: false,
+  },
+  {
+    provider: "openrouter",
+    modelId: "liquid/lfm-2.5-2.6b:free",
+    displayName: "LFM2.5 2.6B",
+    icon: "Route",
+    contextLength: 65536,
+    capabilities: ["text"],
+    free: true,
+    supportsStreaming: true,
+    supportsVision: false,
+  },
+  {
+    provider: "openrouter",
+    modelId: "stealth/ox-alpha",
+    displayName: "Ox Alpha",
+    icon: "Route",
+    contextLength: 1000000,
+    capabilities: ["text", "vision", "reasoning"],
+    free: true,
+    supportsStreaming: true,
+    supportsVision: true,
   },
   {
     provider: "openrouter",
@@ -663,14 +765,47 @@ const OPENROUTER_MODELS: ModelDef[] = [
   },
   {
     provider: "openrouter",
-    modelId: "liquid/lfm-2.5-2.6b:free",
-    displayName: "LFM2.5 2.6B",
+    modelId: "poolside/laguna-xs-2.1:free",
+    displayName: "Laguna XS 2.1",
     icon: "Route",
-    contextLength: 65536,
-    capabilities: ["text"],
+    contextLength: 262144,
+    capabilities: ["text", "code"],
     free: true,
     supportsStreaming: true,
     supportsVision: false,
+  },
+  {
+    provider: "openrouter",
+    modelId: "nvidia/nemotron-3-super-120b-a12b:free",
+    displayName: "Nemotron 3 Super",
+    icon: "Route",
+    contextLength: 262144,
+    capabilities: ["text", "reasoning"],
+    free: true,
+    supportsStreaming: true,
+    supportsVision: false,
+  },
+  {
+    provider: "openrouter",
+    modelId: "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
+    displayName: "Nemotron 3 Nano Omni",
+    icon: "Route",
+    contextLength: 256000,
+    capabilities: ["text", "vision", "reasoning"],
+    free: true,
+    supportsStreaming: true,
+    supportsVision: true,
+  },
+  {
+    provider: "openrouter",
+    modelId: "openrouter/free",
+    displayName: "Free Models Router",
+    icon: "Route",
+    contextLength: 200000,
+    capabilities: ["text", "vision"],
+    free: true,
+    supportsStreaming: true,
+    supportsVision: true,
   },
 ];
 
