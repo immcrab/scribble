@@ -8,26 +8,29 @@
  * from its `capabilities` — but a hand-written one-liner reads much better.
  */
 export const MODEL_DOCS: Record<string, string> = {
-  // Mistral
-  "mistral-small-latest": "Mistral's compact everyday model — fast, cheap, good for straightforward text and code tasks.",
-  "mistral-large-latest": "Mistral's flagship — strongest reasoning and code in their lineup.",
-  "ministral-8b-latest": "Small, efficient Mistral model tuned for low-latency simple tasks.",
-  "codestral-latest": "Mistral's dedicated coding model — trained specifically for code generation and completion.",
-  "pixtral-12b-2409": "Mistral's vision model — understands images and documents alongside text and code.",
-  "devstral-latest": "Mistral model tuned for agentic coding — multi-file edits and tool-driven dev workflows.",
+  // Mistral (La Plateforme free "Experiment" tier — every chat model is free)
+  "mistral-large-latest": "Mistral's flagship — Mistral Large 3, a multimodal model with the strongest reasoning and code in their lineup and a 262K context window.",
+  "mistral-medium-latest": "Mistral Medium 3.5 — frontier-class multimodal model at mid-tier cost, tuned for agentic and coding work.",
+  "mistral-small-latest": "Mistral Small 4 — the compact hybrid model that unifies instruct, reasoning, and coding; fast and cheap for everyday tasks, still reads images.",
+  "ministral-3-14b-latest": "Ministral 3 14B — best-in-class efficiency for its size, multimodal, handles code.",
+  "ministral-3-8b-latest": "Ministral 3 8B — powerful and efficient, multimodal, good for low-latency general use.",
+  "ministral-3-3b-latest": "Ministral 3 3B — Mistral's tiny model, lowest latency, still reads images.",
+  "codestral-latest": "Mistral's dedicated coding model (25.08) — trained specifically for code generation and completion, 256K context.",
 
-  // Gemini
-  "gemini-3.6-flash": "Google's fast Gemini tier — huge 1M-token context, handles text, images, and code.",
-  "gemini-3.5-flash-lite": "Even lighter/faster Gemini — trades some capability for speed, still reads images.",
+  // Gemini (free API tier — 3.x Flash and Flash-Lite only)
+  "gemini-3.7-flash": "Google's latest Flash tier — 1M-token context, tuned for complex coding and agentic workflows, reads text, images, and code.",
+  "gemini-3.6-flash": "Google's previous-generation Flash — huge 1M-token context, handles text, images, and code.",
+  "gemini-3.5-flash": "Legacy Flash model for high-throughput tasks — 1M context, still multimodal.",
+  "gemini-3.5-flash-lite": "Lighter/faster Gemini — trades some capability for speed and cost, still reads images.",
+  "gemini-3.1-flash-lite": "Frontier-class performance at reduced cost — the budget Flash-Lite option, 1M context, reads images.",
 
-  // OpenRouter
-  "z-ai/glm-5.2:free": "Zhipu's GLM 5.2 via OpenRouter — strong reasoning and code with a 256K context window.",
-  "openai/gpt-oss-20b:free": "OpenAI's open-weight 20B model, free tier via OpenRouter.",
-  "nvidia/nemotron-3-ultra-550b-a55b:free": "NVIDIA's largest Nemotron — huge 1M context for long-document reasoning.",
-  "nvidia/nemotron-3-super-120b-a12b:free": "Mid-size NVIDIA Nemotron — big 256K context, general text tasks.",
-  "google/gemma-4-31b-it:free": "Google's open Gemma 4, instruction-tuned — reads text and images.",
-  "nvidia/nemotron-nano-12b-v2-vl:free": "Small NVIDIA vision-language model — lightweight image understanding.",
-  "poolside/laguna-s-2.1": "Poolside's Laguna model — huge context window geared toward code-heavy work.",
+  // OpenRouter (only models the catalog currently marks ":free")
+  "thinkingmachines/inkling:free": "Thinking Machines' Inkling via OpenRouter — multimodal reasoning model with a ~1M-token context window.",
+  "thinkingmachines/inkling-small:free": "The smaller Inkling — multimodal, ~1M context, lighter and faster than full Inkling.",
+  "nvidia/nemotron-3.5-lightning:free": "NVIDIA's speed-tuned Nemotron — 1M context, reasoning-capable, optimized for low latency.",
+  "dots-studio/dots-3-note-preview:free": "Dots Studio's Dots3-Note preview — multimodal model with a 512K context window.",
+  "poolside/laguna-s-2.1:free": "Poolside's Laguna model — 256K context geared toward code-heavy work.",
+  "liquid/lfm-2.5-2.6b:free": "LiquidAI's LFM2.5 2.6B — a very small, fast text model for lightweight tasks.",
 
   // xKiro
   "qwen/qwen3.8-max:free": "Qwen's largest current model via xKiro — top-tier reasoning and vision at 1M context.",

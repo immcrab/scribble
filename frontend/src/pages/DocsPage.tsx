@@ -21,7 +21,7 @@ import {
   Trophy,
   Medal,
 } from "lucide-react";
-import { getAllModels, PROVIDER_LABELS, isModelGated } from "../config/models";
+import { getAllModels, PROVIDER_LABELS, isModelGated, catalogSizeLabel } from "../config/models";
 import { getModelDescription } from "../config/modelDocs";
 import { ModelFavicon, ProviderFavicon } from "../components/ProviderIcon";
 import { AdUnit } from "../components/AdUnit";
@@ -64,7 +64,10 @@ const AD_SLOTS = {
 };
 
 /** Bump this whenever a model is added/removed/re-described — shown on the index
- * page so readers know how fresh the catalog is. */
+ * page so readers know how fresh the catalog is. The catalog size shown around
+ * the docs is `catalogSizeLabel()` (rounded down to a "N+"); when it crosses the
+ * next multiple of 10, also bump the static "N+ models" copy in
+ * frontend/index.html's <meta> tags — see ADD_NEW_MODEL.md. */
 const CATALOG_LAST_UPDATED = "August 2026";
 
 const FAQ_ITEMS: { question: string; answer: string }[] = [
@@ -457,7 +460,8 @@ function HomePage({ onOpen }: { onOpen: (slug: string) => void }) {
       <h1 className="font-serif text-3xl font-semibold text-white sm:text-4xl">Scribble Docs</h1>
       <p className="mt-3 max-w-xl text-sm leading-relaxed text-slate-400">
         Scribble is a free, open chat frontend that talks to your choice of model provider through a Cloudflare Worker
-        you control. These docs cover what's available and how to run your own Worker behind it.
+        you control — {catalogSizeLabel()} free models across {providerCount} providers. These docs cover what's
+        available and how to run your own Worker behind it.
       </p>
 
       <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -522,7 +526,8 @@ function DocsIndex({ onOpen }: { onOpen: (slug: string) => void }) {
     <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
       <h1 className="font-serif text-2xl font-semibold text-white sm:text-3xl">Model catalog</h1>
       <p className="mt-2 max-w-2xl text-sm text-slate-400">
-        Every model available in Scribble, what it's good at, and its capabilities — vision, code, reasoning, and more.
+        All {catalogSizeLabel()} models available in Scribble, what each is good at, and its capabilities — vision,
+        code, reasoning, and more.
       </p>
       <p className="mt-1 text-xs text-slate-600">Catalog last updated {CATALOG_LAST_UPDATED}</p>
 

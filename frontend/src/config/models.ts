@@ -439,63 +439,55 @@ const XKIRO_MODELS: ModelDef[] = [
 ];
 
 /**
- * Mistral models — La Plateforme free "Experiment" tier (rate-limited, all
- * models available). Endpoint is OpenAI-compatible:
- * https://api.mistral.ai/v1/chat/completions
- * Verified live against a real Mistral key (Aug 2026) — pixtral/nemo aliases
- * from earlier catalogs are gone; check GET /v1/models to refresh this.
+ * Mistral models — La Plateforme free "Experiment" tier (phone-verified, no
+ * card, ~1B tokens/month, rate-limited): every La Plateforme chat model is
+ * usable on it, so this list mirrors Mistral's full current chat lineup.
+ * Endpoint is OpenAI-compatible: https://api.mistral.ai/v1/chat/completions
+ * Re-verified against Mistral's live model list (Aug 2026): the pixtral/nemo
+ * aliases are gone, the Ministral line is now "Ministral 3" (14B/8B/3B), and
+ * Small/Medium/Large are all multimodal hybrid-reasoning models. Refresh from
+ * https://docs.mistral.ai/models/overview + GET /v1/models.
  */
 const MISTRAL_MODELS: ModelDef[] = [
   {
     provider: "mistral",
-    modelId: "mistral-small-latest",
-    displayName: "Mistral Small",
-    icon: "Wind",
-    contextLength: 32000,
-    capabilities: ["text", "code"],
-    free: true,
-    supportsStreaming: true,
-    supportsVision: false,
-  },
-  {
-    provider: "mistral",
     modelId: "mistral-large-latest",
-    displayName: "Mistral Large",
+    displayName: "Mistral Large 3",
     icon: "Wind",
-    contextLength: 128000,
-    capabilities: ["text", "code", "reasoning"],
+    contextLength: 262000,
+    capabilities: ["text", "vision", "code", "reasoning"],
     free: true,
     supportsStreaming: true,
-    supportsVision: false,
+    supportsVision: true,
   },
   {
     provider: "mistral",
-    modelId: "ministral-8b-latest",
-    displayName: "Ministral 8B",
+    modelId: "mistral-medium-latest",
+    displayName: "Mistral Medium 3.5",
     icon: "Wind",
-    contextLength: 128000,
-    capabilities: ["text"],
+    contextLength: 256000,
+    capabilities: ["text", "vision", "code", "reasoning"],
     free: true,
     supportsStreaming: true,
-    supportsVision: false,
+    supportsVision: true,
   },
   {
     provider: "mistral",
-    modelId: "codestral-latest",
-    displayName: "Codestral",
+    modelId: "mistral-small-latest",
+    displayName: "Mistral Small 4",
     icon: "Wind",
-    contextLength: 32000,
-    capabilities: ["code"],
+    contextLength: 256000,
+    capabilities: ["text", "vision", "code", "reasoning"],
     free: true,
     supportsStreaming: true,
-    supportsVision: false,
+    supportsVision: true,
   },
   {
     provider: "mistral",
-    modelId: "pixtral-12b-2409",
-    displayName: "Pixtral 12B",
+    modelId: "ministral-3-14b-latest",
+    displayName: "Ministral 3 14B",
     icon: "Wind",
-    contextLength: 128000,
+    contextLength: 256000,
     capabilities: ["text", "vision", "code"],
     free: true,
     supportsStreaming: true,
@@ -503,11 +495,33 @@ const MISTRAL_MODELS: ModelDef[] = [
   },
   {
     provider: "mistral",
-    modelId: "devstral-latest",
-    displayName: "Devstral",
+    modelId: "ministral-3-8b-latest",
+    displayName: "Ministral 3 8B",
+    icon: "Wind",
+    contextLength: 256000,
+    capabilities: ["text", "vision", "code"],
+    free: true,
+    supportsStreaming: true,
+    supportsVision: true,
+  },
+  {
+    provider: "mistral",
+    modelId: "ministral-3-3b-latest",
+    displayName: "Ministral 3 3B",
     icon: "Wind",
     contextLength: 128000,
-    capabilities: ["code"],
+    capabilities: ["text", "vision"],
+    free: true,
+    supportsStreaming: true,
+    supportsVision: true,
+  },
+  {
+    provider: "mistral",
+    modelId: "codestral-latest",
+    displayName: "Codestral",
+    icon: "Wind",
+    contextLength: 256000,
+    capabilities: ["text", "code"],
     free: true,
     supportsStreaming: true,
     supportsVision: false,
@@ -515,16 +529,41 @@ const MISTRAL_MODELS: ModelDef[] = [
 ];
 
 /**
- * Gemini models — official free API tier only (Pro is paid-only as of 2026).
+ * Gemini models — official free API tier only. As of 2026 the free tier covers
+ * the Flash and Flash-Lite lines (10-15 RPM, 1M-token context); Pro is
+ * paid-only. The 2.5 Flash/Flash-Lite models were retired for new keys
+ * mid-2026, so this is every free-tier 3.x Flash/Flash-Lite id live in Aug
+ * 2026 — check https://ai.google.dev/gemini-api/docs/models + the AI Studio
+ * rate-limit page to refresh.
  * https://generativelanguage.googleapis.com/v1beta/models/{model}:streamGenerateContent
- * Verified live against a real Gemini key (Aug 2026) — 2.5 Flash/Flash-Lite
- * were retired for new users mid-2026 in favor of the 3.x line below.
  */
 const GEMINI_MODELS: ModelDef[] = [
   {
     provider: "gemini",
+    modelId: "gemini-3.7-flash",
+    displayName: "Gemini 3.7 Flash",
+    icon: "Gem",
+    contextLength: 1000000,
+    capabilities: ["text", "vision", "code", "reasoning"],
+    free: true,
+    supportsStreaming: true,
+    supportsVision: true,
+  },
+  {
+    provider: "gemini",
     modelId: "gemini-3.6-flash",
     displayName: "Gemini 3.6 Flash",
+    icon: "Gem",
+    contextLength: 1000000,
+    capabilities: ["text", "vision", "code"],
+    free: true,
+    supportsStreaming: true,
+    supportsVision: true,
+  },
+  {
+    provider: "gemini",
+    modelId: "gemini-3.5-flash",
+    displayName: "Gemini 3.5 Flash",
     icon: "Gem",
     contextLength: 1000000,
     capabilities: ["text", "vision", "code"],
@@ -543,43 +582,56 @@ const GEMINI_MODELS: ModelDef[] = [
     supportsStreaming: true,
     supportsVision: true,
   },
+  {
+    provider: "gemini",
+    modelId: "gemini-3.1-flash-lite",
+    displayName: "Gemini 3.1 Flash-Lite",
+    icon: "Gem",
+    contextLength: 1000000,
+    capabilities: ["text", "vision"],
+    free: true,
+    supportsStreaming: true,
+    supportsVision: true,
+  },
 ];
 
 /**
  * OpenRouter — single OpenAI-compatible endpoint that proxies to many
  * upstream providers, model ids namespaced as "{provider}/{model}":
  * https://openrouter.ai/api/v1/chat/completions
- * Only ":free" variants are listed here (verified live against GET /api/v1/models,
- * Aug 2026) — free-tier rate limits are low and the catalog turns over, so
- * re-check periodically.
+ * Only ":free" variants belong here. This is the complete set OpenRouter's
+ * public catalog marks ":free" (GET https://openrouter.ai/api/v1/models,
+ * Aug 2026) — that list is small and turns over fast (free slots get pulled
+ * and replaced weekly), so re-run:
+ *   curl -s https://openrouter.ai/api/v1/models | jq '[.data[] | select(.id|endswith(":free")) | .id]'
  */
 const OPENROUTER_MODELS: ModelDef[] = [
   {
     provider: "openrouter",
-    modelId: "z-ai/glm-5.2:free",
-    displayName: "GLM 5.2",
+    modelId: "thinkingmachines/inkling:free",
+    displayName: "Inkling",
     icon: "Route",
-    contextLength: 256000,
-    capabilities: ["text", "code", "reasoning"],
+    contextLength: 1048576,
+    capabilities: ["text", "vision", "reasoning"],
     free: true,
     supportsStreaming: true,
-    supportsVision: false,
+    supportsVision: true,
   },
   {
     provider: "openrouter",
-    modelId: "openai/gpt-oss-20b:free",
-    displayName: "GPT-OSS 20B",
+    modelId: "thinkingmachines/inkling-small:free",
+    displayName: "Inkling Small",
     icon: "Route",
-    contextLength: 131072,
-    capabilities: ["text", "reasoning"],
+    contextLength: 1048576,
+    capabilities: ["text", "vision"],
     free: true,
     supportsStreaming: true,
-    supportsVision: false,
+    supportsVision: true,
   },
   {
     provider: "openrouter",
-    modelId: "nvidia/nemotron-3-ultra-550b-a55b:free",
-    displayName: "Nemotron 3 Ultra",
+    modelId: "nvidia/nemotron-3.5-lightning:free",
+    displayName: "Nemotron 3.5 Lightning",
     icon: "Route",
     contextLength: 1000000,
     capabilities: ["text", "reasoning"],
@@ -589,45 +641,34 @@ const OPENROUTER_MODELS: ModelDef[] = [
   },
   {
     provider: "openrouter",
-    modelId: "nvidia/nemotron-3-super-120b-a12b:free",
-    displayName: "Nemotron 3 Super",
+    modelId: "dots-studio/dots-3-note-preview:free",
+    displayName: "Dots3-Note Preview",
+    icon: "Route",
+    contextLength: 512000,
+    capabilities: ["text", "vision"],
+    free: true,
+    supportsStreaming: true,
+    supportsVision: true,
+  },
+  {
+    provider: "openrouter",
+    modelId: "poolside/laguna-s-2.1:free",
+    displayName: "Laguna S 2.1",
     icon: "Route",
     contextLength: 262144,
-    capabilities: ["text"],
+    capabilities: ["text", "code"],
     free: true,
     supportsStreaming: true,
     supportsVision: false,
   },
   {
     provider: "openrouter",
-    modelId: "google/gemma-4-31b-it:free",
-    displayName: "Gemma 4 31B",
+    modelId: "liquid/lfm-2.5-2.6b:free",
+    displayName: "LFM2.5 2.6B",
     icon: "Route",
-    contextLength: 262144,
-    capabilities: ["text", "vision"],
+    contextLength: 65536,
+    capabilities: ["text"],
     free: true,
-    supportsStreaming: true,
-    supportsVision: true,
-  },
-  {
-    provider: "openrouter",
-    modelId: "nvidia/nemotron-nano-12b-v2-vl:free",
-    displayName: "Nemotron Nano 12B VL",
-    icon: "Route",
-    contextLength: 128000,
-    capabilities: ["text", "vision"],
-    free: true,
-    supportsStreaming: true,
-    supportsVision: true,
-  },
-  {
-    provider: "openrouter",
-    modelId: "poolside/laguna-s-2.1",
-    displayName: "Laguna S 2.1",
-    icon: "Route",
-    contextLength: 1048576,
-    capabilities: ["text", "code"],
-    free: false,
     supportsStreaming: true,
     supportsVision: false,
   },
@@ -652,6 +693,20 @@ export const ALL_MODELS: ModelDef[] = [
 ];
 
 export const DEFAULT_MODEL_ID = "mistralai/mistral-small-2603";
+
+/**
+ * Catalog size as a rounded-down "N+" string (e.g. 56 built-ins -> "50+"),
+ * for docs copy and marketing/meta text that shouldn't churn on every single
+ * add. Uses ALL_MODELS only (built-ins), so it's stable regardless of a user's
+ * custom models or Puter favorites.
+ *
+ * MAINTENANCE: whenever this crosses the next multiple of 10, also bump the
+ * hard-coded "N+ models" strings that can't call this — the <meta> tags in
+ * frontend/index.html and the public marketing pages. See ADD_NEW_MODEL.md.
+ */
+export function catalogSizeLabel(): string {
+  return `${Math.floor(ALL_MODELS.length / 10) * 10}+`;
+}
 
 /** Every model except the free default requires signing in — see the plan's
  * "Sign-in gating" slice. Checked by ModelSelector, SettingsModal's default-model
