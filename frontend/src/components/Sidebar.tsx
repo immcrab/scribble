@@ -14,7 +14,6 @@ import {
   Search,
   Download as ExportIcon,
   BookOpen,
-  Youtube,
 } from "lucide-react";
 import { LogoMark } from "./Logo";
 import { useChatStore } from "../state/chatStore";
@@ -23,6 +22,24 @@ import { ExportChat } from "./ExportChat";
 import { AdUnit } from "./AdUnit";
 import { docsPath } from "../lib/router";
 import type { Mode } from "../types";
+
+function YouTubeIcon({ size = 16 }: { size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={(size * 20) / 28}
+      viewBox="0 0 28 20"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path
+        d="M27.4 3.1a3.5 3.5 0 0 0-2.46-2.48C22.76 0 14 0 14 0S5.24 0 3.06.62A3.5 3.5 0 0 0 .6 3.1 36.5 36.5 0 0 0 0 10a36.5 36.5 0 0 0 .6 6.9 3.5 3.5 0 0 0 2.46 2.48C5.24 20 14 20 14 20s8.76 0 10.94-.62a3.5 3.5 0 0 0 2.46-2.48A36.5 36.5 0 0 0 28 10a36.5 36.5 0 0 0-.6-6.9z"
+        fill="#FF0000"
+      />
+      <path d="M11.2 14.29 18.53 10 11.2 5.71z" fill="#fff" />
+    </svg>
+  );
+}
 
 const MODE_LABEL: Record<Mode, string> = {
   battle: "Battle",
@@ -345,7 +362,7 @@ export function Sidebar({
                 !sidebarOpen && !mobileOpen && "md:justify-center"
               }`}
             >
-              <Youtube size={16} className="text-red-500" />
+              <YouTubeIcon size={18} />
               {(sidebarOpen || mobileOpen) && "Subscribe on YouTube"}
             </a>
             <button
