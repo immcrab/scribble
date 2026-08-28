@@ -3,6 +3,7 @@ import { Image as ImageIcon, Send, Loader2, ChevronDown } from "lucide-react";
 import { useChatStore } from "../state/chatStore";
 import { ChatMessage } from "../components/ChatMessage";
 import { Dropdown } from "../components/Dropdown";
+import { ImageGeneratingLoader } from "../components/ImageGeneratingLoader";
 import { generateImage } from "../lib/imageClient";
 import { IMAGE_MODELS, findImageModel } from "../config/imageModels";
 import { auth } from "../lib/firebase";
@@ -154,9 +155,18 @@ export function ImageMode({
       ) : (
         <div className="flex-1 overflow-y-auto px-4 py-5 sm:px-8" ref={chatEndRef}>
           <div className="mx-auto flex max-w-3xl flex-col gap-5">
-            {chat.messages.map((m) => (
-              <ChatMessage key={m.id} message={m} />
-            ))}
+            {chat.messages.map((m) =>
+              m.role === "assistant" && m.streaming && !m.error ? (
+                <div key={m.id} className="flex animate-fade-in-up gap-3">
+                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-accent-500/60 bg-base-900/90 shadow-glow">
+                    <ImageIcon size={14} className="text-accent-400" />
+                  </div>
+                  <ImageGeneratingLoader startedAt={m.thinkingStartedAt} />
+                </div>
+              ) : (
+                <ChatMessage key={m.id} message={m} />
+              )
+            )}
           </div>
         </div>
       )}
