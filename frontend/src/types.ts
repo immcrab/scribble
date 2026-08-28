@@ -30,6 +30,22 @@ export interface ModelDef {
   logoUrl?: string;
 }
 
+/**
+ * The shared, admin-curated overlay on the built-in model catalog, edited only from the
+ * `/admin` page (see pages/AdminPage.tsx) and synced to every visitor via RTDB
+ * `catalog/v1` (see lib/catalogSync.ts). Unlike `customModels`, which are per-browser,
+ * everything here is global — one admin adds an "official" model and everyone sees it.
+ */
+export interface AdminCatalog {
+  /** Extra models the admin published — merged into the catalog for all users, not flagged `isCustom`. */
+  added: ModelDef[];
+  /** `"{provider}:{modelId}"` keys filtered out of the catalog for all users — lets the admin
+   * remove a built-in (or previously-added) model. The default model can never be hidden. */
+  hiddenKeys: string[];
+  /** Date.now() of the last admin edit — last-write-wins if two admin tabs race. */
+  updatedAt: number;
+}
+
 /** A user-defined OpenAI-compatible endpoint (name + base URL + API key), configured in Settings.
  * The API key travels with each chat request to the Worker, which forwards it straight through —
  * unlike the built-in providers, it's never stored server-side. */

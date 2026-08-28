@@ -41,7 +41,22 @@ export function isKnownAppLocation(): boolean {
   if (parseProjectIdFromLocation() !== null) return true;
   if (parseDocsSlugFromLocation() !== null) return true;
   if (isAuthActionLocation()) return true;
+  if (isAdminLocation()) return true;
   return false;
+}
+
+/** "<base>/admin" — the shared-catalog editor (see pages/AdminPage.tsx). The page itself
+ * gates on the signed-in account; the route is "known" for anyone so a non-admin lands on
+ * the page's own "not authorized" state rather than a 404. */
+export function isAdminLocation(): boolean {
+  const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+  const path = window.location.pathname;
+  return path === `${base}/admin` || path === `${base}/admin/`;
+}
+
+export function adminPath(): string {
+  const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+  return `${base}/admin`;
 }
 
 /** "<base>/auth/action" — where Firebase's verification / password-reset / email-

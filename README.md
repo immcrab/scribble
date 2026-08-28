@@ -58,6 +58,28 @@ since it's sent as-is to `https://api.xkiro.com/v1/chat/completions`. No other
 file needs to change — the model shows up in every mode's selector
 automatically, grouped by provider.
 
+### Editing the catalog at runtime (`/admin`)
+
+`models.ts` is the source of truth, but the signed-in admin account
+(`imcrabfr@gmail.com`, set in `frontend/src/lib/admin.ts`) can also **publish or
+hide models for every visitor** from the `/admin` page — no rebuild. Those edits
+live in a single Realtime Database node, `catalog/v1`, that every visitor reads on
+load (`frontend/src/lib/catalogSync.ts`); regular users' own custom models stay
+per-browser in Settings → Models as before.
+
+For the admin writes to land, add a rule for that node in the Firebase console
+(Realtime Database → Rules) alongside the existing `users` / `publicChats` rules:
+
+```json
+"catalog": {
+  ".read": true,
+  ".write": "auth != null && auth.token.email === 'imcrabfr@gmail.com' && auth.token.email_verified === true"
+}
+```
+
+Until that rule exists the `/admin` page still works but shows a
+"permission denied" banner and nothing publishes.
+
 ## 4. Configure Cloudflare Worker secrets
 
 Provider API keys and the optional access password are **secrets**, never

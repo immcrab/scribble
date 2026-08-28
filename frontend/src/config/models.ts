@@ -884,17 +884,58 @@ export function setPuterFavorites(models: ModelDef[]): void {
   puterFavorites = models;
 }
 
+/**
+ * Admin-curated overlay on the catalog — global, not per-browser. `adminAddedModels`
+ * are extra "official" models everyone sees; `hiddenModelKeys` are `"provider:modelId"`
+ * keys removed from the catalog for everyone. Both are pushed in here by chatStore from
+ * the RTDB `catalog/v1` subscription (see lib/catalogSync.ts), same push-not-thread
+ * pattern as `customModels`. Edited only from pages/AdminPage.tsx.
+ */
+let adminAddedModels: ModelDef[] = [];
+let hiddenModelKeys: string[] = [];
+
+export function setAdminCatalog(added: ModelDef[], hiddenKeys: string[]): void {
+  adminAddedModels = added;
+  // The default model is the one every un-signed-in visitor falls back to — never let it
+  // be hidden, however the admin's list arrives.
+  hiddenModelKeys = hiddenKeys.filter((k) => k !== `xkiro:${DEFAULT_MODEL_ID}`);
+}
+
 function allModels(): ModelDef[] {
-  if (!customModels.length && !puterFavorites.length) return ALL_MODELS;
+  if (!customModels.length && !puterFavorites.length && !adminAddedModels.length && !hiddenModelKeys.length) {
+    return ALL_MODELS;
+  }
   // Settings → Custom Models can also point a manually-added model at provider "puter" —
   // if that happens to share an id with one the user separately favorited from the browse
   // panel, it'd otherwise render (and need unfavoriting) twice. Later entries win, so a
   // favorited pick's fresher data overrides a stale custom-model entry sharing its id.
   const byKey = new Map<string, ModelDef>();
-  for (const m of [...ALL_MODELS, ...customModels, ...puterFavorites]) {
+  for (const m of [...ALL_MODELS, ...adminAddedModels, ...customModels, ...puterFavorites]) {
     byKey.set(`${m.provider}:${m.modelId}`, m);
   }
+  // Admin removals win last — a user's own custom model keeps a different id, so this only
+  // ever bites the built-in / admin-added entries the admin actually meant to drop.
+  for (const key of hiddenModelKeys) byKey.delete(key);
   return Array.from(byKey.values());
+}
+
+/** `"{provider}:{modelId}"` — the key format used by `hiddenModelKeys` and the admin page. */
+export function modelKey(m: Pick<ModelDef, "provider" | "modelId">): string {
+  return `${m.provider}:${m.modelId}`;
+}
+
+/** Built-in catalog plus the admin's added models, before per-browser custom models or
+ * hidden-key removal — what the `/admin` page lists as "everything you can publish or hide". */
+export function catalogWithAdminAdditions(): ModelDef[] {
+  const byKey = new Map<string, ModelDef>();
+  for (const m of [...ALL_MODELS, ...adminAddedModels]) byKey.set(modelKey(m), m);
+  return Array.from(byKey.values());
+}
+
+/** Keys of models the admin has published (as opposed to built-ins) — the admin page shows
+ * these with "delete" rather than "hide", since hiding an added model just orphans it. */
+export function adminAddedKeys(): string[] {
+  return adminAddedModels.map(modelKey);
 }
 
 /** Flat list of every selectable model — built-ins plus whatever the user added in Settings. */

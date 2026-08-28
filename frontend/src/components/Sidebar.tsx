@@ -14,6 +14,7 @@ import {
   Search,
   Download as ExportIcon,
   BookOpen,
+  ShieldCheck,
   FolderKanban,
   FolderPlus,
   FolderInput,
@@ -24,7 +25,8 @@ import { useAuthStore } from "../state/authStore";
 import { ExportChat } from "./ExportChat";
 import { AdUnit } from "./AdUnit";
 import { Dropdown } from "./Dropdown";
-import { docsPath } from "../lib/router";
+import { docsPath, adminPath } from "../lib/router";
+import { isAdmin } from "../lib/admin";
 import type { Mode } from "../types";
 
 function YouTubeIcon({ size = 16 }: { size?: number }) {
@@ -543,6 +545,20 @@ export function Sidebar({
               <BookOpen size={16} />
               {(sidebarOpen || mobileOpen) && "Docs"}
             </button>
+            {isAdmin(user) && (
+              <button
+                onClick={closeOnMobileSelect(() => {
+                  window.history.pushState(null, "", adminPath());
+                  window.dispatchEvent(new PopStateEvent("popstate"));
+                })}
+                className={`flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-slate-400 transition-colors hover:bg-base-800/70 hover:text-white ${
+                  !sidebarOpen && !mobileOpen && "md:justify-center"
+                }`}
+              >
+                <ShieldCheck size={16} />
+                {(sidebarOpen || mobileOpen) && "Model admin"}
+              </button>
+            )}
             <a
               href="https://www.youtube.com/channel/UC4C7A2I8hpmPwn4tvi4-JPQ?sub_confirmation=1"
               target="_blank"

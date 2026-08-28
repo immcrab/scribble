@@ -8,6 +8,7 @@ import { Dropdown } from "./Dropdown";
 import { PuterNoticeModal } from "./PuterNoticeModal";
 import { useAuthStore } from "../state/authStore";
 import { useChatStore } from "../state/chatStore";
+import { useCatalogStore } from "../lib/catalogSync";
 import { isPuterSignedIn, listPuterModels, type PuterModelInfo } from "../lib/puterClient";
 
 export function ModelIcon({ name, model, size = 15 }: { name?: string; model?: ModelDef; size?: number }) {
@@ -109,7 +110,9 @@ export function ModelSelector({
   onChange: (m: ModelDef) => void;
   align?: "left" | "right";
 }) {
-  const grouped = modelsByProvider();
+  // Re-derive when the admin publishes catalog changes (see lib/catalogSync.ts).
+  const adminCatalog = useCatalogStore((s) => s.catalog);
+  const grouped = useMemo(() => modelsByProvider(), [adminCatalog]);
   const user = useAuthStore((s) => s.user);
   const signInWithGoogle = useAuthStore((s) => s.signInWithGoogle);
   const puterFavorites = useChatStore((s) => s.settings.puterFavoriteModels);
