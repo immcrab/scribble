@@ -21,8 +21,11 @@ export async function runAssistantStream(params: {
   history: WireMessage[];
   effort?: Effort;
   webSearch?: boolean;
+  /** Resuming a truncated reply: keep the message's existing content/reasoning and
+   * append incoming tokens to it, rather than treating the message as brand-new. */
+  appendToExisting?: boolean;
 }) {
-  const { chatId, messageId, model, history, effort, webSearch } = params;
+  const { chatId, messageId, model, history, effort, webSearch, appendToExisting } = params;
   const store = useChatStore.getState();
 
   if (isModelGated(model) && !auth.currentUser) {
@@ -42,8 +45,10 @@ export async function runAssistantStream(params: {
       : undefined;
 
   const thinkingStartedAt = Date.now();
-  store.updateMessage(chatId, messageId, { thinkingStartedAt });
-  let thinkingStamped = false;
+  // On a continue, the message already has content and a frozen thinking time — don't
+  // reset the timer or re-stamp it when the first token lands.
+  if (!appendToExisting) store.updateMessage(chatId, messageId, { thinkingStartedAt });
+  let thinkingStamped = appendToExisting ?? false;
   let truncated = false;
 
   const lastUserMessage = [...history].reverse().find((m) => m.role === "user")?.content;

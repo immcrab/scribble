@@ -206,7 +206,10 @@ export function extractPartialArtifact(content: string): Artifact | null {
   }
 
   if (files.length === 0) return null;
-  return { files, previewHtml: undefined, remainingText };
+  // Build a preview even from a still-open (or truncated) trailing fence — browsers render
+  // partial/unbalanced HTML fine, so the panel can show the page taking shape live, and a
+  // response cut off mid-file still previews what it got.
+  return { files, previewHtml: buildPreviewHtml(files), remainingText };
 }
 
 /**

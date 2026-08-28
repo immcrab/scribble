@@ -8,8 +8,8 @@ import { EffortSelector } from "../components/EffortSelector";
 import { EmptyState } from "../components/EmptyState";
 import { ArtifactWorkspace } from "../components/ArtifactWorkspace";
 import { ChatWorkspaceSplit } from "../components/ChatWorkspaceSplit";
-import { extractArtifact, isArtifactWorthy, isCodingRequest } from "../lib/codeArtifact";
-import { useLiveArtifact } from "../lib/useLiveArtifact";
+import { isCodingRequest } from "../lib/codeArtifact";
+import { useLiveArtifact, liveArtifactFor } from "../lib/useLiveArtifact";
 import { runAssistantStream } from "../lib/runStream";
 import { useAutoScroll } from "../lib/useAutoScroll";
 import { uid } from "../lib/id";
@@ -209,8 +209,7 @@ export function SideBySideMode({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chat.id]);
 
-  const artifactFor = (m?: ChatMessageType) =>
-    m && !m.streaming && m.content ? extractArtifact(m.content) : null;
+  const artifactFor = (m?: ChatMessageType) => (m && !m.streaming ? liveArtifactFor(m) : null);
 
   const liveArtifactA = useLiveArtifact(lastRound?.a?.streaming ? lastRound.a : undefined);
   const liveArtifactB = useLiveArtifact(lastRound?.b?.streaming ? lastRound.b : undefined);
@@ -219,11 +218,7 @@ export function SideBySideMode({
     eagerWorkspace ||
     !!liveArtifactA ||
     !!liveArtifactB ||
-    rounds.some((r) => {
-      const aa = artifactFor(r.a);
-      const bb = artifactFor(r.b);
-      return (aa && isArtifactWorthy(aa)) || (bb && isArtifactWorthy(bb));
-    });
+    rounds.some((r) => !!artifactFor(r.a) || !!artifactFor(r.b));
 
   const lastArtifactA = liveArtifactA ?? artifactFor(lastRound?.a);
   const lastArtifactB = liveArtifactB ?? artifactFor(lastRound?.b);

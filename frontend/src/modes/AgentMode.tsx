@@ -9,8 +9,8 @@ import { EffortSelector } from "../components/EffortSelector";
 import { EmptyState } from "../components/EmptyState";
 import { ArtifactWorkspace } from "../components/ArtifactWorkspace";
 import { ChatWorkspaceSplit } from "../components/ChatWorkspaceSplit";
-import { extractArtifact, isArtifactWorthy, isCodingRequest } from "../lib/codeArtifact";
-import { useLiveArtifact } from "../lib/useLiveArtifact";
+import { isCodingRequest } from "../lib/codeArtifact";
+import { useLiveArtifact, liveArtifactFor } from "../lib/useLiveArtifact";
 import { runAssistantStream } from "../lib/runStream";
 import { useAutoScroll } from "../lib/useAutoScroll";
 import { uid } from "../lib/id";
@@ -114,6 +114,32 @@ export function AgentMode({
     runAssistantStream({ chatId: chat.id, messageId: newAssistant.id, model: runModel, history, effort, webSearch: settings.autoWebSearch });
   };
 
+  /** Resume a reply that was cut off at the model's output-token limit, appending in place. */
+  const continueMessage = (assistantId: string) => {
+    const msg = chat.messages.find((m) => m.id === assistantId);
+    if (!msg || msg.role !== "assistant" || !msg.content) return;
+    const runModel = msg.model ?? model;
+    const history: WireMessage[] = [
+      ...buildHistory(assistantId),
+      { role: "assistant", content: msg.content },
+      {
+        role: "user",
+        content:
+          "Your previous message was cut off because it reached the length limit. Continue it from exactly where it stopped — resume mid-line if needed, do not repeat any text you already sent, and do not add any preamble.",
+      },
+    ];
+    updateMessage(chat.id, assistantId, { streaming: true, truncated: false });
+    runAssistantStream({
+      chatId: chat.id,
+      messageId: assistantId,
+      model: runModel,
+      history,
+      effort,
+      webSearch: settings.autoWebSearch,
+      appendToExisting: true,
+    });
+  };
+
   /** Edit a user message in-place and stream a fresh reply. */
   const editMessage = (messageId: string, newText: string) => {
     const msg = chat.messages.find((m) => m.id === messageId);
@@ -153,8 +179,8 @@ export function AgentMode({
 
   const completedArtifacts = chat.messages
     .filter((m) => m.role === "assistant" && !m.streaming && m.content)
-    .map((m) => extractArtifact(m.content))
-    .filter((a): a is NonNullable<typeof a> => !!a && isArtifactWorthy(a));
+    .map((m) => liveArtifactFor(m))
+    .filter((a): a is NonNullable<typeof a> => !!a);
   const lastMsg = chat.messages[chat.messages.length - 1];
   const lastIsStreaming = lastMsg?.role === "assistant" && lastMsg.streaming;
   const liveArtifact = useLiveArtifact(lastIsStreaming ? lastMsg : undefined);
@@ -208,6 +234,9 @@ export function AgentMode({
                       onRegenerate={m.role === "assistant" && !m.streaming ? () => regenerate(m.id) : undefined}
                       onRegenerateWith={
                         m.role === "assistant" && !m.streaming ? (modelId) => regenerate(m.id, modelId) : undefined
+                      }
+                      onContinue={
+                        m.role === "assistant" && !m.streaming && m.truncated ? () => continueMessage(m.id) : undefined
                       }
                       onEdit={m.role === "user" && !m.streaming ? (newText) => editMessage(m.id, newText) : undefined}
                     />

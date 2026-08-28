@@ -247,6 +247,7 @@ export function ChatMessage({
   hideModelName = false,
   onRegenerate,
   onRegenerateWith,
+  onContinue,
   onEdit,
   suppressCode = false,
 }: {
@@ -256,6 +257,8 @@ export function ChatMessage({
   onRegenerate?: () => void;
   /** Resend the message with a different model — omit to hide the model-picker chevron. */
   onRegenerateWith?: (modelId: string) => void;
+  /** Resume a truncated assistant reply, appending to it in place. Shown only when message.truncated. */
+  onContinue?: () => void;
   /** Edit & resend a user message. */
   onEdit?: (newText: string) => void;
   /** True when a parent mode is already routing this message's code into the ArtifactWorkspace panel — keeps raw fences out of the bubble even mid-stream. */
@@ -441,9 +444,21 @@ export function ChatMessage({
         {/* Truncation notice — the model hit its output-token ceiling and the reply above is
             cut off mid-stream (see runStream.ts / worker adapters' finish_reason handling). */}
         {!isUser && message.truncated && !message.streaming && (
-          <div className="mt-1 flex items-start gap-1.5 px-1 text-[11px] text-amber-500/90">
-            <AlertTriangle size={12} className="mt-px shrink-0" />
-            <span>Response hit the output-length limit and was cut off — regenerate, or ask it to continue.</span>
+          <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 px-1 text-[11px] text-amber-500/90">
+            <span className="flex items-center gap-1.5">
+              <AlertTriangle size={12} className="shrink-0" />
+              Response hit the output-length limit and was cut off.
+            </span>
+            {onContinue && (
+              <button
+                onClick={onContinue}
+                className="flex items-center gap-1 rounded-md bg-amber-500/15 px-2 py-1 font-medium text-amber-300 transition-colors hover:bg-amber-500/25"
+                title="Continue this response where it stopped"
+              >
+                <ChevronRight size={12} />
+                Continue
+              </button>
+            )}
           </div>
         )}
 
