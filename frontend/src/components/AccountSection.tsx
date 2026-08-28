@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { LogIn, LogOut, Mail, Trash2, AlertTriangle, Loader2, Sparkles, MailCheck } from "lucide-react";
+import { LogOut, Mail, Trash2, AlertTriangle, Loader2, Sparkles, MailCheck } from "lucide-react";
+import { GoogleLogo } from "./icons/GoogleLogo";
 import { useAuthStore } from "../state/authStore";
 import { clearAllLocalData } from "../lib/storage";
 import { isPuterSignedIn, puterSignOut } from "../lib/puterClient";
@@ -11,8 +12,9 @@ function SubLabel({ children }: { children: string }) {
 const inputClass =
   "w-full rounded-lg border border-base-600/60 bg-base-900/60 px-3 py-2 text-sm text-slate-200 placeholder:text-slate-500 focus:border-accent-500/50 focus:outline-none";
 
-/** Signed-out state: Google sign-in plus an email/password form that can either
- * sign in or create an account (which triggers Firebase's verification email). */
+/** Signed-out state: a Sign in / Create account tab switch over one email+password
+ * form, plus Google sign-in. Creating an account triggers Firebase's verification
+ * email (see authStore.signUpWithEmail). */
 function SignInForms() {
   const { signInWithGoogle, signInWithEmail, signUpWithEmail, sendPasswordReset, error, notice, clearAuthFeedback } =
     useAuthStore();
@@ -20,6 +22,12 @@ function SignInForms() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
+
+  const switchMode = (next: "signin" | "signup") => {
+    if (next === mode) return;
+    setMode(next);
+    clearAuthFeedback();
+  };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,18 +37,27 @@ function SignInForms() {
     setBusy(false);
   };
 
+  const tabClass = (active: boolean) =>
+    `flex-1 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+      active ? "bg-base-700 text-white shadow-sm" : "text-slate-400 hover:text-slate-200"
+    }`;
+
   return (
     <div className="space-y-3">
-      <button
-        onClick={signInWithGoogle}
-        className="flex w-full items-center justify-center gap-2 rounded-lg border border-base-600/60 bg-base-900/60 px-3 py-2.5 text-sm text-slate-200 hover:border-accent-500/50 hover:bg-base-700/60"
-      >
-        <LogIn size={15} /> Sign in with Google
-      </button>
-
-      <div className="flex items-center gap-3 text-xs text-slate-600">
-        <span className="h-px flex-1 bg-base-700/60" /> or <span className="h-px flex-1 bg-base-700/60" />
+      <div className="flex gap-1 rounded-lg border border-base-600/60 bg-base-900/60 p-1">
+        <button type="button" onClick={() => switchMode("signin")} className={tabClass(mode === "signin")}>
+          Sign in
+        </button>
+        <button type="button" onClick={() => switchMode("signup")} className={tabClass(mode === "signup")}>
+          Create account
+        </button>
       </div>
+
+      <p className="text-xs text-slate-500">
+        {mode === "signup"
+          ? "New to Scribble — pick an email and password. We'll send a link to confirm your address."
+          : "Welcome back. Sign in with the email and password you used before."}
+      </p>
 
       <form onSubmit={submit} className="space-y-2">
         <input
@@ -59,7 +76,7 @@ function SignInForms() {
           type="password"
           required
           autoComplete={mode === "signup" ? "new-password" : "current-password"}
-          placeholder="Password"
+          placeholder={mode === "signup" ? "Choose a password (6+ characters)" : "Password"}
           value={password}
           onChange={(e) => {
             setPassword(e.target.value);
@@ -81,31 +98,40 @@ function SignInForms() {
         </button>
       </form>
 
-      <div className="flex items-center justify-between text-xs">
-        <button
-          onClick={() => {
-            setMode(mode === "signup" ? "signin" : "signup");
-            clearAuthFeedback();
-          }}
-          className="text-slate-400 hover:text-white"
-        >
-          {mode === "signup" ? "Have an account? Sign in" : "New here? Create an account"}
-        </button>
-        {mode === "signin" && (
-          <button onClick={() => sendPasswordReset(email)} className="text-slate-500 hover:text-slate-300">
+      {mode === "signin" && (
+        <div className="text-right">
+          <button
+            type="button"
+            onClick={() => sendPasswordReset(email)}
+            className="text-xs text-slate-500 hover:text-slate-300"
+          >
             Forgot password?
           </button>
-        )}
+        </div>
+      )}
+
+      <div className="flex items-center gap-3 text-xs text-slate-600">
+        <span className="h-px flex-1 bg-base-700/60" /> or <span className="h-px flex-1 bg-base-700/60" />
       </div>
+
+      <button
+        type="button"
+        onClick={signInWithGoogle}
+        className="flex w-full items-center justify-center gap-2 rounded-lg border border-base-600/60 bg-base-900/60 px-3 py-2.5 text-sm text-slate-200 hover:border-accent-500/50 hover:bg-base-700/60"
+      >
+        <GoogleLogo size={15} /> Continue with Google
+      </button>
     </div>
   );
 }
 
-/** Shown to signed-in email/password users whose address isn't verified yet. */
+/** Shown to signed-in email/password users whose address isn't verified yet.
+ * The store polls for verification in the background (authStore.watchEmailVerification),
+ * so this clears itself once the link is clicked — no manual reload needed. */
 function VerifyEmailBanner() {
-  const { user, resendVerification, error, notice } = useAuthStore();
-  const [busy, setBusy] = useState(false);
-  if (!user || user.emailVerified) return null;
+  const { user, emailVerified, resendVerification, refreshUser, error, notice } = useAuthStore();
+  const [busy, setBusy] = useState<"resend" | "check" | null>(null);
+  if (!user || emailVerified) return null;
   const usesPassword = user.providerData.some((p) => p.providerId === "password");
   if (!usesPassword) return null;
 
@@ -113,22 +139,39 @@ function VerifyEmailBanner() {
     <div className="mt-2 rounded-lg border border-amber-500/25 bg-amber-500/[0.05] p-3">
       <p className="flex items-start gap-2 text-xs text-amber-300">
         <MailCheck size={13} className="mt-0.5 shrink-0" />
-        Your email isn't verified yet. Check {user.email} for the link, then reload.
+        <span>
+          Confirm your email to finish setting up. We sent a link to <span className="font-medium">{user.email}</span> —
+          open it and this updates on its own.
+        </span>
       </p>
       {error && <p className="mt-1 text-xs text-red-400">{error}</p>}
       {notice && <p className="mt-1 text-xs text-emerald-400">{notice}</p>}
-      <button
-        onClick={async () => {
-          setBusy(true);
-          await resendVerification();
-          setBusy(false);
-        }}
-        disabled={busy}
-        className="mt-2 flex items-center gap-1.5 rounded-lg bg-amber-500/90 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-amber-500 disabled:opacity-50"
-      >
-        {busy && <Loader2 size={12} className="animate-spin" />}
-        Resend verification email
-      </button>
+      <div className="mt-2 flex flex-wrap gap-2">
+        <button
+          onClick={async () => {
+            setBusy("resend");
+            await resendVerification();
+            setBusy(null);
+          }}
+          disabled={busy !== null}
+          className="flex items-center gap-1.5 rounded-lg bg-amber-500/90 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-amber-500 disabled:opacity-50"
+        >
+          {busy === "resend" && <Loader2 size={12} className="animate-spin" />}
+          Resend email
+        </button>
+        <button
+          onClick={async () => {
+            setBusy("check");
+            await refreshUser();
+            setBusy(null);
+          }}
+          disabled={busy !== null}
+          className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs text-amber-300 hover:bg-amber-500/10 disabled:opacity-50"
+        >
+          {busy === "check" && <Loader2 size={12} className="animate-spin" />}
+          I've confirmed it
+        </button>
+      </div>
     </div>
   );
 }
@@ -136,7 +179,7 @@ function VerifyEmailBanner() {
 /** Settings → Account tab: signed-in identity, support contact, delete account, and a
  * local-only "wipe everything" escape hatch that doesn't require being signed in. */
 export function AccountSection() {
-  const { user, loading, signOut, deleteAccount } = useAuthStore();
+  const { user, emailVerified, loading, signOut, deleteAccount } = useAuthStore();
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [confirmingClear, setConfirmingClear] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -180,7 +223,14 @@ export function AccountSection() {
                   {(user.displayName ?? user.email ?? "?").charAt(0).toUpperCase()}
                 </div>
               )}
-              <span className="min-w-0 flex-1 truncate text-sm text-slate-200">{user.email ?? user.displayName}</span>
+              <span className="flex min-w-0 flex-1 flex-col">
+                <span className="truncate text-sm text-slate-200">{user.email ?? user.displayName}</span>
+                {emailVerified && user.providerData.some((p) => p.providerId === "password") && (
+                  <span className="flex items-center gap-1 text-[11px] font-medium text-emerald-400">
+                    <MailCheck size={11} /> Verified
+                  </span>
+                )}
+              </span>
               <button
                 onClick={signOut}
                 className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs text-slate-400 hover:bg-base-700/60 hover:text-white"

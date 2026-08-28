@@ -40,7 +40,17 @@ export function isKnownAppLocation(): boolean {
   if (parseChatIdFromLocation() !== null) return true;
   if (parseProjectIdFromLocation() !== null) return true;
   if (parseDocsSlugFromLocation() !== null) return true;
+  if (isAuthActionLocation()) return true;
   return false;
+}
+
+/** "<base>/auth/action" — where Firebase's verification / password-reset / email-
+ * recovery links land once a custom action URL is set in the Firebase console.
+ * Handled by pages/AuthActionPage.tsx. */
+export function isAuthActionLocation(): boolean {
+  const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+  const path = window.location.pathname;
+  return path === `${base}/auth/action` || path === `${base}/auth/action/`;
 }
 
 export function chatPath(id: string): string {

@@ -22,8 +22,10 @@ import {
   parseDocsSlugFromLocation,
   isRootLocation,
   isKnownAppLocation,
+  isAuthActionLocation,
 } from "./lib/router";
 import { DocsPage } from "./pages/DocsPage";
+import { AuthActionPage } from "./pages/AuthActionPage";
 import { fetchPublicChat } from "./lib/cloudSync";
 import { ProjectView } from "./components/ProjectView";
 import { DirectMode } from "./modes/DirectMode";
@@ -71,6 +73,9 @@ export default function App() {
   const [pending, setPending] = useState<InitialPrompt | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [docsSlug, setDocsSlug] = useState<string | null>(() => parseDocsSlugFromLocation());
+  // Firebase email-action landing ("/auth/action"). A one-shot page — no popstate
+  // wiring needed; its only exit is a full-page link back into the app.
+  const [authAction] = useState(() => isAuthActionLocation());
   const [accepted, setAccepted] = useState(hasAcceptedTerms);
   // Bare "/" (no chat id, no docs slug) always lands on a blank compose screen — never
   // whichever chat happened to be active last. createChat() reuses an already-empty
@@ -300,6 +305,10 @@ export default function App() {
 
   const initialFor = (chatId: string) => (pending?.chatId === chatId ? pending : undefined);
   const consumeInitial = () => setPending(null);
+
+  if (authAction) {
+    return <AuthActionPage />;
+  }
 
   if (docsSlug !== null) {
     return (
