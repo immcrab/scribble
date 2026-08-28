@@ -57,7 +57,7 @@ function MoveToProjectMenu({ chatId }: { chatId: string }) {
       trigger={({ toggle }) => (
         <button
           onClick={toggle}
-          className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 hover:bg-base-700 hover:text-white"
+          className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 hover:bg-base-600 hover:text-white"
           title="Add to project"
         >
           <FolderInput size={13} />
@@ -251,7 +251,7 @@ export function Sidebar({
                 <span className="text-[11px] font-medium uppercase tracking-wide text-slate-500">Projects</span>
                 <button
                   onClick={openNewProject}
-                  className="flex h-6 w-6 items-center justify-center rounded-lg text-slate-400 hover:bg-base-700 hover:text-white"
+                  className="flex h-6 w-6 items-center justify-center rounded-lg text-slate-400 hover:bg-base-600 hover:text-white"
                   title="New project"
                 >
                   <FolderPlus size={14} />
@@ -283,14 +283,14 @@ export function Sidebar({
                 <p className="px-1 py-1 text-[11px] text-slate-600">No projects yet</p>
               )}
 
-              <ul className="space-y-0.5">
+              <ul className="space-y-1">
                 {projects.map((p) => (
                   <li key={p.id}>
                     <div
-                      className={`group flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm transition-colors ${
+                      className={`group flex items-center gap-1.5 rounded-lg border px-2 py-1 text-sm transition-all ${
                         p.id === activeProjectId
-                          ? "bg-accent-500/15 text-white"
-                          : "text-slate-400 hover:bg-base-800/70 hover:text-slate-200"
+                          ? "border-accent-500/40 bg-accent-500/15 text-white shadow-sm"
+                          : "border-base-700/50 bg-base-800/40 text-slate-400 hover:border-accent-500/40 hover:bg-base-700/60 hover:text-white"
                       }`}
                     >
                       <FolderKanban size={14} className="shrink-0 opacity-70" />
@@ -319,7 +319,7 @@ export function Sidebar({
                         <span className="flex shrink-0 gap-1 opacity-0 group-hover:opacity-100">
                           <button
                             onClick={() => startProjectEdit(p.id, p.name)}
-                            className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-base-700 hover:text-white"
+                            className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-base-600 hover:text-white"
                             title="Rename project"
                           >
                             <Pencil size={12} />
@@ -353,7 +353,7 @@ export function Sidebar({
                 {query && (
                   <button
                     onClick={() => setQuery("")}
-                    className="absolute right-1.5 top-1/2 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full text-slate-500 hover:bg-base-700 hover:text-white"
+                    className="absolute right-1.5 top-1/2 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full text-slate-500 hover:bg-base-600 hover:text-white"
                     title="Clear search"
                   >
                     <X size={12} />
@@ -381,14 +381,14 @@ export function Sidebar({
                 {q ? `${filteredChats.length} result${filteredChats.length === 1 ? "" : "s"}` : "History"}
               </p>
             )}
-            <ul className="space-y-0.5">
+            <ul className="space-y-1">
               {filteredChats.map((chat) => (
                 <li key={chat.id}>
                   <div
-                    className={`group flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm transition-colors ${
+                    className={`group flex items-center gap-1.5 rounded-lg border px-2 py-1 text-sm transition-all ${
                       chat.id === activeChatId
-                        ? "bg-accent-500/15 text-white"
-                        : "text-slate-400 hover:bg-base-800/70 hover:text-slate-200"
+                        ? "border-accent-500/40 bg-accent-500/15 text-white shadow-sm"
+                        : "border-base-700/50 bg-base-800/40 text-slate-400 hover:border-accent-500/40 hover:bg-base-700/60 hover:text-white"
                     }`}
                   >
                     <MessageSquare size={14} className="shrink-0 opacity-70" />
@@ -422,14 +422,14 @@ export function Sidebar({
                       <span className="flex shrink-0 gap-1 opacity-100">
                         <button
                           onClick={commitEdit}
-                          className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 hover:bg-base-700 hover:text-white"
+                          className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 hover:bg-base-600 hover:text-white"
                           title="Confirm"
                         >
                           <Check size={13} />
                         </button>
                         <button
                           onClick={() => setEditingId(null)}
-                          className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 hover:bg-base-700 hover:text-white"
+                          className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 hover:bg-base-600 hover:text-white"
                           title="Cancel"
                         >
                           <X size={13} />
@@ -441,7 +441,7 @@ export function Sidebar({
                           <MoveToProjectMenu chatId={chat.id} />
                           <button
                             onClick={() => startEdit(chat.id, chat.title)}
-                            className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 hover:bg-base-700 hover:text-white"
+                            className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 hover:bg-base-600 hover:text-white"
                             title="Rename"
                           >
                             <Pencil size={13} />
@@ -458,7 +458,7 @@ export function Sidebar({
                           <MoveToProjectMenu chatId={chat.id} />
                           <button
                             onClick={() => startEdit(chat.id, chat.title)}
-                            className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 hover:bg-base-700 hover:text-white"
+                            className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 hover:bg-base-600 hover:text-white"
                             title="Rename"
                           >
                             <Pencil size={13} />
@@ -511,7 +511,7 @@ export function Sidebar({
                         <button
                           onClick={signOut}
                           title="Sign out"
-                          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-400 opacity-0 hover:bg-base-700 hover:text-white group-hover:opacity-100"
+                          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-400 opacity-0 hover:bg-base-600 hover:text-white group-hover:opacity-100"
                         >
                           <LogOut size={13} />
                         </button>
