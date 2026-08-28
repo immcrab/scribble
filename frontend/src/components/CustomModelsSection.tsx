@@ -13,6 +13,13 @@ function SubLabel({ children }: { children: string }) {
   return <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">{children}</h4>;
 }
 
+/** 128000 -> "128k", 1000000 -> "1M" — compact context-window label for the model list. */
+function formatContext(n: number): string {
+  if (n >= 1_000_000) return `${+(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${Math.round(n / 1_000)}k`;
+  return String(n);
+}
+
 const inputClass =
   "w-full rounded-lg border border-base-600/60 bg-base-900 px-3 py-2 text-sm text-white outline-none focus:border-accent-500 placeholder-slate-500";
 
@@ -32,8 +39,11 @@ export function CustomModelsSection() {
     modelId: "",
     target: BUILT_IN_PROVIDERS[0] as string,
     supportsVision: false,
+    contextLength: "",
     logoUrl: "",
   });
+
+  const DEFAULT_CONTEXT_LENGTH = 128000;
 
   const addProvider = () => {
     const name = providerForm.name.trim();
@@ -68,6 +78,9 @@ export function CustomModelsSection() {
     const modelId = modelForm.modelId.trim();
     if (!displayName || !modelId) return;
 
+    const parsedContext = Math.floor(Number(modelForm.contextLength));
+    const contextLength = Number.isFinite(parsedContext) && parsedContext > 0 ? parsedContext : DEFAULT_CONTEXT_LENGTH;
+
     const provider: Provider = isBuiltInTarget ? (modelForm.target as Provider) : "custom";
     // Inherit the connection's logo (pasted or auto-detected) when the model itself has none —
     // ModelFavicon reads model.logoUrl directly and has no access to the customProviders list.
@@ -79,7 +92,7 @@ export function CustomModelsSection() {
       modelId,
       displayName,
       icon: "Plug",
-      contextLength: 128000,
+      contextLength,
       capabilities: modelForm.supportsVision ? ["text", "vision"] : ["text"],
       free: true,
       supportsStreaming: true,
@@ -89,7 +102,7 @@ export function CustomModelsSection() {
       logoUrl: modelForm.logoUrl.trim() || inheritedLogoUrl,
     };
     updateSettings({ customModels: [...customModels, model] });
-    setModelForm({ displayName: "", modelId: "", target: BUILT_IN_PROVIDERS[0], supportsVision: false, logoUrl: "" });
+    setModelForm({ displayName: "", modelId: "", target: BUILT_IN_PROVIDERS[0], supportsVision: false, contextLength: "", logoUrl: "" });
   };
 
   const removeModel = (target: ModelDef) => {
@@ -180,6 +193,11 @@ export function CustomModelsSection() {
                 <span className="hidden max-w-[110px] truncate text-xs text-slate-500 sm:inline">
                   {targetLabel(m)}
                 </span>
+                {!!m.contextLength && (
+                  <span className="hidden shrink-0 text-xs text-slate-600 sm:inline" title={`${m.contextLength.toLocaleString()} token context window`}>
+                    {formatContext(m.contextLength)}
+                  </span>
+                )}
                 {m.supportsVision && <Eye size={12} className="shrink-0 text-sky-400" />}
                 <button
                   onClick={() => removeModel(m)}
@@ -227,6 +245,13 @@ export function CustomModelsSection() {
               </optgroup>
             )}
           </select>
+          <input
+            value={modelForm.contextLength}
+            onChange={(e) => setModelForm((f) => ({ ...f, contextLength: e.target.value.replace(/[^\d]/g, "") }))}
+            inputMode="numeric"
+            placeholder={`Context window in tokens (optional, default ${DEFAULT_CONTEXT_LENGTH.toLocaleString()})`}
+            className={inputClass}
+          />
           <input
             value={modelForm.logoUrl}
             onChange={(e) => setModelForm((f) => ({ ...f, logoUrl: e.target.value }))}
