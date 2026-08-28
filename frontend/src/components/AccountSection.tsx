@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { LogIn, LogOut, Mail, Trash2, AlertTriangle, Loader2, Sparkles } from "lucide-react";
+import { LogIn, LogOut, Mail, Trash2, AlertTriangle, Loader2, Sparkles, MailCheck } from "lucide-react";
 import { useAuthStore } from "../state/authStore";
 import { clearAllLocalData } from "../lib/storage";
 import { isPuterSignedIn, puterSignOut } from "../lib/puterClient";
@@ -8,10 +8,135 @@ function SubLabel({ children }: { children: string }) {
   return <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">{children}</h4>;
 }
 
+const inputClass =
+  "w-full rounded-lg border border-base-600/60 bg-base-900/60 px-3 py-2 text-sm text-slate-200 placeholder:text-slate-500 focus:border-accent-500/50 focus:outline-none";
+
+/** Signed-out state: Google sign-in plus an email/password form that can either
+ * sign in or create an account (which triggers Firebase's verification email). */
+function SignInForms() {
+  const { signInWithGoogle, signInWithEmail, signUpWithEmail, sendPasswordReset, error, notice, clearAuthFeedback } =
+    useAuthStore();
+  const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    if (mode === "signup") await signUpWithEmail(email, password);
+    else await signInWithEmail(email, password);
+    setBusy(false);
+  };
+
+  return (
+    <div className="space-y-3">
+      <button
+        onClick={signInWithGoogle}
+        className="flex w-full items-center justify-center gap-2 rounded-lg border border-base-600/60 bg-base-900/60 px-3 py-2.5 text-sm text-slate-200 hover:border-accent-500/50 hover:bg-base-700/60"
+      >
+        <LogIn size={15} /> Sign in with Google
+      </button>
+
+      <div className="flex items-center gap-3 text-xs text-slate-600">
+        <span className="h-px flex-1 bg-base-700/60" /> or <span className="h-px flex-1 bg-base-700/60" />
+      </div>
+
+      <form onSubmit={submit} className="space-y-2">
+        <input
+          type="email"
+          required
+          autoComplete="email"
+          placeholder="you@example.com"
+          value={email}
+          onChange={(e) => {
+            setEmail(e.target.value);
+            clearAuthFeedback();
+          }}
+          className={inputClass}
+        />
+        <input
+          type="password"
+          required
+          autoComplete={mode === "signup" ? "new-password" : "current-password"}
+          placeholder="Password"
+          value={password}
+          onChange={(e) => {
+            setPassword(e.target.value);
+            clearAuthFeedback();
+          }}
+          className={inputClass}
+        />
+
+        {error && <p className="text-xs text-red-400">{error}</p>}
+        {notice && <p className="text-xs text-emerald-400">{notice}</p>}
+
+        <button
+          type="submit"
+          disabled={busy}
+          className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-accent-500/90 px-3 py-2 text-sm font-medium text-white hover:bg-accent-500 disabled:opacity-50"
+        >
+          {busy && <Loader2 size={13} className="animate-spin" />}
+          {mode === "signup" ? "Create account" : "Sign in"}
+        </button>
+      </form>
+
+      <div className="flex items-center justify-between text-xs">
+        <button
+          onClick={() => {
+            setMode(mode === "signup" ? "signin" : "signup");
+            clearAuthFeedback();
+          }}
+          className="text-slate-400 hover:text-white"
+        >
+          {mode === "signup" ? "Have an account? Sign in" : "New here? Create an account"}
+        </button>
+        {mode === "signin" && (
+          <button onClick={() => sendPasswordReset(email)} className="text-slate-500 hover:text-slate-300">
+            Forgot password?
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** Shown to signed-in email/password users whose address isn't verified yet. */
+function VerifyEmailBanner() {
+  const { user, resendVerification, error, notice } = useAuthStore();
+  const [busy, setBusy] = useState(false);
+  if (!user || user.emailVerified) return null;
+  const usesPassword = user.providerData.some((p) => p.providerId === "password");
+  if (!usesPassword) return null;
+
+  return (
+    <div className="mt-2 rounded-lg border border-amber-500/25 bg-amber-500/[0.05] p-3">
+      <p className="flex items-start gap-2 text-xs text-amber-300">
+        <MailCheck size={13} className="mt-0.5 shrink-0" />
+        Your email isn't verified yet. Check {user.email} for the link, then reload.
+      </p>
+      {error && <p className="mt-1 text-xs text-red-400">{error}</p>}
+      {notice && <p className="mt-1 text-xs text-emerald-400">{notice}</p>}
+      <button
+        onClick={async () => {
+          setBusy(true);
+          await resendVerification();
+          setBusy(false);
+        }}
+        disabled={busy}
+        className="mt-2 flex items-center gap-1.5 rounded-lg bg-amber-500/90 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-amber-500 disabled:opacity-50"
+      >
+        {busy && <Loader2 size={12} className="animate-spin" />}
+        Resend verification email
+      </button>
+    </div>
+  );
+}
+
 /** Settings → Account tab: signed-in identity, support contact, delete account, and a
  * local-only "wipe everything" escape hatch that doesn't require being signed in. */
 export function AccountSection() {
-  const { user, loading, signInWithGoogle, signOut, deleteAccount } = useAuthStore();
+  const { user, loading, signOut, deleteAccount } = useAuthStore();
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [confirmingClear, setConfirmingClear] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -46,29 +171,27 @@ export function AccountSection() {
             <Loader2 size={14} className="animate-spin" /> Checking…
           </div>
         ) : user ? (
-          <div className="flex items-center gap-3 rounded-lg border border-base-600/60 bg-base-900/60 px-3 py-2.5">
-            {user.photoURL ? (
-              <img src={user.photoURL} alt="" className="h-8 w-8 shrink-0 rounded-full" referrerPolicy="no-referrer" />
-            ) : (
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-base-700 text-xs font-medium text-slate-200">
-                {(user.displayName ?? user.email ?? "?").charAt(0).toUpperCase()}
-              </div>
-            )}
-            <span className="min-w-0 flex-1 truncate text-sm text-slate-200">{user.email ?? user.displayName}</span>
-            <button
-              onClick={signOut}
-              className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs text-slate-400 hover:bg-base-700/60 hover:text-white"
-            >
-              <LogOut size={13} /> Sign out
-            </button>
-          </div>
+          <>
+            <div className="flex items-center gap-3 rounded-lg border border-base-600/60 bg-base-900/60 px-3 py-2.5">
+              {user.photoURL ? (
+                <img src={user.photoURL} alt="" className="h-8 w-8 shrink-0 rounded-full" referrerPolicy="no-referrer" />
+              ) : (
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-base-700 text-xs font-medium text-slate-200">
+                  {(user.displayName ?? user.email ?? "?").charAt(0).toUpperCase()}
+                </div>
+              )}
+              <span className="min-w-0 flex-1 truncate text-sm text-slate-200">{user.email ?? user.displayName}</span>
+              <button
+                onClick={signOut}
+                className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs text-slate-400 hover:bg-base-700/60 hover:text-white"
+              >
+                <LogOut size={13} /> Sign out
+              </button>
+            </div>
+            <VerifyEmailBanner />
+          </>
         ) : (
-          <button
-            onClick={signInWithGoogle}
-            className="flex w-full items-center justify-center gap-2 rounded-lg border border-base-600/60 bg-base-900/60 px-3 py-2.5 text-sm text-slate-200 hover:border-accent-500/50 hover:bg-base-700/60"
-          >
-            <LogIn size={15} /> Sign in with Google
-          </button>
+          <SignInForms />
         )}
       </div>
 
