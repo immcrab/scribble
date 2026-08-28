@@ -12,6 +12,7 @@ import { AdUnit } from "../components/AdUnit";
 import { extractArtifact, isArtifactWorthy, isCodingRequest } from "../lib/codeArtifact";
 import { useLiveArtifact } from "../lib/useLiveArtifact";
 import { runAssistantStream } from "../lib/runStream";
+import { sendDirectMessage } from "../lib/sendDirect";
 import { useAutoScroll } from "../lib/useAutoScroll";
 import { uid } from "../lib/id";
 import type { Attachment, ChatMessage as ChatMessageType } from "../types";
@@ -29,7 +30,7 @@ export function DirectMode({
 }) {
   const chat = useChatStore((s) => s.chats.find((c) => c.id === chatId));
   const settings = useChatStore((s) => s.settings);
-  const { addMessage, setChatModels, patchChat, maybeAutoTitle, abort, removeMessagesAfter, updateMessage } = useChatStore();
+  const { addMessage, setChatModels, patchChat, abort, removeMessagesAfter, updateMessage } = useChatStore();
   const [eagerWorkspace, setEagerWorkspace] = useState(false);
   const chatEndRef = useAutoScroll<HTMLDivElement>(chat?.messages ?? []);
 
@@ -53,39 +54,8 @@ export function DirectMode({
 
   const send = (text: string, attachments: Attachment[], codeMode?: boolean) => {
     if (codeMode || (settings.autoOpenCode && isCodingRequest(text))) setEagerWorkspace(true);
-    const activeModel = model;
-    if (!chat.modelId) setChatModels(chat.id, { modelId: activeModel.modelId });
-
-    const userMsg: ChatMessageType = {
-      id: uid(),
-      role: "user",
-      content: text,
-      createdAt: Date.now(),
-      attachments,
-    };
-    addMessage(chat.id, userMsg);
-    maybeAutoTitle(chat.id, text);
-
-    const assistantMsg: ChatMessageType = {
-      id: uid(),
-      role: "assistant",
-      content: "",
-      createdAt: Date.now(),
-      model: activeModel,
-      streaming: true,
-    };
-    addMessage(chat.id, assistantMsg);
-
-    const userWireAttachments = attachments.map((a) => ({
-      name: a.name,
-      type: a.type,
-      dataUrl: a.dataUrl,
-    }));
-    const history: WireMessage[] = [
-      ...buildHistory(),
-      { role: "user", content: text, attachments: userWireAttachments },
-    ];
-    runAssistantStream({ chatId: chat.id, messageId: assistantMsg.id, model: activeModel, history, effort, webSearch: settings.autoWebSearch });
+    // Core send lives in lib/sendDirect so the project broadcast bar can reuse it.
+    sendDirectMessage(chat.id, text, attachments);
   };
 
   const regenerate = (assistantId: string, withModelId?: string) => {

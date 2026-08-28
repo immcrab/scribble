@@ -18,6 +18,12 @@ export function parseChatIdFromLocation(): string | null {
   return match ? normalizeId(match[1]) : null;
 }
 
+/** Projects live at "<base>/p/{id}" — same deep-link mechanism as "/c/{id}". */
+export function parseProjectIdFromLocation(): string | null {
+  const match = window.location.pathname.match(/\/p\/([^/]+)\/?$/);
+  return match ? normalizeId(match[1]) : null;
+}
+
 /** True only for the bare app root ("/" or "<base>/"), where the app shows a fresh
  * compose screen rather than any particular chat. */
 export function isRootLocation(): boolean {
@@ -32,6 +38,7 @@ export function isRootLocation(): boolean {
 export function isKnownAppLocation(): boolean {
   if (isRootLocation()) return true;
   if (parseChatIdFromLocation() !== null) return true;
+  if (parseProjectIdFromLocation() !== null) return true;
   if (parseDocsSlugFromLocation() !== null) return true;
   return false;
 }
@@ -39,6 +46,19 @@ export function isKnownAppLocation(): boolean {
 export function chatPath(id: string): string {
   const base = import.meta.env.BASE_URL.replace(/\/$/, "");
   return `${base}/c/${encodeURIComponent(id)}`;
+}
+
+export function projectPath(id: string): string {
+  const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+  return `${base}/p/${encodeURIComponent(id)}`;
+}
+
+/** Points the address bar at a project. Pushes when moving between app locations,
+ * replaces when already on this project's URL. */
+export function syncUrlToProject(id: string): void {
+  const target = projectPath(id);
+  if (window.location.pathname === target) return;
+  window.history.pushState({ projectId: id }, "", target);
 }
 
 /** Points the address bar at `id`'s chat. Pushes a new history entry when already on

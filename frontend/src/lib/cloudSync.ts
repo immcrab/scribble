@@ -1,7 +1,7 @@
 import { get as dbGet, onValue, ref, set as dbSet } from "firebase/database";
 import { getRtdb } from "./firebase";
-import { saveChats, saveSettings, saveMemories, type ScribbleSettings } from "./storage";
-import type { Chat, MemoryEntry } from "../types";
+import { saveChats, saveSettings, saveMemories, saveProjects, type ScribbleSettings } from "./storage";
+import type { Chat, MemoryEntry, Project } from "../types";
 
 /**
  * Cross-device continuity: the same JSON already used for localStorage
@@ -46,14 +46,27 @@ export function mergeMemories(local: MemoryEntry[], remote: MemoryEntry[]): Memo
   return Array.from(byId.values()).sort((a, b) => a.createdAt - b.createdAt);
 }
 
+/** Same last-write-wins-per-id merge as mergeChats — a project only on one device survives. */
+export function mergeProjects(local: Project[], remote: Project[]): Project[] {
+  const byId = new Map<string, Project>();
+  for (const p of local) byId.set(p.id, p);
+  for (const p of remote) {
+    const existing = byId.get(p.id);
+    if (!existing || p.updatedAt > existing.updatedAt) byId.set(p.id, p);
+  }
+  return Array.from(byId.values()).sort((a, b) => b.updatedAt - a.updatedAt);
+}
+
 let activeUid: string | null = null;
 let unsubscribers: Array<() => void> = [];
 let lastChatsJson: string | null = null;
 let lastSettingsJson: string | null = null;
 let lastMemoriesJson: string | null = null;
+let lastProjectsJson: string | null = null;
 let chatsPushTimer: ReturnType<typeof setTimeout> | null = null;
 let settingsPushTimer: ReturnType<typeof setTimeout> | null = null;
 let memoriesPushTimer: ReturnType<typeof setTimeout> | null = null;
+let projectsPushTimer: ReturnType<typeof setTimeout> | null = null;
 
 /**
  * Called once on sign-in. Reads whatever's already in the cloud, merges it
@@ -68,8 +81,8 @@ let memoriesPushTimer: ReturnType<typeof setTimeout> | null = null;
  */
 export async function startCloudSync(
   uid: string,
-  getState: () => { chats: Chat[]; settings: ScribbleSettings; memories: MemoryEntry[] },
-  setState: (patch: { chats?: Chat[]; settings?: ScribbleSettings; memories?: MemoryEntry[] }) => void
+  getState: () => { chats: Chat[]; settings: ScribbleSettings; memories: MemoryEntry[]; projects: Project[] },
+  setState: (patch: { chats?: Chat[]; settings?: ScribbleSettings; memories?: MemoryEntry[]; projects?: Project[] }) => void
 ): Promise<void> {
   activeUid = uid;
 
@@ -78,30 +91,41 @@ export async function startCloudSync(
   const chatsRef = ref(db, `users/${uid}/chatsJson`);
   const settingsRef = ref(db, `users/${uid}/settingsJson`);
   const memoriesRef = ref(db, `users/${uid}/memoriesJson`);
+  const projectsRef = ref(db, `users/${uid}/projectsJson`);
 
   try {
-    const [chatsSnap, settingsSnap, memoriesSnap] = await Promise.all([dbGet(chatsRef), dbGet(settingsRef), dbGet(memoriesRef)]);
+    const [chatsSnap, settingsSnap, memoriesSnap, projectsSnap] = await Promise.all([
+      dbGet(chatsRef),
+      dbGet(settingsRef),
+      dbGet(memoriesRef),
+      dbGet(projectsRef),
+    ]);
     if (activeUid !== uid) return; // signed out again before this resolved
 
     const remoteChats: Chat[] = chatsSnap.exists() ? JSON.parse(chatsSnap.val()) : [];
     const remoteSettings: ScribbleSettings | null = settingsSnap.exists() ? JSON.parse(settingsSnap.val()) : null;
     const remoteMemories: MemoryEntry[] = memoriesSnap.exists() ? JSON.parse(memoriesSnap.val()) : [];
+    const remoteProjects: Project[] = projectsSnap.exists() ? JSON.parse(projectsSnap.val()) : [];
 
     const mergedChats = mergeChats(getState().chats, remoteChats);
     const mergedSettings = mergeSettings(getState().settings, remoteSettings);
     const mergedMemories = mergeMemories(getState().memories, remoteMemories);
+    const mergedProjects = mergeProjects(getState().projects, remoteProjects);
 
     lastChatsJson = JSON.stringify(mergedChats);
     lastSettingsJson = JSON.stringify(mergedSettings);
     lastMemoriesJson = JSON.stringify(mergedMemories);
+    lastProjectsJson = JSON.stringify(mergedProjects);
     saveChats(mergedChats);
     saveSettings(mergedSettings);
     saveMemories(mergedMemories);
-    setState({ chats: mergedChats, settings: mergedSettings, memories: mergedMemories });
+    saveProjects(mergedProjects);
+    setState({ chats: mergedChats, settings: mergedSettings, memories: mergedMemories, projects: mergedProjects });
 
     dbSet(chatsRef, lastChatsJson).catch(() => {});
     dbSet(settingsRef, lastSettingsJson).catch(() => {});
     dbSet(memoriesRef, lastMemoriesJson).catch(() => {});
+    dbSet(projectsRef, lastProjectsJson).catch(() => {});
   } catch {
     // Offline, permission-denied, database not provisioned, etc. — sync
     // just doesn't happen this session; local data still works.
@@ -172,7 +196,28 @@ export async function startCloudSync(
       }
     );
 
-    unsubscribers = [unsubChats, unsubSettings, unsubMemories];
+    const unsubProjects = onValue(
+      projectsRef,
+      (snap) => {
+        if (activeUid !== uid || !snap.exists()) return;
+        const json = snap.val() as string;
+        if (json === lastProjectsJson) return;
+        try {
+          const remoteProjects: Project[] = JSON.parse(json);
+          const merged = mergeProjects(getState().projects, remoteProjects);
+          lastProjectsJson = JSON.stringify(merged);
+          saveProjects(merged);
+          setState({ projects: merged });
+        } catch {
+          // malformed remote payload — ignore, keep local state
+        }
+      },
+      () => {
+        // listen canceled (permission/connectivity) — stay local-only
+      }
+    );
+
+    unsubscribers = [unsubChats, unsubSettings, unsubMemories, unsubProjects];
   } catch {
     // onValue itself threw synchronously — stay local-only
   }
@@ -185,12 +230,15 @@ export function stopCloudSync(): void {
   if (chatsPushTimer) clearTimeout(chatsPushTimer);
   if (settingsPushTimer) clearTimeout(settingsPushTimer);
   if (memoriesPushTimer) clearTimeout(memoriesPushTimer);
+  if (projectsPushTimer) clearTimeout(projectsPushTimer);
   chatsPushTimer = null;
   settingsPushTimer = null;
   memoriesPushTimer = null;
+  projectsPushTimer = null;
   lastChatsJson = null;
   lastSettingsJson = null;
   lastMemoriesJson = null;
+  lastProjectsJson = null;
 }
 
 /** Debounced push, skipped entirely while any message is actively streaming so tokens don't hammer RTDB. */
@@ -222,6 +270,21 @@ export function pushSettingsToCloud(settings: ScribbleSettings): void {
     if (activeUid !== uid) return; // signed out (or switched accounts) before this fired
     lastSettingsJson = json;
     dbSet(ref(db, `users/${uid}/settingsJson`), json).catch(() => {});
+  }, 2000);
+}
+
+export function pushProjectsToCloud(projects: Project[]): void {
+  if (!activeUid) return;
+  const db = getRtdb();
+  if (!db) return;
+  const json = JSON.stringify(projects);
+  if (json === lastProjectsJson) return;
+  const uid = activeUid;
+  if (projectsPushTimer) clearTimeout(projectsPushTimer);
+  projectsPushTimer = setTimeout(() => {
+    if (activeUid !== uid) return; // signed out (or switched accounts) before this fired
+    lastProjectsJson = json;
+    dbSet(ref(db, `users/${uid}/projectsJson`), json).catch(() => {});
   }, 2000);
 }
 

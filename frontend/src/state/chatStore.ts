@@ -1,7 +1,17 @@
 import { create } from "zustand";
-import type { Chat, ChatMessage, MemoryEntry, Mode, Vote } from "../types";
+import type { Chat, ChatMessage, MemoryEntry, Mode, Project, Vote } from "../types";
 import { getDefaultModel, setCustomModels, setPuterFavorites } from "../config/models";
-import { loadChats, saveChats, loadSettings, saveSettings, loadMemories, saveMemories, titleFromPrompt } from "../lib/storage";
+import {
+  loadChats,
+  saveChats,
+  loadSettings,
+  saveSettings,
+  loadMemories,
+  saveMemories,
+  loadProjects,
+  saveProjects,
+  titleFromPrompt,
+} from "../lib/storage";
 import type { ScribbleSettings } from "../lib/storage";
 import {
   startCloudSync,
@@ -10,6 +20,7 @@ import {
   pushChatsPublic,
   pushSettingsToCloud,
   pushMemoriesToCloud,
+  pushProjectsToCloud,
   deleteChatFromCloud,
 } from "../lib/cloudSync";
 import { generateChatTitle } from "../lib/workerClient";
@@ -62,22 +73,37 @@ setPuterFavorites(initialSettings.puterFavoriteModels);
 const loadedChats = loadChats();
 const initialChats = loadedChats.length > 0 ? loadedChats : [createInitialChat("direct")];
 const initialMemories = loadMemories();
+const initialProjects = loadProjects();
+
+function persistProjects(projects: Project[]) {
+  saveProjects(projects);
+  pushProjectsToCloud(projects);
+}
 
 interface ChatStore {
   chats: Chat[];
   activeChatId: string | null;
+  projects: Project[];
+  activeProjectId: string | null;
   sidebarOpen: boolean;
   settings: ScribbleSettings;
   memories: MemoryEntry[];
   abortControllers: Map<string, AbortController>;
 
   activeChat: () => Chat | undefined;
+  activeProject: () => Project | undefined;
 
-  createChat: (mode: Mode, modelId?: string) => string;
+  createChat: (mode: Mode, modelId?: string, projectId?: string) => string;
   setChatMode: (id: string, mode: Mode) => void;
   setActiveChat: (id: string) => void;
   deleteChat: (id: string) => void;
   renameChat: (id: string, title: string) => void;
+
+  createProject: (name: string) => string;
+  renameProject: (id: string, name: string) => void;
+  deleteProject: (id: string) => void;
+  setActiveProject: (id: string | null) => void;
+  moveChatToProject: (chatId: string, projectId: string | null) => void;
   setChatModels: (id: string, patch: Partial<Pick<Chat, "modelId" | "modelAId" | "modelBId">>) => void;
   patchChat: (id: string, patch: Partial<Chat>) => void;
   maybeAutoTitle: (id: string, prompt: string) => void;
@@ -106,25 +132,35 @@ interface ChatStore {
 export const useChatStore = create<ChatStore>((set, get) => ({
   chats: initialChats,
   activeChatId: initialChats[0]?.id ?? null,
+  projects: initialProjects,
+  activeProjectId: null,
   sidebarOpen: true,
   settings: initialSettings,
   memories: initialMemories,
   abortControllers: new Map(),
 
   activeChat: () => get().chats.find((c) => c.id === get().activeChatId),
+  activeProject: () => get().projects.find((p) => p.id === get().activeProjectId),
 
-  createChat: (mode, customModelId) => {
+  createChat: (mode, customModelId, projectId) => {
     const defaults = getDefaultModelPatch(mode, get().settings.defaultModelId);
     if (customModelId) defaults.modelId = customModelId;
 
     // Reuse an already-empty chat if one exists, rather than piling up empty
     // "New chat" entries every time the button is clicked without sending anything.
-    const existing = get().chats.find((c) => c.messages.length === 0);
+    // Scoped to the same project so opening a project doesn't recycle a stray
+    // History draft into it (and vice versa).
+    // A new chat that isn't in a project also drops us out of any open project view.
+    const activeProjectId = projectId ?? null;
+
+    const existing = get().chats.find((c) => c.messages.length === 0 && c.projectId === projectId);
     if (existing) {
       set((s) => {
-        const chats = s.chats.map((c) => (c.id === existing.id ? { ...c, mode, updatedAt: Date.now(), ...defaults } : c));
+        const chats = s.chats.map((c) =>
+          c.id === existing.id ? { ...c, mode, updatedAt: Date.now(), projectId, ...defaults } : c
+        );
         debouncedPersist(chats);
-        return { chats, activeChatId: existing.id };
+        return { chats, activeChatId: existing.id, activeProjectId };
       });
       return existing.id;
     }
@@ -136,12 +172,13 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       createdAt: Date.now(),
       updatedAt: Date.now(),
       messages: [],
+      projectId,
       ...defaults,
     };
     set((s) => {
       const chats = [chat, ...s.chats];
       debouncedPersist(chats);
-      return { chats, activeChatId: chat.id };
+      return { chats, activeChatId: chat.id, activeProjectId };
     });
     return chat.id;
   },
@@ -164,25 +201,49 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     });
   },
 
-  setActiveChat: (id) => set({ activeChatId: id }),
+  setActiveChat: (id) => {
+    // Keep activeProjectId in lockstep: picking a project chat opens that project's
+    // view; picking a History chat drops out of any project.
+    const target = get().chats.find((c) => c.id === id);
+    set({ activeChatId: id, activeProjectId: target?.projectId ?? null });
+  },
 
   deleteChat: (id) => {
     set((s) => {
+      const gone = s.chats.find((c) => c.id === id);
       const remaining = s.chats.filter((c) => c.id !== id);
-      if (remaining.length === 0) {
+      // When deleting the last chat inside a project, don't conjure a stray
+      // History chat — just leave the project empty and let its view show the
+      // "add a chat" affordance.
+      if (remaining.length === 0 && !gone?.projectId) {
         const fresh = createInitialChat("direct");
         saveChats([fresh]);
         deleteChatFromCloud(id, [fresh]);
         return {
           chats: [fresh],
           activeChatId: fresh.id,
+          activeProjectId: null,
         };
       }
       saveChats(remaining);
       deleteChatFromCloud(id, remaining);
+      if (s.activeChatId !== id) return { chats: remaining };
+      // Deleting the active chat: prefer another chat in the same project (stay in
+      // its view, even if that leaves zero chats — the view handles empty), else
+      // fall back to a History chat.
+      if (gone?.projectId) {
+        const nextInProject = remaining.find((c) => c.projectId === gone.projectId);
+        return {
+          chats: remaining,
+          activeChatId: nextInProject?.id ?? null,
+          activeProjectId: gone.projectId,
+        };
+      }
+      const next = remaining.find((c) => !c.projectId) ?? remaining[0] ?? null;
       return {
         chats: remaining,
-        activeChatId: s.activeChatId === id ? remaining[0].id : s.activeChatId,
+        activeChatId: next?.id ?? null,
+        activeProjectId: next?.projectId ?? null,
       };
     });
   },
@@ -191,6 +252,67 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     set((s) => {
       const chats = s.chats.map((c) => (c.id === id ? { ...c, title } : c));
       debouncedPersist(chats);
+      return { chats };
+    });
+  },
+
+  createProject: (name) => {
+    const project: Project = { id: uid(), name: name.trim() || "New project", createdAt: Date.now(), updatedAt: Date.now() };
+    set((s) => {
+      const projects = [project, ...s.projects];
+      persistProjects(projects);
+      return { projects, activeProjectId: project.id, activeChatId: null };
+    });
+    return project.id;
+  },
+
+  renameProject: (id, name) => {
+    set((s) => {
+      const projects = s.projects.map((p) => (p.id === id ? { ...p, name: name.trim() || p.name, updatedAt: Date.now() } : p));
+      persistProjects(projects);
+      return { projects };
+    });
+  },
+
+  deleteProject: (id) => {
+    set((s) => {
+      const projects = s.projects.filter((p) => p.id !== id);
+      persistProjects(projects);
+      // Chats are never destroyed here — they drop back into the flat History list.
+      const chats = s.chats.map((c) => (c.projectId === id ? { ...c, projectId: undefined, updatedAt: Date.now() } : c));
+      const chatsChanged = chats.some((c, i) => c !== s.chats[i]);
+      if (chatsChanged) debouncedPersist(chats);
+      const leavingActive = s.activeProjectId === id;
+      return {
+        projects,
+        chats,
+        activeProjectId: leavingActive ? null : s.activeProjectId,
+        activeChatId: leavingActive ? chats.find((c) => !c.projectId)?.id ?? null : s.activeChatId,
+      };
+    });
+  },
+
+  setActiveProject: (id) => {
+    set((s) => {
+      if (id === null) {
+        const next = s.chats.find((c) => !c.projectId) ?? s.chats[0] ?? null;
+        return { activeProjectId: null, activeChatId: next?.id ?? null };
+      }
+      const current = s.chats.find((c) => c.id === s.activeChatId);
+      const stay = current && current.projectId === id;
+      const first = s.chats.find((c) => c.projectId === id);
+      return { activeProjectId: id, activeChatId: stay ? s.activeChatId : first?.id ?? null };
+    });
+  },
+
+  moveChatToProject: (chatId, projectId) => {
+    set((s) => {
+      const chats = s.chats.map((c) =>
+        c.id === chatId ? { ...c, projectId: projectId ?? undefined, updatedAt: Date.now() } : c
+      );
+      debouncedPersist(chats);
+      // If the moved chat is the one on screen, follow it into (or out of) the project.
+      if (s.activeChatId === chatId) return { chats, activeProjectId: projectId ?? null };
       return { chats };
     });
   },
@@ -369,7 +491,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   startCloudSync: (uid) => {
     void startCloudSync(
       uid,
-      () => ({ chats: get().chats, settings: get().settings, memories: get().memories }),
+      () => ({ chats: get().chats, settings: get().settings, memories: get().memories, projects: get().projects }),
       (patch) => set(patch)
     );
   },

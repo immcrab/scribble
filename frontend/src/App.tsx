@@ -15,7 +15,9 @@ import { applyTheme, watchSystemTheme } from "./lib/theme";
 import { applyAppearance } from "./lib/appearance";
 import {
   parseChatIdFromLocation,
+  parseProjectIdFromLocation,
   syncUrlToChat,
+  syncUrlToProject,
   onPopState,
   parseDocsSlugFromLocation,
   isRootLocation,
@@ -23,6 +25,7 @@ import {
 } from "./lib/router";
 import { DocsPage } from "./pages/DocsPage";
 import { fetchPublicChat } from "./lib/cloudSync";
+import { ProjectView } from "./components/ProjectView";
 import { DirectMode } from "./modes/DirectMode";
 import { BattleMode } from "./modes/BattleMode";
 import { SideBySideMode } from "./modes/SideBySideMode";
@@ -57,8 +60,12 @@ export interface InitialPrompt {
 export default function App() {
   const chats = useChatStore((s) => s.chats);
   const activeChatId = useChatStore((s) => s.activeChatId);
+  const projects = useChatStore((s) => s.projects);
+  const activeProjectId = useChatStore((s) => s.activeProjectId);
   const settings = useChatStore((s) => s.settings);
   const activeChat = chats.find((c) => c.id === activeChatId);
+  const activeProject = projects.find((p) => p.id === activeProjectId);
+  const inProject = !!activeProjectId && !!activeProject;
 
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [pending, setPending] = useState<InitialPrompt | null>(null);
@@ -103,6 +110,11 @@ export default function App() {
   // Sidebar also reads) while App is still rendering, which React (rightly) warns about.
   // Layout effects run after commit but before paint, so this is the safe, flicker-free spot.
   useLayoutEffect(() => {
+    const pid = parseProjectIdFromLocation();
+    if (pid && useChatStore.getState().projects.some((p) => p.id === pid)) {
+      useChatStore.getState().setActiveProject(pid);
+      return;
+    }
     if (isRootLocation()) {
       suppressFreshComposeClearRef.current = true;
       useChatStore.getState().createChat("direct");
@@ -154,8 +166,15 @@ export default function App() {
   useEffect(
     () =>
       onPopState((urlId) => {
+        const projectId = parseProjectIdFromLocation();
+        if (projectId) {
+          setShareState({ status: "idle" });
+          useChatStore.getState().setActiveProject(projectId);
+          return;
+        }
         if (!urlId) {
           setShareState({ status: "idle" });
+          useChatStore.getState().setActiveProject(null);
           if (isRootLocation()) {
             // Landing back on "/" (e.g. the back button) — same bootstrap as a fresh
             // "/" mount: point at a blank chat and suppress the effect below's usual
@@ -201,9 +220,16 @@ export default function App() {
   // 404 page (the URL there must stay exactly what the visitor typed/followed, not get
   // silently swapped for whatever chat happens to still be active underneath).
   useEffect(() => {
-    if (shareState.status !== "idle" || !activeChatId || docsSlug !== null || freshCompose || notFound) return;
+    if (shareState.status !== "idle" || !activeChatId || docsSlug !== null || freshCompose || notFound || activeProjectId) return;
     syncUrlToChat(activeChatId);
-  }, [activeChatId, shareState.status, docsSlug, freshCompose, notFound]);
+  }, [activeChatId, shareState.status, docsSlug, freshCompose, notFound, activeProjectId]);
+
+  // A project's own "/p/{id}" URL — takes precedence over the per-chat URL above
+  // while a project is open (its chats don't get their own address bar entry).
+  useEffect(() => {
+    if (shareState.status !== "idle" || docsSlug !== null || notFound || !activeProjectId) return;
+    syncUrlToProject(activeProjectId);
+  }, [activeProjectId, shareState.status, docsSlug, notFound]);
 
   // Picking a chat from the sidebar (or starting a new one) while viewing a shared/unresolved
   // chat should always drop back into the normal app — those actions only ever fire from
@@ -227,8 +253,10 @@ export default function App() {
   }, [freshCompose, activeChat?.messages.length]);
 
   // Safety net for a dangling activeChatId (e.g. the active chat vanished via cloud sync).
+  // Skipped while a project is open — an empty project legitimately has no active chat,
+  // and ProjectView owns that state.
   useEffect(() => {
-    if (shareState.status !== "idle") return;
+    if (shareState.status !== "idle" || inProject) return;
     if (!activeChat) {
       if (chats.length > 0) {
         useChatStore.getState().setActiveChat(chats[0].id);
@@ -236,7 +264,7 @@ export default function App() {
         useChatStore.getState().createChat("direct");
       }
     }
-  }, [activeChat, chats, shareState.status]);
+  }, [activeChat, chats, shareState.status, inProject]);
 
   const startOwnChat = () => {
     setShareState({ status: "idle" });
@@ -310,10 +338,11 @@ export default function App() {
           >
             <Menu size={19} />
           </button>
-          <ModeSelector mode={activeChat?.mode ?? "direct"} onChange={switchMode} />
+          {!inProject && <ModeSelector mode={activeChat?.mode ?? "direct"} onChange={switchMode} />}
         </div>
 
         <div className="min-h-0 flex-1">
+          {shareState.status === "idle" && inProject && <ProjectView projectId={activeProjectId!} />}
           {shareState.status === "resolving" && (
             <div className="flex h-full items-center justify-center text-sm text-slate-500">Loading shared chat…</div>
           )}
@@ -329,7 +358,7 @@ export default function App() {
             </div>
           )}
           {shareState.status === "shared" && <SharedChatView chat={shareState.chat} onStartOwn={startOwnChat} />}
-          {shareState.status === "idle" && !activeChat && (
+          {shareState.status === "idle" && !inProject && !activeChat && (
             <div className="flex h-full flex-col">
               <div className="flex-1">
                 <EmptyState onPick={(p) => startChat(p, [])} />
@@ -339,7 +368,7 @@ export default function App() {
               </div>
             </div>
           )}
-          {shareState.status === "idle" && activeChat?.mode === "direct" && (
+          {shareState.status === "idle" && !inProject && activeChat?.mode === "direct" && (
             <DirectMode
               key={activeChat.id}
               chatId={activeChat.id}
@@ -347,7 +376,7 @@ export default function App() {
               onConsumeInitial={consumeInitial}
             />
           )}
-          {shareState.status === "idle" && activeChat?.mode === "battle" && (
+          {shareState.status === "idle" && !inProject && activeChat?.mode === "battle" && (
             <BattleMode
               key={activeChat.id}
               chatId={activeChat.id}
@@ -355,7 +384,7 @@ export default function App() {
               onConsumeInitial={consumeInitial}
             />
           )}
-          {shareState.status === "idle" && activeChat?.mode === "side-by-side" && (
+          {shareState.status === "idle" && !inProject && activeChat?.mode === "side-by-side" && (
             <SideBySideMode
               key={activeChat.id}
               chatId={activeChat.id}
@@ -363,7 +392,7 @@ export default function App() {
               onConsumeInitial={consumeInitial}
             />
           )}
-          {shareState.status === "idle" && activeChat?.mode === "agent" && (
+          {shareState.status === "idle" && !inProject && activeChat?.mode === "agent" && (
             <AgentMode
               key={activeChat.id}
               chatId={activeChat.id}
@@ -371,7 +400,7 @@ export default function App() {
               onConsumeInitial={consumeInitial}
             />
           )}
-          {shareState.status === "idle" && activeChat?.mode === "image" && (
+          {shareState.status === "idle" && !inProject && activeChat?.mode === "image" && (
             <ImageMode
               key={activeChat.id}
               chatId={activeChat.id}

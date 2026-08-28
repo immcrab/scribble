@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   PenLine,
   MessageSquare,
@@ -14,12 +14,16 @@ import {
   Search,
   Download as ExportIcon,
   BookOpen,
+  FolderKanban,
+  FolderPlus,
+  FolderInput,
 } from "lucide-react";
 import { LogoMark } from "./Logo";
 import { useChatStore } from "../state/chatStore";
 import { useAuthStore } from "../state/authStore";
 import { ExportChat } from "./ExportChat";
 import { AdUnit } from "./AdUnit";
+import { Dropdown } from "./Dropdown";
 import { docsPath } from "../lib/router";
 import type { Mode } from "../types";
 
@@ -41,6 +45,47 @@ function YouTubeIcon({ size = 16 }: { size?: number }) {
   );
 }
 
+/** Hover-action menu on a History chat row: move the chat into one of the user's projects. */
+function MoveToProjectMenu({ chatId }: { chatId: string }) {
+  const projects = useChatStore((s) => s.projects);
+  const moveChatToProject = useChatStore((s) => s.moveChatToProject);
+  if (projects.length === 0) return null;
+  return (
+    <Dropdown
+      align="right"
+      menuClassName="w-44"
+      trigger={({ toggle }) => (
+        <button
+          onClick={toggle}
+          className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 hover:bg-base-700 hover:text-white"
+          title="Add to project"
+        >
+          <FolderInput size={13} />
+        </button>
+      )}
+    >
+      {({ close }) => (
+        <div className="py-1">
+          <p className="px-3 pb-1 pt-1 text-[10px] font-medium uppercase tracking-wide text-slate-500">Add to project</p>
+          {projects.map((p) => (
+            <button
+              key={p.id}
+              onClick={() => {
+                moveChatToProject(chatId, p.id);
+                close();
+              }}
+              className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-slate-300 hover:bg-base-700/70 hover:text-white"
+            >
+              <FolderKanban size={13} className="shrink-0 opacity-70" />
+              <span className="truncate">{p.name}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </Dropdown>
+  );
+}
+
 const MODE_LABEL: Record<Mode, string> = {
   battle: "Battle",
   agent: "Agent",
@@ -58,12 +103,56 @@ export function Sidebar({
   mobileOpen: boolean;
   onCloseMobile: () => void;
 }) {
-  const { chats, activeChatId, sidebarOpen, toggleSidebar, setActiveChat, deleteChat, renameChat, createChat } =
-    useChatStore();
+  const {
+    chats,
+    activeChatId,
+    sidebarOpen,
+    toggleSidebar,
+    setActiveChat,
+    deleteChat,
+    renameChat,
+    createChat,
+    projects,
+    activeProjectId,
+    createProject,
+    renameProject,
+    deleteProject,
+    setActiveProject,
+    moveChatToProject,
+  } = useChatStore();
   const { user, loading: authLoading, signInWithGoogle, signOut } = useAuthStore();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
   const [query, setQuery] = useState("");
+  const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
+  const [projectEditValue, setProjectEditValue] = useState("");
+  const [creatingProject, setCreatingProject] = useState(false);
+  const [projectDraft, setProjectDraft] = useState("");
+  // Enter's keydown and the input's unmount-blur can both call commitNewProject in
+  // the same tick with a stale `creatingProject` closure — this ref makes the commit
+  // fire exactly once.
+  const newProjectDoneRef = useRef(false);
+
+  const startProjectEdit = (id: string, name: string) => {
+    setEditingProjectId(id);
+    setProjectEditValue(name);
+  };
+  const commitProjectEdit = () => {
+    if (editingProjectId && projectEditValue.trim()) renameProject(editingProjectId, projectEditValue.trim());
+    setEditingProjectId(null);
+  };
+  const openNewProject = () => {
+    newProjectDoneRef.current = false;
+    setProjectDraft("");
+    setCreatingProject(true);
+  };
+  const commitNewProject = () => {
+    if (newProjectDoneRef.current) return;
+    newProjectDoneRef.current = true;
+    setCreatingProject(false);
+    if (projectDraft.trim()) createProject(projectDraft.trim());
+    setProjectDraft("");
+  };
 
   const startEdit = (id: string, title: string) => {
     setEditingId(id);
@@ -81,6 +170,9 @@ export function Sidebar({
 
   const activeChat = chats.find((c) => c.id === activeChatId);
 
+  // Chats that belong to a project live inside that project's tabbed view, not the flat History list.
+  const historyChats = chats.filter((c) => !c.projectId);
+
   const q = query.trim().toLowerCase();
   /** First message body that contains the search term, for the snippet shown
    * under a chat's title when the match isn't in the title itself. */
@@ -97,8 +189,10 @@ export function Sidebar({
     return null;
   };
   const filteredChats = q
-    ? chats.filter((c) => c.title.toLowerCase().includes(q) || c.messages.some((m) => m.content.toLowerCase().includes(q)))
-    : chats;
+    ? historyChats.filter(
+        (c) => c.title.toLowerCase().includes(q) || c.messages.some((m) => m.content.toLowerCase().includes(q))
+      )
+    : historyChats;
 
   return (
     <>
@@ -151,7 +245,102 @@ export function Sidebar({
             </button>
           </div>
 
-          {(sidebarOpen || mobileOpen) && chats.length > 0 && (
+          {(sidebarOpen || mobileOpen) && (
+            <div className="mt-4 px-3">
+              <div className="mb-1.5 flex items-center justify-between">
+                <span className="text-[11px] font-medium uppercase tracking-wide text-slate-500">Projects</span>
+                <button
+                  onClick={openNewProject}
+                  className="flex h-6 w-6 items-center justify-center rounded-lg text-slate-400 hover:bg-base-700 hover:text-white"
+                  title="New project"
+                >
+                  <FolderPlus size={14} />
+                </button>
+              </div>
+
+              {creatingProject && (
+                <div className="mb-1 flex items-center gap-1">
+                  <input
+                    autoFocus
+                    value={projectDraft}
+                    onChange={(e) => setProjectDraft(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") commitNewProject();
+                      if (e.key === "Escape") {
+                        newProjectDoneRef.current = true;
+                        setCreatingProject(false);
+                        setProjectDraft("");
+                      }
+                    }}
+                    onBlur={commitNewProject}
+                    placeholder="Project name"
+                    className="min-w-0 flex-1 rounded bg-base-900 px-1.5 py-1 text-sm text-white outline-none ring-1 ring-accent-500 placeholder-slate-500"
+                  />
+                </div>
+              )}
+
+              {projects.length === 0 && !creatingProject && (
+                <p className="px-1 py-1 text-[11px] text-slate-600">No projects yet</p>
+              )}
+
+              <ul className="space-y-0.5">
+                {projects.map((p) => (
+                  <li key={p.id}>
+                    <div
+                      className={`group flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm transition-colors ${
+                        p.id === activeProjectId
+                          ? "bg-accent-500/15 text-white"
+                          : "text-slate-400 hover:bg-base-800/70 hover:text-slate-200"
+                      }`}
+                    >
+                      <FolderKanban size={14} className="shrink-0 opacity-70" />
+                      {editingProjectId === p.id ? (
+                        <input
+                          autoFocus
+                          value={projectEditValue}
+                          onChange={(e) => setProjectEditValue(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") commitProjectEdit();
+                            if (e.key === "Escape") setEditingProjectId(null);
+                          }}
+                          onBlur={commitProjectEdit}
+                          className="min-w-0 flex-1 rounded bg-base-900 px-1.5 py-1 text-sm text-white outline-none ring-1 ring-accent-500"
+                        />
+                      ) : (
+                        <button
+                          onClick={closeOnMobileSelect(() => setActiveProject(p.id))}
+                          className="min-w-0 flex-1 truncate py-0.5 text-left"
+                          title={p.name}
+                        >
+                          {p.name}
+                        </button>
+                      )}
+                      {editingProjectId !== p.id && (
+                        <span className="flex shrink-0 gap-1 opacity-0 group-hover:opacity-100">
+                          <button
+                            onClick={() => startProjectEdit(p.id, p.name)}
+                            className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-base-700 hover:text-white"
+                            title="Rename project"
+                          >
+                            <Pencil size={12} />
+                          </button>
+                          <button
+                            onClick={() => deleteProject(p.id)}
+                            className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-red-500/20 hover:text-red-400"
+                            title="Delete project (keeps its chats)"
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        </span>
+                      )}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {(sidebarOpen || mobileOpen) && historyChats.length > 0 && (
             <div className="mt-3 px-3">
               <div className="relative">
                 <Search size={14} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" />
@@ -181,10 +370,10 @@ export function Sidebar({
                 <ExportChat messages={activeChat.messages} chatTitle={activeChat.title} />
               </div>
             )}
-            {chats.length === 0 && (
+            {historyChats.length === 0 && (
               <p className="px-3 py-6 text-center text-xs text-slate-500">No chats yet</p>
             )}
-            {chats.length > 0 && filteredChats.length === 0 && (
+            {historyChats.length > 0 && filteredChats.length === 0 && (
               <p className="px-3 py-6 text-center text-xs text-slate-500">No chats match "{query.trim()}"</p>
             )}
             {filteredChats.length > 0 && (sidebarOpen || mobileOpen) && (
@@ -249,6 +438,7 @@ export function Sidebar({
                     ) : (
                       <span className="opacity-0 group-hover:opacity-100 sm:group-hover:flex">
                         <span className="hidden sm:inline flex gap-1">
+                          <MoveToProjectMenu chatId={chat.id} />
                           <button
                             onClick={() => startEdit(chat.id, chat.title)}
                             className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 hover:bg-base-700 hover:text-white"
@@ -265,6 +455,7 @@ export function Sidebar({
                           </button>
                         </span>
                         <span className="sm:hidden flex gap-1">
+                          <MoveToProjectMenu chatId={chat.id} />
                           <button
                             onClick={() => startEdit(chat.id, chat.title)}
                             className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 hover:bg-base-700 hover:text-white"

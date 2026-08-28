@@ -1,10 +1,11 @@
-import type { Chat, CustomProvider, Effort, MemoryEntry, ModelDef } from "../types";
+import type { Chat, CustomProvider, Effort, MemoryEntry, ModelDef, Project } from "../types";
 import type { Theme } from "./theme";
 
 const CHATS_KEY = "scribble:chats";
 const SETTINGS_KEY = "scribble:settings";
 const CONSENT_KEY = "scribble:consent";
 const MEMORIES_KEY = "scribble:memories";
+const PROJECTS_KEY = "scribble:projects";
 
 export interface ScribbleSettings {
   workerUrl: string;
@@ -111,6 +112,24 @@ export function saveChats(chats: Chat[]): void {
   }
 }
 
+export function loadProjects(): Project[] {
+  try {
+    const raw = localStorage.getItem(PROJECTS_KEY);
+    if (!raw) return [];
+    return JSON.parse(raw) as Project[];
+  } catch {
+    return [];
+  }
+}
+
+export function saveProjects(projects: Project[]): void {
+  try {
+    localStorage.setItem(PROJECTS_KEY, JSON.stringify(projects));
+  } catch {
+    // storage full or unavailable — projects still work in-memory for this session
+  }
+}
+
 export function loadMemories(): MemoryEntry[] {
   try {
     const raw = localStorage.getItem(MEMORIES_KEY);
@@ -178,6 +197,8 @@ export function clearAllLocalData(): void {
     localStorage.removeItem(CHATS_KEY);
     localStorage.removeItem(SETTINGS_KEY);
     localStorage.removeItem(CONSENT_KEY);
+    localStorage.removeItem(MEMORIES_KEY);
+    localStorage.removeItem(PROJECTS_KEY);
   } catch {
     // storage unavailable — nothing to clear
   }

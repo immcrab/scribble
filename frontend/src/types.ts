@@ -132,4 +132,17 @@ export interface Chat {
   vote?: Vote;
   /** Per-chat override of settings.effort — falls back to the global default when unset. */
   effort?: Effort;
+  /** id of the Project this chat belongs to (see types.ts's Project). When set, the chat
+   * lives inside that project's tabbed view and is hidden from the flat History list. */
+  projectId?: string;
+}
+
+/** A named group of chats. Chats inside a project run in a tabbed workspace with a
+ * broadcast composer that can fan one prompt out to every chat at once — see
+ * components/ProjectView.tsx. Persisted and cloud-synced exactly like chats. */
+export interface Project {
+  id: string;
+  name: string;
+  createdAt: number;
+  updatedAt: number;
 }
