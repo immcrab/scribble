@@ -42,7 +42,20 @@ export function isKnownAppLocation(): boolean {
   if (parseDocsSlugFromLocation() !== null) return true;
   if (isAuthActionLocation()) return true;
   if (isAdminLocation()) return true;
+  if (isUsageLocation()) return true;
   return false;
+}
+
+/** "<base>/usage" — the signed-in user's daily credit dashboard (see pages/UsagePage.tsx). */
+export function isUsageLocation(): boolean {
+  const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+  const path = window.location.pathname;
+  return path === `${base}/usage` || path === `${base}/usage/`;
+}
+
+export function usagePath(): string {
+  const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+  return `${base}/usage`;
 }
 
 /** "<base>/admin" — the shared-catalog editor (see pages/AdminPage.tsx). The page itself

@@ -4,6 +4,8 @@ import { useChatStore } from "../state/chatStore";
 import { isModelGated } from "../config/models";
 import { auth } from "./firebase";
 import { recordModelUsage } from "./modelStats";
+import { recordCreditUsage, usageGate } from "./usage";
+import { estimateTokenCount } from "./tokenCount";
 import { getClientContext } from "./clientContext";
 import { playNotificationSound } from "./notificationSound";
 
@@ -33,6 +35,12 @@ export async function runAssistantStream(params: {
       streaming: false,
       error: `Sign in to use ${model.displayName} — the free default (Mistral Small 4) doesn't need an account.`,
     });
+    return;
+  }
+
+  const gate = usageGate(model);
+  if (!gate.ok) {
+    store.updateMessage(chatId, messageId, { streaming: false, error: gate.reason });
     return;
   }
 
@@ -101,6 +109,11 @@ export async function runAssistantStream(params: {
     }
     useChatStore.getState().updateMessage(chatId, messageId, { streaming: false, truncated });
     recordModelUsage(model);
+    // Credit accounting: prompt tokens (everything we sent) + this reply's tokens.
+    const finalMsg = useChatStore.getState().chats.find((c) => c.id === chatId)?.messages.find((m) => m.id === messageId);
+    const promptTokens = history.reduce((n, m) => n + estimateTokenCount(m.content ?? ""), 0);
+    const replyTokens = estimateTokenCount(finalMsg?.content ?? "") + estimateTokenCount(finalMsg?.reasoning ?? "");
+    recordCreditUsage(model, promptTokens + replyTokens);
     if (store.settings.notificationSound) playNotificationSound();
   } catch (err) {
     if (controller.signal.aborted) {

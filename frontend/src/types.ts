@@ -42,7 +42,49 @@ export interface AdminCatalog {
   /** `"{provider}:{modelId}"` keys filtered out of the catalog for all users — lets the admin
    * remove a built-in (or previously-added) model. The default model can never be hidden. */
   hiddenKeys: string[];
+  /** Daily usage-limit configuration, edited from `/admin` → Limits. Optional so a catalog
+   * blob published before this feature existed still parses (defaults fill in — see
+   * lib/catalogSync.ts's `DEFAULT_USAGE`). */
+  usage?: UsageConfig;
   /** Date.now() of the last admin edit — last-write-wins if two admin tabs race. */
+  updatedAt: number;
+}
+
+/**
+ * Admin-controlled knobs for the per-user daily credit limit (see lib/usage.ts). Lives inside
+ * `AdminCatalog` so it rides the same world-readable, admin-writable `catalog/v1` RTDB node —
+ * no extra security rule. 1 credit ≈ 1 token (prompt + reply, estimated).
+ */
+export interface UsageConfig {
+  /** Credits every signed-in user gets per UTC day. Default 2,000,000. */
+  dailyCredits: number;
+  /** `"{provider}:{modelId}"` keys still usable after a user burns through their daily credits.
+   * The free default model is always usable regardless and needn't be listed. */
+  postLimitKeys: string[];
+  /** `"{provider}:{modelId}"` → credit cost multiplier (default 1). 2 = burns credits twice as
+   * fast, 0.5 = half, 0 = free / never counted. */
+  modelCredits: Record<string, number>;
+  /** Firebase uids blocked from every model except the free default. */
+  blockedUids: string[];
+  /** uid → extra credits granted for one specific UTC day (`{ day: "YYYY-MM-DD", credits }`).
+   * Ignored once the day rolls over. */
+  bonus: Record<string, { day: string; credits: number }>;
+}
+
+/**
+ * One signed-in user's usage for the current UTC day, at RTDB `usage/{uid}`. Written by that
+ * user (client-side, after each completed reply — see lib/usage.ts), readable by that user and
+ * the admin. Resets implicitly: once `day` no longer matches today, the counts are treated as 0.
+ */
+export interface UsageRecord {
+  /** "YYYY-MM-DD" (UTC) the counts below belong to. */
+  day: string;
+  /** Total credits consumed today. */
+  credits: number;
+  /** modelSlug → credits consumed today, for the "most used model" breakdown. */
+  models: Record<string, number>;
+  /** Denormalized so the admin Users tab can show who's who without a second lookup. */
+  email: string | null;
   updatedAt: number;
 }
 

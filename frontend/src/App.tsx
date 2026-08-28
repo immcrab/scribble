@@ -24,9 +24,11 @@ import {
   isKnownAppLocation,
   isAuthActionLocation,
   isAdminLocation,
+  isUsageLocation,
 } from "./lib/router";
 import { DocsPage } from "./pages/DocsPage";
 import { AdminPage } from "./pages/AdminPage";
+import { UsagePage } from "./pages/UsagePage";
 import { AuthActionPage } from "./pages/AuthActionPage";
 import { fetchPublicChat } from "./lib/cloudSync";
 import { ProjectView } from "./components/ProjectView";
@@ -76,6 +78,7 @@ export default function App() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [docsSlug, setDocsSlug] = useState<string | null>(() => parseDocsSlugFromLocation());
   const [adminRoute, setAdminRoute] = useState(() => isAdminLocation());
+  const [usageRoute, setUsageRoute] = useState(() => isUsageLocation());
   // Firebase email-action landing ("/auth/action"). A one-shot page — no popstate
   // wiring needed; its only exit is a full-page link back into the app.
   const [authAction] = useState(() => isAuthActionLocation());
@@ -151,6 +154,8 @@ export default function App() {
     if (docsSlug !== null) return; // DocsPage owns its own title while mounted
     if (adminRoute) {
       document.title = "Model catalog admin — Scribble";
+    } else if (usageRoute) {
+      document.title = "Usage — Scribble";
     } else if (notFound) {
       document.title = "Page not found — Scribble";
     } else if (shareState.status === "shared") {
@@ -160,7 +165,7 @@ export default function App() {
     } else {
       document.title = "Scribble — Multi-Model AI Chat";
     }
-  }, [docsSlug, adminRoute, notFound, shareState, activeChat?.title, freshCompose]);
+  }, [docsSlug, adminRoute, usageRoute, notFound, shareState, activeChat?.title, freshCompose]);
 
   // Kick off the fetch for a shared chat this browser doesn't have locally
   // (deferred out of useState's initializer, which must stay side-effect-free).
@@ -232,22 +237,29 @@ export default function App() {
     return () => window.removeEventListener("popstate", listener);
   }, []);
 
+  // "/usage" — same standalone-page treatment as "/admin".
+  useEffect(() => {
+    const listener = () => setUsageRoute(isUsageLocation());
+    window.addEventListener("popstate", listener);
+    return () => window.removeEventListener("popstate", listener);
+  }, []);
+
   // Keep the address bar pointed at whichever chat is active — this is what gives every
   // chat its own "/c/{id}" URL. Suspended while viewing someone else's shared chat, docs,
   // the fresh "/" compose screen (that only gets a URL once a message is sent), or the
   // 404 page (the URL there must stay exactly what the visitor typed/followed, not get
   // silently swapped for whatever chat happens to still be active underneath).
   useEffect(() => {
-    if (shareState.status !== "idle" || !activeChatId || docsSlug !== null || freshCompose || notFound || activeProjectId || adminRoute) return;
+    if (shareState.status !== "idle" || !activeChatId || docsSlug !== null || freshCompose || notFound || activeProjectId || adminRoute || usageRoute) return;
     syncUrlToChat(activeChatId);
-  }, [activeChatId, shareState.status, docsSlug, freshCompose, notFound, activeProjectId, adminRoute]);
+  }, [activeChatId, shareState.status, docsSlug, freshCompose, notFound, activeProjectId, adminRoute, usageRoute]);
 
   // A project's own "/p/{id}" URL — takes precedence over the per-chat URL above
   // while a project is open (its chats don't get their own address bar entry).
   useEffect(() => {
-    if (shareState.status !== "idle" || docsSlug !== null || notFound || adminRoute || !activeProjectId) return;
+    if (shareState.status !== "idle" || docsSlug !== null || notFound || adminRoute || usageRoute || !activeProjectId) return;
     syncUrlToProject(activeProjectId);
-  }, [activeProjectId, shareState.status, docsSlug, notFound, adminRoute]);
+  }, [activeProjectId, shareState.status, docsSlug, notFound, adminRoute, usageRoute]);
 
   // Picking a chat from the sidebar (or starting a new one) while viewing a shared/unresolved
   // chat should always drop back into the normal app — those actions only ever fire from
@@ -341,6 +353,17 @@ export default function App() {
         onExit={() => {
           window.history.pushState(null, "", import.meta.env.BASE_URL);
           setAdminRoute(false);
+        }}
+      />
+    );
+  }
+
+  if (usageRoute) {
+    return (
+      <UsagePage
+        onExit={() => {
+          window.history.pushState(null, "", import.meta.env.BASE_URL);
+          setUsageRoute(false);
         }}
       />
     );

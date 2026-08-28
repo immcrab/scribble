@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { onValue, ref, set as dbSet } from "firebase/database";
 import { getRtdb } from "./firebase";
 import { setAdminCatalog } from "../config/models";
-import type { AdminCatalog, ModelDef } from "../types";
+import type { AdminCatalog, ModelDef, UsageConfig } from "../types";
 
 /**
  * The shared, admin-curated model catalog overlay. One global RTDB node,
@@ -17,20 +17,79 @@ import type { AdminCatalog, ModelDef } from "../types";
  *     ".read": true,
  *     ".write": "auth != null && auth.token.email === 'imcrabfr@gmail.com' && auth.token.email_verified === true"
  *   }
+ *
+ * The daily usage limit (lib/usage.ts) also needs a rule on the per-user `usage` node:
+ *
+ *   "usage": {
+ *     ".read": "auth != null && auth.token.email === 'imcrabfr@gmail.com' && auth.token.email_verified === true",
+ *     "$uid": {
+ *       ".read": "auth != null && auth.uid === $uid",
+ *       ".write": "auth != null && (auth.uid === $uid || (auth.token.email === 'imcrabfr@gmail.com' && auth.token.email_verified === true))"
+ *     }
+ *   }
+ *
+ * (The admin write on `usage/$uid` is only used by the "Reset usage" button on the Users tab.)
  */
 
 const CATALOG_KEY = "scribble:catalog";
 const CATALOG_PATH = "catalog/v1";
 
-export const EMPTY_CATALOG: AdminCatalog = { added: [], hiddenKeys: [], updatedAt: 0 };
+/** The out-of-the-box usage limit: 2,000,000 credits/token-equivalents per UTC day, every
+ * model costs 1×, nothing extra usable once you're over, nobody blocked. */
+export const DEFAULT_USAGE: UsageConfig = {
+  dailyCredits: 2_000_000,
+  postLimitKeys: [],
+  modelCredits: {},
+  blockedUids: [],
+  bonus: {},
+};
+
+export const EMPTY_CATALOG: AdminCatalog = {
+  added: [],
+  hiddenKeys: [],
+  usage: DEFAULT_USAGE,
+  updatedAt: 0,
+};
+
+function sanitizeUsage(raw: unknown): UsageConfig {
+  const u = (raw ?? {}) as Partial<UsageConfig>;
+  const credits = typeof u.dailyCredits === "number" && u.dailyCredits >= 0 ? Math.floor(u.dailyCredits) : DEFAULT_USAGE.dailyCredits;
+  const modelCredits: Record<string, number> = {};
+  if (u.modelCredits && typeof u.modelCredits === "object") {
+    for (const [k, v] of Object.entries(u.modelCredits)) {
+      if (typeof v === "number" && v >= 0 && v !== 1) modelCredits[k] = v;
+    }
+  }
+  const bonus: Record<string, { day: string; credits: number }> = {};
+  if (u.bonus && typeof u.bonus === "object") {
+    for (const [k, v] of Object.entries(u.bonus)) {
+      if (v && typeof v === "object" && typeof (v as { day?: unknown }).day === "string" && typeof (v as { credits?: unknown }).credits === "number") {
+        bonus[k] = { day: (v as { day: string }).day, credits: Math.floor((v as { credits: number }).credits) };
+      }
+    }
+  }
+  return {
+    dailyCredits: credits,
+    postLimitKeys: Array.isArray(u.postLimitKeys) ? u.postLimitKeys.filter((k): k is string => typeof k === "string") : [],
+    modelCredits,
+    blockedUids: Array.isArray(u.blockedUids) ? u.blockedUids.filter((k): k is string => typeof k === "string") : [],
+    bonus,
+  };
+}
 
 function sanitize(raw: unknown): AdminCatalog {
   const c = (raw ?? {}) as Partial<AdminCatalog>;
   return {
     added: Array.isArray(c.added) ? (c.added.filter((m) => m && typeof m === "object") as ModelDef[]) : [],
     hiddenKeys: Array.isArray(c.hiddenKeys) ? c.hiddenKeys.filter((k): k is string => typeof k === "string") : [],
+    usage: sanitizeUsage(c.usage),
     updatedAt: typeof c.updatedAt === "number" ? c.updatedAt : 0,
   };
+}
+
+/** The active usage config — always fully populated (defaults fill any gap). Read by lib/usage.ts. */
+export function usageConfig(): UsageConfig {
+  return useCatalogStore.getState().catalog.usage ?? DEFAULT_USAGE;
 }
 
 function loadCache(): AdminCatalog {

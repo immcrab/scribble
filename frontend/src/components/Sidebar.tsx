@@ -15,6 +15,7 @@ import {
   Download as ExportIcon,
   BookOpen,
   ShieldCheck,
+  Gauge,
   FolderKanban,
   FolderPlus,
   FolderInput,
@@ -25,7 +26,7 @@ import { useAuthStore } from "../state/authStore";
 import { ExportChat } from "./ExportChat";
 import { AdUnit } from "./AdUnit";
 import { Dropdown } from "./Dropdown";
-import { docsPath, adminPath } from "../lib/router";
+import { docsPath, adminPath, usagePath } from "../lib/router";
 import { isAdmin } from "../lib/admin";
 import type { Mode } from "../types";
 
@@ -545,6 +546,20 @@ export function Sidebar({
               <BookOpen size={16} />
               {(sidebarOpen || mobileOpen) && "Docs"}
             </button>
+            {user && (
+              <button
+                onClick={closeOnMobileSelect(() => {
+                  window.history.pushState(null, "", usagePath());
+                  window.dispatchEvent(new PopStateEvent("popstate"));
+                })}
+                className={`flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-slate-400 transition-colors hover:bg-base-800/70 hover:text-white ${
+                  !sidebarOpen && !mobileOpen && "md:justify-center"
+                }`}
+              >
+                <Gauge size={16} />
+                {(sidebarOpen || mobileOpen) && "Usage"}
+              </button>
+            )}
             {isAdmin(user) && (
               <button
                 onClick={closeOnMobileSelect(() => {
