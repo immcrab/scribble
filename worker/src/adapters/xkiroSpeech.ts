@@ -13,6 +13,11 @@
 const XKIRO_SPEECH_URL = "https://api.xkiro.com/v1/audio/speech";
 const XKIRO_VOICES_URL = "https://api.xkiro.com/v1/audio/voices";
 const SPEECH_MODEL = "xkiro-voice";
+const MAX_ATTEMPTS = 3;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 const FORMAT_MIME: Record<string, string> = {
   mp3: "audio/mpeg",
@@ -37,21 +42,30 @@ export async function generateXkiroSpeech({
   speed?: number;
 }): Promise<{ dataUrl: string }> {
   const responseFormat = format && FORMAT_MIME[format] ? format : "mp3";
-
-  const res = await fetch(XKIRO_SPEECH_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model: SPEECH_MODEL,
-      input,
-      voice,
-      response_format: responseFormat,
-      ...(typeof speed === "number" ? { speed } : {}),
-    }),
+  const body = JSON.stringify({
+    model: SPEECH_MODEL,
+    input,
+    voice,
+    response_format: responseFormat,
+    ...(typeof speed === "number" ? { speed } : {}),
   });
+
+  // xKiro intermittently 5xxs ("A server error occurred. Please try again.") —
+  // a transient failure on their end, same as the chat adapter sees. Retrying
+  // the whole request almost always succeeds.
+  let res!: Response;
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    res = await fetch(XKIRO_SPEECH_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body,
+    });
+    if (res.ok || (res.status < 500 && res.status !== 429) || attempt === MAX_ATTEMPTS) break;
+    await sleep(500 * attempt);
+  }
 
   if (!res.ok) {
     throw new Error(`xKiro speech error ${res.status}: ${await res.text()}`);
