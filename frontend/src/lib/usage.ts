@@ -8,7 +8,7 @@ import type { ModelDef, UsageRecord } from "../types";
 
 /**
  * Per-user daily credit limit. 1 credit ≈ 1 token (prompt + reply, estimated). Every signed-in
- * user gets `usageConfig().dailyCredits` (default 2,000,000) per UTC day; once they're spent,
+ * user gets `usageConfig().dailyCredits` (default 1,000,000) per UTC day; once they're spent,
  * only the free default model plus the admin's `postLimitKeys` list stay usable until 00:00 UTC.
  *
  * Enforcement is client-side — the same honour-system model as sign-in gating (config/models.ts's

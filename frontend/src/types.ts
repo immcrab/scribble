@@ -56,7 +56,7 @@ export interface AdminCatalog {
  * no extra security rule. 1 credit ≈ 1 token (prompt + reply, estimated).
  */
 export interface UsageConfig {
-  /** Credits every signed-in user gets per UTC day. Default 2,000,000. */
+  /** Credits every signed-in user gets per UTC day. Default 1,000,000. */
   dailyCredits: number;
   /** `"{provider}:{modelId}"` keys still usable after a user burns through their daily credits.
    * The free default model is always usable regardless and needn't be listed. */

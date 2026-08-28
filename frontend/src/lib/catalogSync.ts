@@ -34,10 +34,10 @@ import type { AdminCatalog, ModelDef, UsageConfig } from "../types";
 const CATALOG_KEY = "scribble:catalog";
 const CATALOG_PATH = "catalog/v1";
 
-/** The out-of-the-box usage limit: 2,000,000 credits/token-equivalents per UTC day, every
+/** The out-of-the-box usage limit: 1,000,000 credits/token-equivalents per UTC day, every
  * model costs 1×, nothing extra usable once you're over, nobody blocked. */
 export const DEFAULT_USAGE: UsageConfig = {
-  dailyCredits: 2_000_000,
+  dailyCredits: 1_000_000,
   postLimitKeys: [],
   modelCredits: {},
   blockedUids: [],

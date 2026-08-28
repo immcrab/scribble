@@ -375,7 +375,7 @@ function LimitsTab({
           inputMode="numeric"
           className={`${inputClass} max-w-xs`}
         />
-        <p className="mt-1 text-xs text-slate-600">{draft.dailyCredits.toLocaleString()} credits/day · default 2,000,000</p>
+        <p className="mt-1 text-xs text-slate-600">{draft.dailyCredits.toLocaleString()} credits/day · default 1,000,000</p>
       </section>
 
       <section>
