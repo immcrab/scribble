@@ -44,6 +44,7 @@ export async function runAssistantStream(params: {
   const thinkingStartedAt = Date.now();
   store.updateMessage(chatId, messageId, { thinkingStartedAt });
   let thinkingStamped = false;
+  let truncated = false;
 
   const lastUserMessage = [...history].reverse().find((m) => m.role === "user")?.content;
   const clientContext = await getClientContext(
@@ -71,6 +72,10 @@ export async function runAssistantStream(params: {
         useChatStore.getState().appendMessageReasoning(chatId, messageId, chunk.text);
         continue;
       }
+      if (chunk.type === "truncated") {
+        truncated = true;
+        continue;
+      }
       if (chunk.type === "toolCall") {
         const current = useChatStore.getState().chats.find((c) => c.id === chatId)?.messages.find((m) => m.id === messageId);
         const existing = current?.toolCalls ?? [];
@@ -89,7 +94,7 @@ export async function runAssistantStream(params: {
       }
       useChatStore.getState().appendMessageContent(chatId, messageId, chunk.text);
     }
-    useChatStore.getState().updateMessage(chatId, messageId, { streaming: false });
+    useChatStore.getState().updateMessage(chatId, messageId, { streaming: false, truncated });
     recordModelUsage(model);
     if (store.settings.notificationSound) playNotificationSound();
   } catch (err) {

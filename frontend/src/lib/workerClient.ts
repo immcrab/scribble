@@ -29,7 +29,7 @@ type StreamEvent =
   | { delta: string }
   | { reasoning: string }
   | { toolCall: ToolCallRecord }
-  | { done: true }
+  | { done: true; truncated?: boolean }
   | { error: string };
 
 /** A single yielded chunk from streamChat — content is the answer text, reasoning is
@@ -37,7 +37,10 @@ type StreamEvent =
 export type StreamChunk =
   | { type: "content"; text: string }
   | { type: "reasoning"; text: string }
-  | { type: "toolCall"; toolCall: ToolCallRecord };
+  | { type: "toolCall"; toolCall: ToolCallRecord }
+  /** Terminal marker: the upstream model stopped because it hit its output-token
+   * limit, so the answer above is cut off mid-stream. */
+  | { type: "truncated" };
 
 export class WorkerClientError extends Error {}
 
@@ -123,6 +126,7 @@ export async function* streamChat(params: StreamChatParams): AsyncGenerator<Stre
         yield { type: "toolCall", toolCall: event.toolCall };
       }
       if ("done" in event) {
+        if (event.truncated) yield { type: "truncated" };
         return;
       }
     }

@@ -438,6 +438,15 @@ export function ChatMessage({
           </div>
         )}
 
+        {/* Truncation notice — the model hit its output-token ceiling and the reply above is
+            cut off mid-stream (see runStream.ts / worker adapters' finish_reason handling). */}
+        {!isUser && message.truncated && !message.streaming && (
+          <div className="mt-1 flex items-start gap-1.5 px-1 text-[11px] text-amber-500/90">
+            <AlertTriangle size={12} className="mt-px shrink-0" />
+            <span>Response hit the output-length limit and was cut off — regenerate, or ask it to continue.</span>
+          </div>
+        )}
+
         {/* Action buttons — always visible on touch devices via CSS (see index.css),
             shown on hover for mouse. Made large enough for tappable use. */}
         {!isUser && !message.streaming && message.content && (

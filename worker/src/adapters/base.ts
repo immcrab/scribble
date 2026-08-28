@@ -67,10 +67,12 @@ export function buildSystemPrompt(effort?: Effort, clientContext?: ClientContext
   return prompt;
 }
 
-/** Generous enough for a full multi-file response without truncating, small enough to stay well
- * inside every supported model's max output — providers default to much lower caps (often ~1-2k)
- * when max_tokens is left unset, which is what was cutting long code responses off mid-file. */
-export const MAX_OUTPUT_TOKENS = 8192;
+/** Output-token ceiling sent with every request. Kept high because reasoning models bill their
+ * hidden chain-of-thought against this same budget — at 8k the thinking alone could consume the
+ * whole allowance and truncate the visible answer mid-file (finish_reason "length"). Providers
+ * otherwise default to much lower caps (~1-2k) when max_tokens is left unset. A model whose real
+ * output ceiling is lower than this just clamps to its own max. */
+export const MAX_OUTPUT_TOKENS = 32768;
 
 /**
  * Some providers (notably xKiro's default config) come with their own
@@ -327,6 +329,7 @@ export function openAICompatibleStream(upstream: Response): ReadableStream<Uint8
       let emittedAny = false;
       let sentError = false;
       let reasoningBuffer = "";
+      let finishReason: string | null = null;
       try {
         while (true) {
           const { value, done } = await reader.read();
@@ -344,7 +347,7 @@ export function openAICompatibleStream(upstream: Response): ReadableStream<Uint8
 
             try {
               const json = JSON.parse(data) as {
-                choices?: { delta?: unknown; message?: { content?: string } }[];
+                choices?: { delta?: unknown; message?: { content?: string }; finish_reason?: string | null }[];
                 error?: string | { message?: string };
               };
 
@@ -359,6 +362,9 @@ export function openAICompatibleStream(upstream: Response): ReadableStream<Uint8
                 controller.enqueue(ndjsonLine({ error: message }));
                 continue;
               }
+
+              const fr = json.choices?.[0]?.finish_reason;
+              if (typeof fr === "string" && fr) finishReason = fr;
 
               const upstreamDelta = json.choices?.[0]?.delta;
               const reasoningDelta = extractDeltaReasoning(upstreamDelta);
@@ -394,7 +400,10 @@ export function openAICompatibleStream(upstream: Response): ReadableStream<Uint8
           sentError = true;
           controller.enqueue(ndjsonLine({ error: "Model returned an empty response. Try again or pick a different model." }));
         }
-        controller.enqueue(ndjsonLine({ done: true }));
+        // `length`/`max_tokens` means the model ran out of output budget mid-reply — flag it so
+        // the client can show a "cut off" notice instead of rendering a silent, incomplete answer.
+        const truncated = finishReason === "length" || finishReason === "max_tokens";
+        controller.enqueue(ndjsonLine(truncated && !sentError ? { done: true, truncated: true } : { done: true }));
       } catch (err) {
         controller.enqueue(ndjsonLine({ error: err instanceof Error ? err.message : "Upstream stream error" }));
       } finally {

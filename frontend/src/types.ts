@@ -109,6 +109,10 @@ export interface ChatMessage {
   thinkingMs?: number;
   /** Estimated token count (~4 chars/token) of reasoning + content, updated live as chunks arrive. */
   tokenCount?: number;
+  /** Set when the upstream model stopped because it hit its output-token limit (finish_reason
+   * "length" / Gemini "MAX_TOKENS") rather than finishing — the content above is cut off
+   * mid-stream. Drives the "response was truncated" notice in ChatMessage. */
+  truncated?: boolean;
 }
 
 export type Mode = "battle" | "agent" | "side-by-side" | "direct" | "image";

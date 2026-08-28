@@ -11,7 +11,7 @@ interface GeminiPart {
 }
 
 interface GeminiStreamChunk {
-  candidates?: { content?: { parts?: GeminiPart[] } }[];
+  candidates?: { content?: { parts?: GeminiPart[] }; finishReason?: string }[];
 }
 
 /** Token budget for Gemini's thinkingConfig, scaled by effort level. */
@@ -108,6 +108,7 @@ function geminiSSEStream(upstream: Response): ReadableStream<Uint8Array> {
       const decoder = new TextDecoder();
       let buffer = "";
       let emittedAny = false;
+      let finishReason: string | null = null;
       try {
         while (true) {
           const { value, done } = await reader.read();
@@ -125,6 +126,8 @@ function geminiSSEStream(upstream: Response): ReadableStream<Uint8Array> {
 
             try {
               const json = JSON.parse(data) as GeminiStreamChunk;
+              const fr = json.candidates?.[0]?.finishReason;
+              if (typeof fr === "string" && fr) finishReason = fr;
               const parts = json.candidates?.[0]?.content?.parts ?? [];
 
               const reasoning = parts
@@ -154,7 +157,10 @@ function geminiSSEStream(upstream: Response): ReadableStream<Uint8Array> {
         if (!emittedAny) {
           controller.enqueue(ndjsonLine({ error: "Model returned an empty response. Try again or pick a different model." }));
         }
-        controller.enqueue(ndjsonLine({ done: true }));
+        // Gemini reports a hit output-token ceiling as finishReason "MAX_TOKENS" — flag it so the
+        // client shows a "cut off" notice rather than a silently incomplete answer.
+        const truncated = finishReason === "MAX_TOKENS";
+        controller.enqueue(ndjsonLine(truncated && emittedAny ? { done: true, truncated: true } : { done: true }));
       } catch (err) {
         controller.enqueue(ndjsonLine({ error: err instanceof Error ? err.message : "Upstream stream error" }));
       } finally {
