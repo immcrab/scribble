@@ -8,6 +8,7 @@ import { geminiStreamChat } from "./adapters/gemini";
 import { openrouterStreamChat } from "./adapters/openrouter";
 import { customStreamChat } from "./adapters/custom";
 import { generateImage } from "./adapters/image";
+import { generateXkiroImage } from "./adapters/xkiroImage";
 import { generateTitle } from "./adapters/title";
 import { searchWeb, shouldSearchWeb, looksLikeArithmetic, isOwnLocationAlreadyKnown } from "./adapters/search";
 import { extractMemory, shouldRecallMemory } from "./adapters/memory";
@@ -302,10 +303,6 @@ export default {
         return json({ error: "Rate limit exceeded. Slow down and try again shortly." }, 429, cors);
       }
 
-      if (!env.CF_ACCOUNT_ID || !env.CF_AI_TOKEN) {
-        return json({ error: "Image generation is not configured on this Worker (missing Cloudflare AI credentials)." }, 500, cors);
-      }
-
       let body: unknown;
       try {
         body = await request.json();
@@ -318,11 +315,31 @@ export default {
         return json({ error: "Request must include a non-empty prompt." }, 400, cors);
       }
 
+      // Backend picker from the frontend's Image mode: "xkiro" or (default) "cloudflare".
+      const imageProvider = b.provider === "xkiro" ? "xkiro" : "cloudflare";
+      const requestedModel = typeof b.model === "string" ? b.model : undefined;
+
       try {
+        if (imageProvider === "xkiro") {
+          if (!env.XKIRO_API_KEY) {
+            return json({ error: "xKiro image generation is not configured on this Worker (missing XKIRO_API_KEY)." }, 500, cors);
+          }
+          const result = await generateXkiroImage({
+            apiKey: env.XKIRO_API_KEY,
+            model: requestedModel,
+            prompt: b.prompt,
+            size: typeof b.size === "string" ? b.size : undefined,
+          });
+          return json(result, 200, cors);
+        }
+
+        if (!env.CF_ACCOUNT_ID || !env.CF_AI_TOKEN) {
+          return json({ error: "Image generation is not configured on this Worker (missing Cloudflare AI credentials)." }, 500, cors);
+        }
         const result = await generateImage({
           accountId: env.CF_ACCOUNT_ID,
           apiToken: env.CF_AI_TOKEN,
-          model: typeof b.model === "string" ? b.model : undefined,
+          model: requestedModel,
           prompt: b.prompt,
         });
         return json(result, 200, cors);

@@ -12,6 +12,8 @@ export interface ScribbleSettings {
   password: string;
   /** Overrides DEFAULT_MODEL_ID for new chats when set. */
   defaultModelId?: string;
+  /** Image-mode backend — id from config/imageModels.ts. Defaults to DEFAULT_IMAGE_MODEL_ID when unset. */
+  imageModelId?: string;
   /** Enter sends the message; Shift/Ctrl/Cmd+Enter inserts a newline. When false, Ctrl/Cmd+Enter sends instead. */
   sendOnEnter: boolean;
   /** User-forced reduced-motion, independent of the OS-level prefers-reduced-motion. */

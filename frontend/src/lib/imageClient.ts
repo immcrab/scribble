@@ -6,11 +6,17 @@ export async function generateImage({
   workerUrl,
   password,
   prompt,
+  provider,
+  model,
   signal,
 }: {
   workerUrl: string;
   password?: string;
   prompt: string;
+  /** Image backend — "cloudflare" (default) or "xkiro". */
+  provider?: "cloudflare" | "xkiro";
+  /** Provider-specific model id (xKiro). */
+  model?: string;
   signal?: AbortSignal;
 }): Promise<string> {
   if (!workerUrl) {
@@ -23,7 +29,7 @@ export async function generateImage({
       "Content-Type": "application/json",
       ...(password ? { "X-Scribble-Password": password } : {}),
     },
-    body: JSON.stringify({ prompt }),
+    body: JSON.stringify({ prompt, ...(provider ? { provider } : {}), ...(model ? { model } : {}) }),
     signal,
   });
 

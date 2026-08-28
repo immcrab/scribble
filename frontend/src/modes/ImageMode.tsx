@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
-import { Image as ImageIcon, Send, Loader2 } from "lucide-react";
+import { Image as ImageIcon, Send, Loader2, ChevronDown } from "lucide-react";
 import { useChatStore } from "../state/chatStore";
 import { ChatMessage } from "../components/ChatMessage";
+import { Dropdown } from "../components/Dropdown";
 import { generateImage } from "../lib/imageClient";
+import { IMAGE_MODELS, findImageModel } from "../config/imageModels";
 import { auth } from "../lib/firebase";
 import { useAutoScroll } from "../lib/useAutoScroll";
 import { uid } from "../lib/id";
@@ -26,8 +28,9 @@ export function ImageMode({
 }) {
   const chat = useChatStore((s) => s.chats.find((c) => c.id === chatId));
   const settings = useChatStore((s) => s.settings);
-  const { addMessage, updateMessage, maybeAutoTitle } = useChatStore();
+  const { addMessage, updateMessage, maybeAutoTitle, updateSettings } = useChatStore();
   const [prompt, setPrompt] = useState("");
+  const imageModel = findImageModel(settings.imageModelId);
   const chatEndRef = useAutoScroll<HTMLDivElement>(chat?.messages ?? []);
 
   if (!chat) return null;
@@ -62,7 +65,13 @@ export function ImageMode({
     }
 
     try {
-      const dataUrl = await generateImage({ workerUrl: settings.workerUrl, password: settings.password, prompt: trimmed });
+      const dataUrl = await generateImage({
+        workerUrl: settings.workerUrl,
+        password: settings.password,
+        prompt: trimmed,
+        provider: imageModel.provider,
+        model: imageModel.model,
+      });
       updateMessage(chat.id, assistantMsg.id, {
         streaming: false,
         attachments: [{ id: uid(), name: "generated.png", type: "image/png", dataUrl, size: dataUrl.length }],
@@ -83,9 +92,46 @@ export function ImageMode({
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center gap-2 border-b border-base-700/60 px-5 py-3">
-        <ImageIcon size={15} className="text-accent-400" />
-        <span className="text-sm font-medium text-slate-200">Image generation</span>
+      <div className="flex items-center justify-between gap-2 border-b border-base-700/60 px-5 py-3">
+        <div className="flex items-center gap-2">
+          <ImageIcon size={15} className="text-accent-400" />
+          <span className="text-sm font-medium text-slate-200">Image generation</span>
+        </div>
+        <Dropdown
+          align="right"
+          menuClassName="w-64 max-w-[calc(100vw-2rem)] overflow-hidden"
+          trigger={({ open, toggle }) => (
+            <button
+              onClick={toggle}
+              className="flex items-center gap-2 rounded-lg border border-transparent px-2.5 py-1.5 text-sm font-medium text-slate-200 transition-colors hover:border-base-600 hover:bg-base-800/70"
+            >
+              {imageModel.displayName}
+              <ChevronDown size={14} className={`text-slate-500 transition-transform ${open ? "rotate-180" : ""}`} />
+            </button>
+          )}
+        >
+          {({ close }) => (
+            <>
+              {IMAGE_MODELS.map((m) => (
+                <button
+                  key={m.id}
+                  onClick={() => {
+                    updateSettings({ imageModelId: m.id });
+                    close();
+                  }}
+                  className={`flex w-full flex-col items-start gap-0.5 px-3.5 py-3 text-left transition-colors ${
+                    m.id === imageModel.id ? "bg-accent-500/10" : "hover:bg-base-700/50"
+                  }`}
+                >
+                  <span className={`text-sm font-medium ${m.id === imageModel.id ? "text-white" : "text-slate-200"}`}>
+                    {m.displayName}
+                  </span>
+                  <span className="text-xs text-slate-500">{m.desc}</span>
+                </button>
+              ))}
+            </>
+          )}
+        </Dropdown>
       </div>
 
       {chat.messages.length === 0 ? (
