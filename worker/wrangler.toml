@@ -9,7 +9,7 @@ compatibility_date = "2024-11-01"
 ALLOWED_ORIGINS = "http://localhost:5173,https://immcrab.github.io,https://scribbleai.dev"
 
 # Secrets (never commit real values — set these with `wrangler secret put NAME`):
-#   XKIRO_API_KEY       (chat provider + the "xKiro GPT Image" backend for /api/image/generate)
+#   XKIRO_API_KEY       (chat provider + the GPT Image backend for /api/image/generate + /api/speech text-to-speech)
 #   GROQ_API_KEY        (not a selectable provider — only powers chat-title generation)
 #   MISTRAL_API_KEY
 #   GEMINI_API_KEY

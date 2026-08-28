@@ -9,6 +9,7 @@ import { openrouterStreamChat } from "./adapters/openrouter";
 import { customStreamChat } from "./adapters/custom";
 import { generateImage } from "./adapters/image";
 import { generateXkiroImage } from "./adapters/xkiroImage";
+import { generateXkiroSpeech, listXkiroVoices } from "./adapters/xkiroSpeech";
 import { generateTitle } from "./adapters/title";
 import { searchWeb, shouldSearchWeb, looksLikeArithmetic, isOwnLocationAlreadyKnown } from "./adapters/search";
 import { extractMemory, shouldRecallMemory } from "./adapters/memory";
@@ -345,6 +346,67 @@ export default {
         return json(result, 200, cors);
       } catch (err) {
         const message = err instanceof Error ? err.message : "Image generation failed.";
+        return json({ error: message }, 502, cors);
+      }
+    }
+
+    if (url.pathname === "/api/speech/voices" && request.method === "GET") {
+      if (!checkPassword(request, env)) {
+        return json({ error: "Invalid or missing Scribble password." }, 401, cors);
+      }
+      try {
+        const voices = await listXkiroVoices(url.searchParams.toString());
+        return new Response(JSON.stringify(voices), {
+          status: 200,
+          headers: { ...cors, "Content-Type": "application/json", "Cache-Control": "public, max-age=300" },
+        });
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Fetching voices failed.";
+        return json({ error: message }, 502, cors);
+      }
+    }
+
+    if (url.pathname === "/api/speech/generate" && request.method === "POST") {
+      if (!checkPassword(request, env)) {
+        return json({ error: "Invalid or missing Scribble password." }, 401, cors);
+      }
+
+      const clientKey = request.headers.get("CF-Connecting-IP") ?? "unknown";
+      if (isRateLimited(clientKey)) {
+        return json({ error: "Rate limit exceeded. Slow down and try again shortly." }, 429, cors);
+      }
+
+      let body: unknown;
+      try {
+        body = await request.json();
+      } catch {
+        return json({ error: "Malformed JSON body." }, 400, cors);
+      }
+
+      const b = body as Record<string, unknown>;
+      if (!b || typeof b.input !== "string" || !b.input.trim()) {
+        return json({ error: "Request must include a non-empty input string." }, 400, cors);
+      }
+      if (typeof b.voice !== "string" || !b.voice) {
+        return json({ error: "Request must include a voice id." }, 400, cors);
+      }
+      if (!env.XKIRO_API_KEY) {
+        return json({ error: "Text-to-speech is not configured on this Worker (missing XKIRO_API_KEY)." }, 500, cors);
+      }
+
+      const speed = typeof b.speed === "number" && b.speed >= 0.25 && b.speed <= 4 ? b.speed : undefined;
+
+      try {
+        const result = await generateXkiroSpeech({
+          apiKey: env.XKIRO_API_KEY,
+          input: b.input,
+          voice: b.voice,
+          format: typeof b.format === "string" ? b.format : undefined,
+          speed,
+        });
+        return json(result, 200, cors);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Speech generation failed.";
         return json({ error: message }, 502, cors);
       }
     }

@@ -14,6 +14,13 @@ export interface ScribbleSettings {
   defaultModelId?: string;
   /** Image-mode backend — id from config/imageModels.ts. Defaults to DEFAULT_IMAGE_MODEL_ID when unset. */
   imageModelId?: string;
+  /** Text-to-speech voice id (xKiro), persisted across Speech-mode sessions. Falls back to the
+   * first voice the /api/speech/voices list returns when unset. */
+  speechVoiceId?: string;
+  /** Text-to-speech output container — "mp3" (default), "wav", "opus", "aac", "flac". */
+  speechFormat?: string;
+  /** Text-to-speech playback rate sent to xKiro, 0.25–4.0. Defaults to 1. */
+  speechSpeed?: number;
   /** Enter sends the message; Shift/Ctrl/Cmd+Enter inserts a newline. When false, Ctrl/Cmd+Enter sends instead. */
   sendOnEnter: boolean;
   /** User-forced reduced-motion, independent of the OS-level prefers-reduced-motion. */

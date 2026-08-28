@@ -173,7 +173,7 @@ export interface ChatMessage {
   truncated?: boolean;
 }
 
-export type Mode = "battle" | "agent" | "side-by-side" | "direct" | "image";
+export type Mode = "battle" | "agent" | "side-by-side" | "direct" | "image" | "speech";
 
 export interface Vote {
   winner: "a" | "b" | "tie";

@@ -95,6 +95,7 @@ const MODE_LABEL: Record<Mode, string> = {
   "side-by-side": "Side by Side",
   direct: "Direct",
   image: "Image",
+  speech: "Speech",
 };
 
 export function Sidebar({

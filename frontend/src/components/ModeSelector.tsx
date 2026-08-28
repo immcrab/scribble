@@ -1,4 +1,4 @@
-import { Swords, Bot, Columns2, MessageCircle, ChevronDown, Lock, Image as ImageIcon } from "lucide-react";
+import { Swords, Bot, Columns2, MessageCircle, ChevronDown, Lock, Image as ImageIcon, AudioLines } from "lucide-react";
 import type { Mode } from "../types";
 import { Dropdown } from "./Dropdown";
 import { useAuthStore } from "../state/authStore";
@@ -8,6 +8,7 @@ const MODES: { id: Mode; label: string; desc: string; icon: typeof Swords; gated
   { id: "agent", label: "Agent Mode", desc: "Built for complex tasks", icon: Bot, gated: true },
   { id: "side-by-side", label: "Side by Side", desc: "Compare 2 models of your choice", icon: Columns2, gated: true },
   { id: "image", label: "Image", desc: "Generate images from a prompt", icon: ImageIcon, gated: true },
+  { id: "speech", label: "Text to Speech", desc: "Turn text into natural speech", icon: AudioLines, gated: true },
   { id: "direct", label: "Direct", desc: "Chat with 1 model at a time", icon: MessageCircle },
 ];
 

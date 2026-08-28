@@ -1,8 +1,8 @@
 # Scribble
 
-A polished AI playground in the spirit of Arena.ai — four modes (Battle, Agent,
-Side by Side, Direct), real streaming responses, and a dark, blue, glass-panel
-UI. The frontend is a static site (GitHub Pages); the Worker is a Cloudflare
+A polished AI playground in the spirit of Arena.ai — six modes (Battle, Agent,
+Side by Side, Direct, Image, Text to Speech), real streaming responses, and a
+dark, blue, glass-panel UI. The frontend is a static site (GitHub Pages); the Worker is a Cloudflare
 Worker that proxies xKiro, Mistral, and Gemini so API keys never touch
 the browser.
 

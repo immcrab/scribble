@@ -18,6 +18,7 @@ import {
   X,
   Lock,
   Brain,
+  Download,
 } from "lucide-react";
 import type { ChatMessage as ChatMessageType, ToolCallRecord } from "../types";
 import { Markdown } from "../lib/markdown";
@@ -276,6 +277,18 @@ export function ChatMessage({
     setTimeout(() => setCopied(false), 1200);
   };
 
+  // An assistant turn that produced only attachments (Image / Speech mode) has
+  // nothing to put in the text bubble — skip it entirely rather than render an
+  // empty bordered pill under the image or audio player.
+  const attachmentsOnly =
+    !isUser &&
+    !!message.attachments?.length &&
+    !message.content &&
+    !message.error &&
+    !message.reasoning &&
+    !message.streaming &&
+    !message.toolCalls?.length;
+
   const liveArtifact = useLiveArtifact(isUser ? undefined : message);
   // Finished artifact-worthy responses always redirect to the panel (as
   // before). Mid-stream, only redirect when the parent has confirmed this
@@ -330,6 +343,28 @@ export function ChatMessage({
           <div className="mb-2 flex flex-wrap gap-2">
             {message.attachments.map((a) => {
               const isImage = a.type?.startsWith("image/") || a.dataUrl?.startsWith("data:image/");
+              const isAudio = a.type?.startsWith("audio/") || a.dataUrl?.startsWith("data:audio/");
+              if (isAudio && a.dataUrl) {
+                return (
+                  <div
+                    key={a.id}
+                    className="flex w-full max-w-md flex-col gap-2 rounded-xl border border-base-700/60 bg-base-900/80 p-2.5 shadow-sm"
+                  >
+                    <audio controls src={a.dataUrl} className="w-full" />
+                    <div className="flex items-center justify-between gap-2 px-0.5 text-[11px] text-slate-500">
+                      <span className="truncate">{a.name}</span>
+                      <a
+                        href={a.dataUrl}
+                        download={a.name || "speech"}
+                        className="flex shrink-0 items-center gap-1 rounded-md px-1.5 py-1 text-slate-400 transition-colors hover:bg-base-700/60 hover:text-white"
+                      >
+                        <Download size={12} />
+                        Download
+                      </a>
+                    </div>
+                  </div>
+                );
+              }
               if (isImage && a.dataUrl) {
                 return (
                   <div
@@ -363,6 +398,7 @@ export function ChatMessage({
         )}
 
         {/* Message bubble — always editable/visible, never suppressed by hover */}
+        {!attachmentsOnly && (
         <div
           className={`rounded-2xl break-words transition-all duration-200 ${compact ? "px-3 py-1.5" : "px-4 py-2.5"} ${
             isUser
@@ -432,6 +468,7 @@ export function ChatMessage({
             <span className="text-sm italic text-slate-500">No response — try regenerating.</span>
           ) : null}
         </div>
+        )}
 
         {/* Token count — live estimate while generating, frozen once the turn ends.
             Hidden during the pure "Thinking…" phase, where ThinkingBlock shows it instead. */}

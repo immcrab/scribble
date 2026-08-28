@@ -370,6 +370,11 @@ function WorkerGuidePage({ onOpen }: { onOpen: (slug: string) => void }) {
             <code className="rounded bg-base-800 px-1 py-0.5 text-xs text-slate-300">XKIRO_API_KEY</code> as chat — no
             extra secret. Set either backend, or both.
           </p>
+          <p className="mt-2">
+            <strong className="text-slate-300">Text to Speech</strong> mode also runs on{" "}
+            <code className="rounded bg-base-800 px-1 py-0.5 text-xs text-slate-300">XKIRO_API_KEY</code> — pick from
+            xKiro's 148 voices, adjust speed and format, then play or download the audio. No extra secret needed.
+          </p>
         </GuideStep>
 
         <GuideStep n={7} title="Deploy">

@@ -37,6 +37,7 @@ import { BattleMode } from "./modes/BattleMode";
 import { SideBySideMode } from "./modes/SideBySideMode";
 import { AgentMode } from "./modes/AgentMode";
 import { ImageMode } from "./modes/ImageMode";
+import { SpeechMode } from "./modes/SpeechMode";
 import { useChatStore } from "./state/chatStore";
 import type { Attachment, Chat, Mode } from "./types";
 
@@ -458,6 +459,14 @@ export default function App() {
           )}
           {shareState.status === "idle" && !inProject && activeChat?.mode === "image" && (
             <ImageMode
+              key={activeChat.id}
+              chatId={activeChat.id}
+              initialPrompt={initialFor(activeChat.id)}
+              onConsumeInitial={consumeInitial}
+            />
+          )}
+          {shareState.status === "idle" && !inProject && activeChat?.mode === "speech" && (
+            <SpeechMode
               key={activeChat.id}
               chatId={activeChat.id}
               initialPrompt={initialFor(activeChat.id)}
