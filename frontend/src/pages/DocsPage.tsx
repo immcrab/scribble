@@ -366,7 +366,7 @@ function WorkerGuidePage({ onOpen }: { onOpen: (slug: string) => void }) {
           </p>
           <CodeBlock>{"npx wrangler secret put CF_ACCOUNT_ID\nnpx wrangler secret put CF_AI_TOKEN"}</CodeBlock>
           <p>
-            <strong className="text-slate-300">xKiro GPT Image</strong> reuses the same{" "}
+            <strong className="text-slate-300">GPT Image</strong> (served via xKiro) reuses the same{" "}
             <code className="rounded bg-base-800 px-1 py-0.5 text-xs text-slate-300">XKIRO_API_KEY</code> as chat — no
             extra secret. Set either backend, or both.
           </p>

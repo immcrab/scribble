@@ -26,8 +26,8 @@ export const IMAGE_MODELS: ImageModelDef[] = [
     id: "xkiro-gpt-image",
     provider: "xkiro",
     model: "gpt-image",
-    displayName: "xKiro GPT Image",
-    desc: "Higher quality, slower — async job on xKiro",
+    displayName: "GPT Image",
+    desc: "Higher quality, slower",
   },
 ];
 
