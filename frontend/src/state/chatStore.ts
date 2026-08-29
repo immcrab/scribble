@@ -32,13 +32,43 @@ import { estimateTokenCount } from "../lib/tokenCount";
 const MAX_MEMORIES = 200;
 
 let persistTimer: ReturnType<typeof setTimeout> | null = null;
-function debouncedPersist(chats: Chat[]) {
+let lastLocalSave = 0;
+/** Longest a streaming reply may go unwritten to localStorage. A refresh mid-stream
+ * loses at most this much of the in-flight tokens — the user's turn and everything
+ * before it is always already on disk (see persistChats). */
+const STREAM_SAVE_INTERVAL = 1000;
+
+/**
+ * Writes chats to localStorage *synchronously* and kicks the (internally
+ * debounced) cloud/public pushes. Used for every structural change — a new
+ * message, rename, delete, edit — so a chat is on disk the instant the user
+ * sends it and survives a refresh a frame later.
+ */
+function persistChats(chats: Chat[]) {
+  if (persistTimer) {
+    clearTimeout(persistTimer);
+    persistTimer = null;
+  }
+  lastLocalSave = Date.now();
+  saveChats(chats);
+  pushChatsToCloud(chats);
+  pushChatsPublic(chats);
+}
+
+/**
+ * For high-frequency streaming deltas: coalesces the localStorage writes but
+ * still guarantees a flush at least every STREAM_SAVE_INTERVAL ms, so a stream
+ * that never pauses can't starve the save (the old single-timer debounce did —
+ * each token reset it, so nothing hit disk until streaming stopped).
+ */
+function throttledPersistChats(chats: Chat[]) {
+  const elapsed = Date.now() - lastLocalSave;
+  if (elapsed >= STREAM_SAVE_INTERVAL) {
+    persistChats(chats);
+    return;
+  }
   if (persistTimer) clearTimeout(persistTimer);
-  persistTimer = setTimeout(() => {
-    saveChats(chats);
-    pushChatsToCloud(chats);
-    pushChatsPublic(chats);
-  }, 250);
+  persistTimer = setTimeout(() => persistChats(chats), STREAM_SAVE_INTERVAL - elapsed);
 }
 
 function getDefaultModelPatch(mode: Mode, overrideId?: string): Partial<Pick<Chat, "modelId" | "modelAId" | "modelBId">> {
@@ -159,7 +189,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
         const chats = s.chats.map((c) =>
           c.id === existing.id ? { ...c, mode, updatedAt: Date.now(), projectId, ...defaults } : c
         );
-        debouncedPersist(chats);
+        persistChats(chats);
         return { chats, activeChatId: existing.id, activeProjectId };
       });
       return existing.id;
@@ -177,7 +207,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     };
     set((s) => {
       const chats = [chat, ...s.chats];
-      debouncedPersist(chats);
+      persistChats(chats);
       return { chats, activeChatId: chat.id, activeProjectId };
     });
     return chat.id;
@@ -196,7 +226,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
           modelBId: c.modelBId ?? defaults.modelBId,
         };
       });
-      debouncedPersist(chats);
+      persistChats(chats);
       return { chats };
     });
   },
@@ -213,6 +243,12 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     // frame as the click. The actual persistence (JSON.stringify of the whole
     // history + a synchronous localStorage write + the RTDB tombstone write)
     // is deferred to a macrotask so it can't block the repaint.
+    // Cancel any pending coalesced write first — its captured snapshot still
+    // holds the chat we're deleting and would otherwise resurrect it on disk.
+    if (persistTimer) {
+      clearTimeout(persistTimer);
+      persistTimer = null;
+    }
     let persist: (() => void) | null = null;
     set((s) => {
       const gone = s.chats.find((c) => c.id === id);
@@ -261,7 +297,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   renameChat: (id, title) => {
     set((s) => {
       const chats = s.chats.map((c) => (c.id === id ? { ...c, title } : c));
-      debouncedPersist(chats);
+      persistChats(chats);
       return { chats };
     });
   },
@@ -291,7 +327,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       // Chats are never destroyed here — they drop back into the flat History list.
       const chats = s.chats.map((c) => (c.projectId === id ? { ...c, projectId: undefined, updatedAt: Date.now() } : c));
       const chatsChanged = chats.some((c, i) => c !== s.chats[i]);
-      if (chatsChanged) debouncedPersist(chats);
+      if (chatsChanged) persistChats(chats);
       const leavingActive = s.activeProjectId === id;
       return {
         projects,
@@ -320,7 +356,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       const chats = s.chats.map((c) =>
         c.id === chatId ? { ...c, projectId: projectId ?? undefined, updatedAt: Date.now() } : c
       );
-      debouncedPersist(chats);
+      persistChats(chats);
       // If the moved chat is the one on screen, follow it into (or out of) the project.
       if (s.activeChatId === chatId) return { chats, activeProjectId: projectId ?? null };
       return { chats };
@@ -330,7 +366,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   setChatModels: (id, patch) => {
     set((s) => {
       const chats = s.chats.map((c) => (c.id === id ? { ...c, ...patch } : c));
-      debouncedPersist(chats);
+      persistChats(chats);
       return { chats };
     });
   },
@@ -338,7 +374,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   patchChat: (id, patch) => {
     set((s) => {
       const chats = s.chats.map((c) => (c.id === id ? { ...c, ...patch } : c));
-      debouncedPersist(chats);
+      persistChats(chats);
       return { chats };
     });
   },
@@ -369,7 +405,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
           ? { ...c, messages: [...c.messages, message], updatedAt: Date.now() }
           : c
       );
-      debouncedPersist(chats);
+      persistChats(chats);
       return { chats };
     });
   },
@@ -385,7 +421,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
             }
           : c
       );
-      debouncedPersist(chats);
+      persistChats(chats);
       return { chats };
     });
   },
@@ -404,7 +440,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
             }
           : c
       );
-      debouncedPersist(chats);
+      throttledPersistChats(chats);
       return { chats };
     });
   },
@@ -423,7 +459,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
             }
           : c
       );
-      debouncedPersist(chats);
+      throttledPersistChats(chats);
       return { chats };
     });
   },
@@ -436,7 +472,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
         if (idx === -1) return c;
         return { ...c, messages: c.messages.slice(0, idx) };
       });
-      debouncedPersist(chats);
+      persistChats(chats);
       return { chats };
     });
   },
@@ -444,7 +480,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   setVote: (chatId, vote) => {
     set((s) => {
       const chats = s.chats.map((c) => (c.id === chatId ? { ...c, vote } : c));
-      debouncedPersist(chats);
+      persistChats(chats);
       return { chats };
     });
   },
