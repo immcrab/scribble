@@ -40,20 +40,52 @@ function extFor(lang: string): string {
 }
 
 // A line that's *just* a filename, optionally dressed up the way models tend to write one:
-// "File: app.py", "**index.html**", "`style.css`", "### main.go", a heading, or bare "utils.js"
-// with nothing else on the line. Anchored so it can't grab a mid-sentence word that happens to
-// contain a dot — the whole line (after any decoration) has to be the filename.
+// "File: app.py", "**index.html**", "`style.css`", "### main.go", a heading, "utils.js" bare, or
+// "**index.html** — the homepage" with a trailing dash/colon description. Anchored so it can't
+// grab a mid-sentence word that happens to contain a dot — the line (after any decoration, and
+// before any trailing " — note") has to be the filename.
 const FILENAME_LINE_CORE =
-  "[ \\t]*(?:#{1,6}[ \\t]*)?(?:\\*\\*|__)?`?(?:(?:File|Filename|Path)[ \\t]*:[ \\t]*)?([A-Za-z0-9_][\\w./-]*\\.[A-Za-z0-9]{1,10})`?(?:\\*\\*|__)?[ \\t]*:?[ \\t]*";
+  "[ \\t]*(?:#{1,6}[ \\t]*)?(?:\\*\\*|__)?`?(?:(?:File|Filename|Path)[ \\t]*:[ \\t]*)?([A-Za-z0-9_][\\w./-]*\\.[A-Za-z0-9]{1,10})`?(?:\\*\\*|__)?[ \\t]*(?:[:\u2014\u2013-][ \\t]*[^\\n]*)?";
 
-// The optional leading group picks up a filename line written immediately above the fence (see
-// worker SYSTEM_PROMPT), in whichever of the common styles above the model used, so a model that
-// names its files gets real filenames instead of generic file1.js/file2.js ones.
-const FENCE_RE = new RegExp("(?:(?:^|\\n)" + FILENAME_LINE_CORE + "\\n)?```([a-zA-Z0-9]*)\\n([\\s\\S]*?)```", "gim");
+// Between the filename line and the opening fence, models very often leave a blank line (or a
+// few) — tolerate any run of whitespace-only lines there so "**index.html**\n\n```html" still
+// links the name to its block.
+const GAP = "\\n(?:[ \\t]*\\n)*";
+
+// The opening fence: an info string that's more than the bare language ("```html title=index.html",
+// "```js app.js") is captured too, so a filename tucked in there gets picked up instead of a
+// generic name — and, importantly, the fence still matches at all (a stray info string used to
+// make the whole block invisible to the parser, dropping that file).
+const FENCE_OPEN = "```([a-zA-Z0-9+#.-]*)([^\\n]*)\\n";
+
+// The optional leading group picks up a filename line written above the fence (see worker
+// SYSTEM_PROMPT), in whichever of the common styles above the model used, so a model that names
+// its files gets real filenames instead of generic file1.js/file2.js ones.
+const FENCE_RE = new RegExp("(?:(?:^|\\n)" + FILENAME_LINE_CORE + GAP + ")?" + FENCE_OPEN + "([\\s\\S]*?)```", "gim");
 
 // Same filename-line shape, but anchored to the *end* of a string instead of followed by a
 // fence — used to catch the hint above a still-open trailing fence while a message is streaming.
-const TRAILING_FILENAME_LINE_RE = new RegExp("(?:^|\\n)" + FILENAME_LINE_CORE + "\\n$", "i");
+const TRAILING_FILENAME_LINE_RE = new RegExp("(?:^|\\n)" + FILENAME_LINE_CORE + GAP + "$", "i");
+
+/** Pull a filename out of a fence info string ("```html index.html", "```js title=app.js").
+ * The extension must start with a letter so a stray "v2.0" in a comment-y info string
+ * doesn't get mistaken for a filename. */
+function filenameFromInfoString(info: string): string | undefined {
+  const m = info.match(/([A-Za-z0-9_][\w./-]*\.[A-Za-z][A-Za-z0-9]{0,9})(?:\b|$)/);
+  return m ? m[1] : undefined;
+}
+
+/**
+ * A fenced block that's actually an ASCII directory tree / file listing — the kind a model
+ * prints to outline a project ("apex-motors/\n├── index.html\n└── styles.css") — rather than
+ * a real file. Skipped so it doesn't surface as a bogus "file.txt" in the workspace.
+ */
+function looksLikeFileTree(code: string): boolean {
+  const lines = code.split("\n").map((l) => l.trim()).filter(Boolean);
+  if (lines.length < 3) return false;
+  const treeish = lines.filter((l) => /[│├└]|^[\w.-]+\/$/.test(l)).length;
+  return treeish >= Math.ceil(lines.length * 0.6);
+}
 
 // A model that doesn't put the filename on its own line very often still opens the file with a
 // same-language comment naming it — e.g. `// src/app.js`, `# app.py`, `<!-- index.html -->`.
@@ -115,9 +147,11 @@ export function extractArtifact(content: string): Artifact | null {
   let m: RegExpExecArray | null;
   while ((m = FENCE_RE.exec(content))) {
     const lang = (m[2] || "text").toLowerCase();
-    const code = m[3].replace(/\n$/, "");
+    const code = m[4].replace(/\n$/, "");
     if (code.trim().length === 0) continue;
-    const filename = m[1] ? cleanFilename(m[1]) : filenameFromLeadingComment(code);
+    const filename =
+      (m[1] && cleanFilename(m[1])) || filenameFromInfoString(m[3] ?? "") || filenameFromLeadingComment(code);
+    if (!filename && looksLikeFileTree(code)) continue;
     blocks.push({ lang, code, filename });
   }
   if (blocks.length === 0) return null;
@@ -179,7 +213,7 @@ export function extractPartialArtifact(content: string): Artifact | null {
   // count, so it parses cleanly as ordinary closed content.
   let closedPortion = content.slice(0, lastFenceStart);
   const trailing = content.slice(lastFenceStart);
-  const trailingMatch = trailing.match(/```([a-zA-Z0-9]*)\n?([\s\S]*)$/);
+  const trailingMatch = trailing.match(/```([a-zA-Z0-9+#.-]*)([^\n]*)\n?([\s\S]*)$/);
 
   // Pull an optional filename-line hint immediately above the open fence — same convention
   // extractArtifact recognizes for closed fences — so the in-progress file gets a real name
@@ -198,9 +232,12 @@ export function extractPartialArtifact(content: string): Artifact | null {
 
   if (trailingMatch) {
     const lang = (trailingMatch[1] || "text").toLowerCase();
-    const code = trailingMatch[2] ?? "";
+    const code = trailingMatch[3] ?? "";
     if (code.trim().length > 0 || files.length === 0) {
-      const name = dedupeName(filenameHint ?? filenameFromLeadingComment(code) ?? `file.${extFor(lang)}`, seenNames);
+      const name = dedupeName(
+        filenameHint ?? filenameFromInfoString(trailingMatch[2] ?? "") ?? filenameFromLeadingComment(code) ?? `file.${extFor(lang)}`,
+        seenNames
+      );
       files.push({ name, language: lang, content: code });
     }
   }
