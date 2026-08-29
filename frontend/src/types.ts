@@ -46,8 +46,28 @@ export interface AdminCatalog {
    * blob published before this feature existed still parses (defaults fill in — see
    * lib/catalogSync.ts's `DEFAULT_USAGE`). */
   usage?: UsageConfig;
+  /** Watermark stamped on generated images, edited from `/admin` → Watermark. Optional so a
+   * catalog blob published before this feature existed still parses (defaults fill in — see
+   * lib/catalogSync.ts's `DEFAULT_WATERMARK`). */
+  watermark?: WatermarkConfig;
   /** Date.now() of the last admin edit — last-write-wins if two admin tabs race. */
   updatedAt: number;
+}
+
+/**
+ * Admin-controlled watermark applied client-side to every generated image (see
+ * lib/watermark.ts, modes/ImageMode.tsx). Lives inside `AdminCatalog` so it rides the same
+ * world-readable, admin-writable `catalog/v1` RTDB node — no extra security rule.
+ */
+export interface WatermarkConfig {
+  /** When false, generated images are shown untouched. Default true. */
+  enabled: boolean;
+  /** Label text stamped in the bottom-right corner. Default "ScribbleAI". */
+  text: string;
+  /** Fill opacity, 0–1. Default 0.55. */
+  opacity: number;
+  /** Label size as a fraction of image width, before the 12–48px clamp. Default 0.028. */
+  scale: number;
 }
 
 /**

@@ -13,7 +13,7 @@ import {
   Gift,
 } from "lucide-react";
 import { useAuthStore } from "../state/authStore";
-import { useCatalogStore, publishCatalog, DEFAULT_USAGE } from "../lib/catalogSync";
+import { useCatalogStore, publishCatalog, DEFAULT_USAGE, DEFAULT_WATERMARK } from "../lib/catalogSync";
 import {
   PROVIDER_LABELS,
   catalogWithAdminAdditions,
@@ -35,7 +35,7 @@ import { modelSlug } from "../lib/modelSlug";
 import { ModelFavicon, ProviderFavicon } from "../components/ProviderIcon";
 import { ToggleSwitch } from "../components/ToggleSwitch";
 import { LogoMark } from "../components/Logo";
-import type { AdminCatalog, ModelDef, Provider, UsageConfig, UsageRecord } from "../types";
+import type { AdminCatalog, ModelDef, Provider, UsageConfig, UsageRecord, WatermarkConfig } from "../types";
 
 /** Providers the admin can publish an official model against — the ones the Worker
  * already holds a key for, plus Puter (in-browser, no key). "custom" is per-browser only,
@@ -53,7 +53,7 @@ function formatContext(n: number): string {
   return String(n);
 }
 
-type PatchableCatalog = Partial<Pick<AdminCatalog, "added" | "hiddenKeys" | "usage">>;
+type PatchableCatalog = Partial<Pick<AdminCatalog, "added" | "hiddenKeys" | "usage" | "watermark">>;
 
 function GateScreen({ onExit }: { onExit: () => void }) {
   const user = useAuthStore((s) => s.user);
@@ -682,12 +682,160 @@ function UsersTab({
   );
 }
 
+/* ─────────────────────────── Watermark tab ─────────────────────────── */
+
+const PREVIEW_W = 300; // px the sample renders at
+const NOMINAL_IMG_W = 512; // px the sample "image" stands in for
+
+function WatermarkTab({
+  catalog,
+  busy,
+  run,
+}: {
+  catalog: AdminCatalog;
+  busy: boolean;
+  run: (patch: PatchableCatalog) => void;
+}) {
+  const published = catalog.watermark ?? DEFAULT_WATERMARK;
+  const [draft, setDraft] = useState<WatermarkConfig>(published);
+
+  useEffect(() => {
+    setDraft(published);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [catalog.updatedAt]);
+
+  const dirty = JSON.stringify(draft) !== JSON.stringify(published);
+
+  // Mirror lib/watermark.ts: clamp(12, 48, round(width * scale)), shown at preview scale.
+  const realFont = Math.max(12, Math.min(48, Math.round(NOMINAL_IMG_W * draft.scale)));
+  const previewFont = realFont * (PREVIEW_W / NOMINAL_IMG_W);
+  const previewPad = previewFont * 0.7;
+
+  return (
+    <>
+      <p className="mb-5 rounded-lg border border-base-700/60 bg-base-900/40 px-3 py-2 text-xs text-slate-400">
+        Stamped on <span className="text-slate-200">every generated image</span>, in the browser, right after it comes
+        back. Applies to all users once you publish. Turning it off leaves images untouched.
+      </p>
+
+      <div className="flex flex-col gap-6 sm:flex-row">
+        <section className="flex-1 space-y-5">
+          <ToggleSwitch
+            label="Watermark generated images"
+            checked={draft.enabled}
+            onChange={(v) => setDraft((d) => ({ ...d, enabled: v }))}
+          />
+
+          <div className={draft.enabled ? "space-y-5" : "pointer-events-none space-y-5 opacity-40"}>
+            <div>
+              <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Text</label>
+              <input
+                value={draft.text}
+                maxLength={40}
+                onChange={(e) => setDraft((d) => ({ ...d, text: e.target.value }))}
+                placeholder="ScribbleAI"
+                className={inputClass}
+              />
+            </div>
+
+            <div>
+              <div className="mb-1 flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-slate-500">
+                <span>Opacity</span>
+                <span className="text-slate-400">{Math.round(draft.opacity * 100)}%</span>
+              </div>
+              <input
+                type="range"
+                min={5}
+                max={100}
+                step={1}
+                value={Math.round(draft.opacity * 100)}
+                onChange={(e) => setDraft((d) => ({ ...d, opacity: Number(e.target.value) / 100 }))}
+                className="w-full accent-accent-500"
+              />
+            </div>
+
+            <div>
+              <div className="mb-1 flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-slate-500">
+                <span>Size</span>
+                <span className="text-slate-400">{(draft.scale * 100).toFixed(1)}% of width</span>
+              </div>
+              <input
+                type="range"
+                min={5}
+                max={150}
+                step={1}
+                value={Math.round(draft.scale * 1000)}
+                onChange={(e) => setDraft((d) => ({ ...d, scale: Number(e.target.value) / 1000 }))}
+                className="w-full accent-accent-500"
+              />
+              <p className="mt-1 text-xs text-slate-600">
+                ≈ {realFont}px on a {NOMINAL_IMG_W}px image (clamped 12–48px)
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section className="shrink-0">
+          <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">Preview</span>
+          <div
+            className="relative overflow-hidden rounded-lg border border-base-600/60"
+            style={{ width: PREVIEW_W, height: PREVIEW_W }}
+          >
+            <div className="absolute inset-0 bg-gradient-to-br from-[#1d2740] via-[#2e3b5e] to-[#3f5233]" />
+            <div className="absolute right-[18%] top-[16%] h-14 w-14 rounded-full bg-[#f0c987]/90" />
+            {draft.enabled && draft.text.trim() && (
+              <span
+                className="absolute font-semibold leading-none text-white"
+                style={{
+                  right: previewPad,
+                  bottom: previewPad,
+                  fontSize: previewFont,
+                  opacity: draft.opacity,
+                  textShadow: `0 1px ${previewFont * 0.35}px rgba(0,0,0,${(draft.opacity * 0.65).toFixed(2)})`,
+                }}
+              >
+                {draft.text}
+              </span>
+            )}
+          </div>
+        </section>
+      </div>
+
+      <div className="sticky bottom-0 mt-6 flex items-center gap-2 border-t border-base-700/60 bg-base-950/90 py-3 backdrop-blur">
+        <button
+          onClick={() => run({ watermark: draft })}
+          disabled={busy || !dirty}
+          className="flex items-center gap-1.5 rounded-lg bg-accent-500 px-3 py-1.5 text-xs font-medium text-base-950 hover:bg-accent-400 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          Publish watermark
+        </button>
+        {dirty && (
+          <button
+            onClick={() => setDraft(published)}
+            className="rounded-lg border border-base-600/60 px-3 py-1.5 text-xs text-slate-400 hover:text-white"
+          >
+            Discard changes
+          </button>
+        )}
+        <button
+          onClick={() => setDraft(DEFAULT_WATERMARK)}
+          className="rounded-lg border border-base-600/60 px-3 py-1.5 text-xs text-slate-400 hover:text-white"
+        >
+          Reset to default
+        </button>
+        {dirty && <span className="text-xs text-amber-400">Unpublished changes</span>}
+      </div>
+    </>
+  );
+}
+
 /* ─────────────────────────── Shell ─────────────────────────── */
 
 const TABS = [
   { id: "models", label: "Models" },
   { id: "users", label: "Users" },
   { id: "limits", label: "Limits" },
+  { id: "watermark", label: "Watermark" },
 ] as const;
 type TabId = (typeof TABS)[number]["id"];
 
@@ -707,6 +855,7 @@ export function AdminPage({ onExit }: { onExit: () => void }) {
         added: catalog.added,
         hiddenKeys: catalog.hiddenKeys,
         usage: catalog.usage ?? DEFAULT_USAGE,
+        watermark: catalog.watermark ?? DEFAULT_WATERMARK,
         ...patch,
       });
     } catch (e) {
@@ -767,6 +916,7 @@ export function AdminPage({ onExit }: { onExit: () => void }) {
         {tab === "models" && <ModelsTab catalog={catalog} busy={busy} run={run} />}
         {tab === "limits" && <LimitsTab catalog={catalog} busy={busy} run={run} />}
         {tab === "users" && <UsersTab catalog={catalog} busy={busy} run={run} />}
+        {tab === "watermark" && <WatermarkTab catalog={catalog} busy={busy} run={run} />}
       </div>
     </div>
   );

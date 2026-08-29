@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { onValue, ref, set as dbSet } from "firebase/database";
 import { getRtdb } from "./firebase";
 import { setAdminCatalog } from "../config/models";
-import type { AdminCatalog, ModelDef, UsageConfig } from "../types";
+import type { AdminCatalog, ModelDef, UsageConfig, WatermarkConfig } from "../types";
 
 /**
  * The shared, admin-curated model catalog overlay. One global RTDB node,
@@ -44,12 +44,34 @@ export const DEFAULT_USAGE: UsageConfig = {
   bonus: {},
 };
 
+/** The out-of-the-box watermark: on, "ScribbleAI", 55% opacity, ~2.8% of image width. */
+export const DEFAULT_WATERMARK: WatermarkConfig = {
+  enabled: true,
+  text: "ScribbleAI",
+  opacity: 0.55,
+  scale: 0.028,
+};
+
 export const EMPTY_CATALOG: AdminCatalog = {
   added: [],
   hiddenKeys: [],
   usage: DEFAULT_USAGE,
+  watermark: DEFAULT_WATERMARK,
   updatedAt: 0,
 };
+
+function sanitizeWatermark(raw: unknown): WatermarkConfig {
+  const w = (raw ?? {}) as Partial<WatermarkConfig>;
+  const clamp = (n: unknown, lo: number, hi: number, fallback: number) =>
+    typeof n === "number" && Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : fallback;
+  const text = typeof w.text === "string" ? w.text.slice(0, 40) : DEFAULT_WATERMARK.text;
+  return {
+    enabled: typeof w.enabled === "boolean" ? w.enabled : DEFAULT_WATERMARK.enabled,
+    text: text.trim() || DEFAULT_WATERMARK.text,
+    opacity: clamp(w.opacity, 0, 1, DEFAULT_WATERMARK.opacity),
+    scale: clamp(w.scale, 0.005, 0.15, DEFAULT_WATERMARK.scale),
+  };
+}
 
 function sanitizeUsage(raw: unknown): UsageConfig {
   const u = (raw ?? {}) as Partial<UsageConfig>;
@@ -83,6 +105,7 @@ function sanitize(raw: unknown): AdminCatalog {
     added: Array.isArray(c.added) ? (c.added.filter((m) => m && typeof m === "object") as ModelDef[]) : [],
     hiddenKeys: Array.isArray(c.hiddenKeys) ? c.hiddenKeys.filter((k): k is string => typeof k === "string") : [],
     usage: sanitizeUsage(c.usage),
+    watermark: sanitizeWatermark(c.watermark),
     updatedAt: typeof c.updatedAt === "number" ? c.updatedAt : 0,
   };
 }
@@ -90,6 +113,11 @@ function sanitize(raw: unknown): AdminCatalog {
 /** The active usage config — always fully populated (defaults fill any gap). Read by lib/usage.ts. */
 export function usageConfig(): UsageConfig {
   return useCatalogStore.getState().catalog.usage ?? DEFAULT_USAGE;
+}
+
+/** The active watermark config — always fully populated. Read by modes/ImageMode.tsx. */
+export function watermarkConfig(): WatermarkConfig {
+  return useCatalogStore.getState().catalog.watermark ?? DEFAULT_WATERMARK;
 }
 
 function loadCache(): AdminCatalog {

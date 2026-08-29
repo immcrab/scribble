@@ -6,6 +6,7 @@ import { Dropdown } from "../components/Dropdown";
 import { ImageGeneratingLoader } from "../components/ImageGeneratingLoader";
 import { generateImage } from "../lib/imageClient";
 import { watermarkImage } from "../lib/watermark";
+import { watermarkConfig } from "../lib/catalogSync";
 import { IMAGE_MODELS, findImageModel } from "../config/imageModels";
 import { IMAGE_STYLES, findImageStyle, applyImageStyle } from "../config/imageStyles";
 import { recordImageUsage, mediaUsageGate } from "../lib/usage";
@@ -83,7 +84,8 @@ export function ImageMode({
         provider: imageModel.provider,
         model: imageModel.model,
       });
-      const dataUrl = await watermarkImage(rawUrl);
+      const wm = watermarkConfig();
+      const dataUrl = wm.enabled ? await watermarkImage(rawUrl, wm) : rawUrl;
       recordImageUsage(imageModel.provider);
       updateMessage(chat.id, assistantMsg.id, {
         streaming: false,
