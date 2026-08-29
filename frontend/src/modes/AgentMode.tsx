@@ -11,7 +11,7 @@ import { ArtifactWorkspace } from "../components/ArtifactWorkspace";
 import { ChatWorkspaceSplit } from "../components/ChatWorkspaceSplit";
 import { isCodingRequest } from "../lib/codeArtifact";
 import { useLiveArtifact, liveArtifactFor } from "../lib/useLiveArtifact";
-import { runAssistantStream } from "../lib/runStream";
+import { runAssistantStream, CONTINUE_NUDGE } from "../lib/runStream";
 import { useAutoScroll } from "../lib/useAutoScroll";
 import { uid } from "../lib/id";
 import type { Attachment, ChatMessage as ChatMessageType } from "../types";
@@ -122,11 +122,7 @@ export function AgentMode({
     const history: WireMessage[] = [
       ...buildHistory(assistantId),
       { role: "assistant", content: msg.content },
-      {
-        role: "user",
-        content:
-          "Your previous message was cut off because it reached the length limit. Continue it from exactly where it stopped — resume mid-line if needed, do not repeat any text you already sent, and do not add any preamble.",
-      },
+      { role: "user", content: CONTINUE_NUDGE },
     ];
     updateMessage(chat.id, assistantId, { streaming: true, truncated: false });
     runAssistantStream({

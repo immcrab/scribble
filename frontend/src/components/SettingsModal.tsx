@@ -561,6 +561,12 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
                     checked={settings.notificationSound}
                     onChange={(v) => updateSettings({ notificationSound: v })}
                   />
+                  <ToggleSwitch
+                    label="Auto-continue long replies"
+                    description="Resume a reply automatically when it's cut off at the model's length limit, up to a few times"
+                    checked={settings.autoContinueTruncated}
+                    onChange={(v) => updateSettings({ autoContinueTruncated: v })}
+                  />
                 </div>
               </div>
 

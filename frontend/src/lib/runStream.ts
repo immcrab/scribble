@@ -9,6 +9,17 @@ import { estimateTokenCount } from "./tokenCount";
 import { getClientContext } from "./clientContext";
 import { playNotificationSound } from "./notificationSound";
 
+/** Nudge sent as a fresh user turn to resume a reply cut off at the output-token limit.
+ * Shared by the manual "Continue" button (in the mode components) and the auto-continue
+ * loop below. */
+export const CONTINUE_NUDGE =
+  "Your previous message was cut off because it reached the length limit. Continue it from exactly where it stopped — resume mid-line if needed, do not repeat any text you already sent, and do not add any preamble.";
+
+/** Hard cap on how many times auto-continue will re-fire for one reply, so a model that
+ * keeps hitting the limit (or never stops) can't loop forever. The manual Continue button
+ * remains available once this is exhausted. */
+const MAX_AUTO_CONTINUE_ROUNDS = 5;
+
 /**
  * Drives a single assistant message's streaming lifecycle: fetches tokens
  * from the Worker and writes them into the chat store as they arrive. Shared
@@ -26,6 +37,8 @@ export async function runAssistantStream(params: {
   /** Resuming a truncated reply: keep the message's existing content/reasoning and
    * append incoming tokens to it, rather than treating the message as brand-new. */
   appendToExisting?: boolean;
+  /** Internal: how many times auto-continue has already re-fired for this reply. */
+  autoContinueRound?: number;
 }) {
   const { chatId, messageId, model, history, effort, webSearch, appendToExisting } = params;
   const store = useChatStore.getState();
@@ -114,6 +127,31 @@ export async function runAssistantStream(params: {
     const promptTokens = history.reduce((n, m) => n + estimateTokenCount(m.content ?? ""), 0);
     const replyTokens = estimateTokenCount(finalMsg?.content ?? "") + estimateTokenCount(finalMsg?.reasoning ?? "");
     recordCreditUsage(model, promptTokens + replyTokens);
+
+    // Auto-continue: reply hit the output-token limit — resume it in place, same shape as
+    // the manual Continue button, until the model stops or the round cap is reached.
+    const round = params.autoContinueRound ?? 0;
+    const canAutoContinue =
+      truncated &&
+      useChatStore.getState().settings.autoContinueTruncated &&
+      round < MAX_AUTO_CONTINUE_ROUNDS &&
+      !!finalMsg?.content;
+    if (canAutoContinue) {
+      const continuation = [
+        ...history,
+        { role: "assistant" as const, content: finalMsg!.content },
+        { role: "user" as const, content: CONTINUE_NUDGE },
+      ];
+      useChatStore.getState().updateMessage(chatId, messageId, { streaming: true, truncated: false });
+      await runAssistantStream({
+        ...params,
+        history: continuation,
+        appendToExisting: true,
+        autoContinueRound: round + 1,
+      });
+      return;
+    }
+
     if (store.settings.notificationSound) playNotificationSound();
   } catch (err) {
     if (controller.signal.aborted) {

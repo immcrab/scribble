@@ -73,6 +73,10 @@ export interface ScribbleSettings {
   customSystemPrompt: string;
   /** Play a short chime when an assistant reply finishes streaming — see lib/notificationSound.ts. */
   notificationSound: boolean;
+  /** When a reply is cut off at the model's output-token limit, automatically resume it in
+   * place (appending, same as the manual "Continue" button) until it finishes or a small
+   * round cap is hit. On by default. See lib/runStream.ts. */
+  autoContinueTruncated: boolean;
   /** Opt-in: lets the AI remember facts across chats (explicit "remember that..." asks, or
    * durable facts it decides on its own are worth keeping) and recall them in later chats.
    * Off by default — same opt-in spirit as locationConsent. See lib/cloudSync.ts's memoriesJson
@@ -101,6 +105,7 @@ const SETTINGS_DEFAULTS: Omit<ScribbleSettings, "workerUrl" | "password"> = {
   replyLanguage: "auto",
   customSystemPrompt: "",
   notificationSound: false,
+  autoContinueTruncated: true,
   memoryEnabled: false,
   updatedAt: 0,
 };
