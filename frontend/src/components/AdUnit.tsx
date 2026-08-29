@@ -6,7 +6,7 @@ declare global {
   }
 }
 
-const CLIENT_ID = "ca-pub-3625273606687332";
+const CLIENT_ID = "ca-pub-3679522337620689";
 
 /**
  * Fixed-size AdSense slot (no "auto"/full-width-responsive format) so the ad

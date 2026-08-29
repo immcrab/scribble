@@ -46,7 +46,7 @@ import type { ModelCapability, ModelDef, Provider } from "../types";
  */
 
 /**
- * Real AdSense ad-unit slot ids (client ca-pub-3625273606687332 — see AdUnit.tsx).
+ * Real AdSense ad-unit slot ids (client ca-pub-3679522337620689 — see AdUnit.tsx).
  * Each id below must come from an ad unit created in the AdSense dashboard
  * (Ads → By ad unit → Display ads); a slot id can't be invented, it has to be
  * copied from there. Swap every "REPLACE_ME_*" for a real slot id — until then
