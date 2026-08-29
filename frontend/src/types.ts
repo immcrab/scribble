@@ -191,6 +191,11 @@ export interface ChatMessage {
    * "length" / Gemini "MAX_TOKENS") rather than finishing — the content above is cut off
    * mid-stream. Drives the "response was truncated" notice in ChatMessage. */
   truncated?: boolean;
+  /** Transient status shown while a turn is held back — either the request-pacing countdown
+   * (settings.requestSpacingSec) or an auto-retry backoff after a rate-limit error
+   * (settings.autoRetryRateLimited). Cleared once tokens start arriving or the turn ends.
+   * See lib/runStream.ts. */
+  retryNotice?: string;
 }
 
 export type Mode = "battle" | "agent" | "side-by-side" | "direct" | "image" | "speech";

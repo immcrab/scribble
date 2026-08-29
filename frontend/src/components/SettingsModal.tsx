@@ -567,6 +567,35 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
                     checked={settings.autoContinueTruncated}
                     onChange={(v) => updateSettings({ autoContinueTruncated: v })}
                   />
+                  <ToggleSwitch
+                    label="Auto-retry on rate limits"
+                    description="When a request fails with a rate-limit or transient server error and no tokens have arrived yet, wait and retry automatically with backoff"
+                    checked={settings.autoRetryRateLimited}
+                    onChange={(v) => updateSettings({ autoRetryRateLimited: v })}
+                  />
+                  <div>
+                    <label className="mb-1.5 block text-sm font-medium text-slate-300">Request spacing</label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        min={0}
+                        max={60}
+                        step={1}
+                        value={settings.requestSpacingSec}
+                        onChange={(e) => {
+                          const n = Math.round(Number(e.target.value));
+                          updateSettings({ requestSpacingSec: Number.isFinite(n) ? Math.min(60, Math.max(0, n)) : 0 });
+                        }}
+                        className="w-20 rounded-lg border border-base-600/60 bg-base-900 px-3 py-2 text-sm text-white outline-none focus:border-accent-500"
+                      />
+                      <span className="text-sm text-slate-400">seconds between requests</span>
+                    </div>
+                    <p className="mt-1 text-xs text-slate-500">
+                      Minimum gap the app leaves between outgoing model requests, across every chat. Helps stay
+                      under a provider's per-minute limit when Battle, Side by Side, Agent Mode, project broadcasts,
+                      or auto-continue fire several in a row. 0 = off.
+                    </p>
+                  </div>
                 </div>
               </div>
 

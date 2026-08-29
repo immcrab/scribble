@@ -77,6 +77,18 @@ export interface ScribbleSettings {
    * place (appending, same as the manual "Continue" button) until it finishes or a small
    * round cap is hit. On by default. See lib/runStream.ts. */
   autoContinueTruncated: boolean;
+  /** Minimum seconds to leave between consecutive outgoing chat requests, enforced by a
+   * global client-side queue (lib/requestQueue.ts). 0 = no pacing. Keeps a burst of calls
+   * under an upstream provider's requests-per-minute cap — Battle / Side by Side fire two
+   * at once, Agent Mode loops tool calls, the project broadcast bar loops every chat, and
+   * auto-continue re-fires several times in a row. */
+  requestSpacingSec: number;
+  /** When an upstream request fails with a rate-limit-shaped error (HTTP 429, "rate limit",
+   * "quota", xKiro's transient "server error occurred", "overloaded"), wait and retry
+   * automatically with exponential backoff instead of surfacing the error — but only while
+   * no tokens have arrived yet, so a mid-stream failure never double-writes. On by default.
+   * See lib/runStream.ts. */
+  autoRetryRateLimited: boolean;
   /** Opt-in: lets the AI remember facts across chats (explicit "remember that..." asks, or
    * durable facts it decides on its own are worth keeping) and recall them in later chats.
    * Off by default — same opt-in spirit as locationConsent. See lib/cloudSync.ts's memoriesJson
@@ -106,6 +118,8 @@ const SETTINGS_DEFAULTS: Omit<ScribbleSettings, "workerUrl" | "password"> = {
   customSystemPrompt: "",
   notificationSound: false,
   autoContinueTruncated: true,
+  requestSpacingSec: 0,
+  autoRetryRateLimited: true,
   memoryEnabled: false,
   updatedAt: 0,
 };

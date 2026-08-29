@@ -460,6 +460,12 @@ export function ChatMessage({
               suppressPrelude={message.toolCalls?.some((t) => t.name === "Web search" && t.status === "running")}
             />
           )}
+          {!isUser && message.streaming && message.retryNotice && !message.content && (
+            <div className="flex items-center gap-2 text-sm text-amber-500/90">
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-amber-500" />
+              <span>{message.retryNotice}</span>
+            </div>
+          )}
           {message.error ? (
             <div className="flex items-start gap-2 text-sm text-red-400">
               <AlertTriangle size={15} className="mt-0.5 shrink-0" />
