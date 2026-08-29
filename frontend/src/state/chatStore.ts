@@ -33,6 +33,19 @@ const MAX_MEMORIES = 200;
 
 let persistTimer: ReturnType<typeof setTimeout> | null = null;
 let lastLocalSave = 0;
+
+/**
+ * The model the user last picked in a chat this session. Seeds the model of the
+ * *next* new chat so a deliberate switch carries forward while you keep working.
+ * Deliberately module-level and never persisted: a page reload (or fresh visit)
+ * drops it, so new chats fall back to settings.defaultModelId — the real default.
+ */
+let sessionModelId: string | undefined;
+
+/** Model id to seed a new chat with: the session's last pick, else the given fallback. */
+function seedModelId(fallbackId?: string): string | undefined {
+  return sessionModelId ?? fallbackId;
+}
 /** Longest a streaming reply may go unwritten to localStorage. A refresh mid-stream
  * loses at most this much of the in-flight tokens — the user's turn and everything
  * before it is always already on disk (see persistChats). */
@@ -92,7 +105,7 @@ function createInitialChat(mode: Mode = "direct"): Chat {
     createdAt: Date.now(),
     updatedAt: Date.now(),
     messages: [],
-    ...getDefaultModelPatch(mode, loadSettings().defaultModelId),
+    ...getDefaultModelPatch(mode, seedModelId(loadSettings().defaultModelId)),
   };
 }
 
@@ -173,7 +186,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   activeProject: () => get().projects.find((p) => p.id === get().activeProjectId),
 
   createChat: (mode, customModelId, projectId) => {
-    const defaults = getDefaultModelPatch(mode, get().settings.defaultModelId);
+    const defaults = getDefaultModelPatch(mode, seedModelId(get().settings.defaultModelId));
     if (customModelId) defaults.modelId = customModelId;
 
     // Reuse an already-empty chat if one exists, rather than piling up empty
@@ -215,7 +228,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 
   setChatMode: (id, mode) => {
     set((s) => {
-      const defaults = getDefaultModelPatch(mode, s.settings.defaultModelId);
+      const defaults = getDefaultModelPatch(mode, seedModelId(s.settings.defaultModelId));
       const chats = s.chats.map((c) => {
         if (c.id !== id) return c;
         return {
@@ -364,6 +377,8 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   },
 
   setChatModels: (id, patch) => {
+    // Remember a single-model pick so the next new chat opens on it (session only).
+    if (patch.modelId) sessionModelId = patch.modelId;
     set((s) => {
       const chats = s.chats.map((c) => (c.id === id ? { ...c, ...patch } : c));
       persistChats(chats);
