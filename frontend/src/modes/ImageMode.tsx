@@ -6,6 +6,7 @@ import { Dropdown } from "../components/Dropdown";
 import { ImageGeneratingLoader } from "../components/ImageGeneratingLoader";
 import { generateImage } from "../lib/imageClient";
 import { IMAGE_MODELS, findImageModel } from "../config/imageModels";
+import { IMAGE_STYLES, findImageStyle, applyImageStyle } from "../config/imageStyles";
 import { recordImageUsage, mediaUsageGate } from "../lib/usage";
 import { auth } from "../lib/firebase";
 import { useAutoScroll } from "../lib/useAutoScroll";
@@ -33,6 +34,7 @@ export function ImageMode({
   const { addMessage, updateMessage, maybeAutoTitle, updateSettings } = useChatStore();
   const [prompt, setPrompt] = useState("");
   const imageModel = findImageModel(settings.imageModelId);
+  const imageStyle = findImageStyle(settings.imageStyleId);
   const chatEndRef = useAutoScroll<HTMLDivElement>(chat?.messages ?? []);
 
   if (!chat) return null;
@@ -76,7 +78,7 @@ export function ImageMode({
       const dataUrl = await generateImage({
         workerUrl: settings.workerUrl,
         password: settings.password,
-        prompt: trimmed,
+        prompt: applyImageStyle(trimmed, settings.imageStyleId),
         provider: imageModel.provider,
         model: imageModel.model,
       });
@@ -106,6 +108,40 @@ export function ImageMode({
           <ImageIcon size={15} className="text-accent-400" />
           <span className="text-sm font-medium text-slate-200">Image generation</span>
         </div>
+        <div className="flex items-center gap-1">
+        <Dropdown
+          align="right"
+          menuClassName="w-52 max-w-[calc(100vw-2rem)] overflow-y-auto max-h-[60vh]"
+          trigger={({ open, toggle }) => (
+            <button
+              onClick={toggle}
+              className="flex items-center gap-1.5 rounded-lg border border-transparent px-2.5 py-1.5 text-sm font-medium text-slate-400 transition-colors hover:border-base-600 hover:bg-base-800/70"
+              title="Style preset"
+            >
+              {imageStyle.label}
+              <ChevronDown size={14} className={`text-slate-500 transition-transform ${open ? "rotate-180" : ""}`} />
+            </button>
+          )}
+        >
+          {({ close }) => (
+            <>
+              {IMAGE_STYLES.map((s) => (
+                <button
+                  key={s.id}
+                  onClick={() => {
+                    updateSettings({ imageStyleId: s.id });
+                    close();
+                  }}
+                  className={`flex w-full items-center px-3.5 py-2.5 text-left text-sm transition-colors ${
+                    s.id === imageStyle.id ? "bg-accent-500/10 text-white" : "text-slate-200 hover:bg-base-700/50"
+                  }`}
+                >
+                  {s.label}
+                </button>
+              ))}
+            </>
+          )}
+        </Dropdown>
         <Dropdown
           align="right"
           menuClassName="w-64 max-w-[calc(100vw-2rem)] overflow-hidden"
@@ -141,6 +177,7 @@ export function ImageMode({
             </>
           )}
         </Dropdown>
+        </div>
       </div>
 
       {chat.messages.length === 0 ? (

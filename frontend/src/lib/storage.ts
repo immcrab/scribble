@@ -14,6 +14,8 @@ export interface ScribbleSettings {
   defaultModelId?: string;
   /** Image-mode backend — id from config/imageModels.ts. Defaults to DEFAULT_IMAGE_MODEL_ID when unset. */
   imageModelId?: string;
+  /** Image-mode style preset — id from config/imageStyles.ts. "none"/unset sends the prompt untouched. */
+  imageStyleId?: string;
   /** Text-to-speech voice id (xKiro), persisted across Speech-mode sessions. Falls back to the
    * first voice the /api/speech/voices list returns when unset. */
   speechVoiceId?: string;
