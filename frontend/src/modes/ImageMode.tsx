@@ -5,6 +5,7 @@ import { ChatMessage } from "../components/ChatMessage";
 import { Dropdown } from "../components/Dropdown";
 import { ImageGeneratingLoader } from "../components/ImageGeneratingLoader";
 import { generateImage } from "../lib/imageClient";
+import { watermarkImage } from "../lib/watermark";
 import { IMAGE_MODELS, findImageModel } from "../config/imageModels";
 import { IMAGE_STYLES, findImageStyle, applyImageStyle } from "../config/imageStyles";
 import { recordImageUsage, mediaUsageGate } from "../lib/usage";
@@ -75,13 +76,14 @@ export function ImageMode({
     }
 
     try {
-      const dataUrl = await generateImage({
+      const rawUrl = await generateImage({
         workerUrl: settings.workerUrl,
         password: settings.password,
         prompt: applyImageStyle(trimmed, settings.imageStyleId),
         provider: imageModel.provider,
         model: imageModel.model,
       });
+      const dataUrl = await watermarkImage(rawUrl);
       recordImageUsage(imageModel.provider);
       updateMessage(chat.id, assistantMsg.id, {
         streaming: false,
