@@ -11,7 +11,13 @@ import { generateImage } from "./adapters/image";
 import { generateXkiroImage } from "./adapters/xkiroImage";
 import { generateXkiroSpeech, listXkiroVoices } from "./adapters/xkiroSpeech";
 import { generateTitle } from "./adapters/title";
-import { searchWeb, shouldSearchWeb, looksLikeArithmetic, isOwnLocationAlreadyKnown } from "./adapters/search";
+import {
+  searchWeb,
+  shouldSearchWeb,
+  buildSearchQuery,
+  looksLikeArithmetic,
+  isOwnLocationAlreadyKnown,
+} from "./adapters/search";
 import { extractMemory, shouldRecallMemory } from "./adapters/memory";
 import { ndjsonLine } from "./adapters/base";
 
@@ -156,11 +162,29 @@ export default {
             }
             if (query && worthSearching) {
               const toolId = crypto.randomUUID();
+              // Reformulate the raw message into a focused query before searching.
+              // The message as typed is often a weak query (filler, first-person
+              // framing, unresolved pronouns from earlier turns). Fails open to the
+              // raw message if the rewrite call errors or no Groq key is set.
+              let searchQuery = query;
+              if (env.GROQ_API_KEY) {
+                try {
+                  searchQuery = await buildSearchQuery(
+                    env.GROQ_API_KEY,
+                    query,
+                    messages.slice(0, lastUserIdx).map((m) => ({ role: m.role, content: m.content }))
+                  );
+                } catch {
+                  searchQuery = query;
+                }
+              }
               controller.enqueue(
-                ndjsonLine({ toolCall: { id: toolId, name: "Web search", status: "running", input: { query } } })
+                ndjsonLine({
+                  toolCall: { id: toolId, name: "Web search", status: "running", input: { query: searchQuery } },
+                })
               );
               try {
-                const results = await searchWeb(env.SERP_API_KEY, query);
+                const results = await searchWeb(env.SERP_API_KEY, searchQuery);
                 const resultsText = results.length
                   ? results.map((r, i) => `${i + 1}. ${r.title} — ${r.link}\n${r.snippet}`).join("\n\n")
                   : "No results found.";
@@ -168,7 +192,7 @@ export default {
                   i === lastUserIdx
                     ? {
                         ...m,
-                        content: `${m.content}\n\n[Live web search results for "${query}" — use these to answer accurately:\n${resultsText}]`,
+                        content: `${m.content}\n\n[Live web search results for "${searchQuery}" — use these to answer accurately:\n${resultsText}]`,
                       }
                     : m
                 );
@@ -178,7 +202,7 @@ export default {
                       id: toolId,
                       name: "Web search",
                       status: "done",
-                      input: { query },
+                      input: { query: searchQuery },
                       output: `${results.length} result${results.length === 1 ? "" : "s"}`,
                     },
                   })
@@ -190,7 +214,7 @@ export default {
                       id: toolId,
                       name: "Web search",
                       status: "error",
-                      input: { query },
+                      input: { query: searchQuery },
                       output: err instanceof Error ? err.message : "Search failed.",
                     },
                   })

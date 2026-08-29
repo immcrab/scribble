@@ -74,6 +74,63 @@ export async function shouldSearchWeb(apiKey: string, query: string): Promise<bo
   return raw.startsWith("y");
 }
 
+/**
+ * Rewrite the user's raw message into a focused web-search query before it hits
+ * SerpApi. The message as typed is often a poor query — it carries conversational
+ * filler ("hey can you tell me..."), first-person framing, or pronouns that only
+ * resolve against earlier turns ("how tall is he?"). This asks the same cheap Groq
+ * model to think about what the user actually wants to know and emit the keywords
+ * a person would type into Google. `history` is the recent turns (oldest→newest,
+ * excluding the current message) so references like "its sequel" / "that company"
+ * get resolved. Returns a trimmed query string; callers fall back to the raw
+ * message on any failure or empty result.
+ */
+export async function buildSearchQuery(
+  apiKey: string,
+  query: string,
+  history: { role: string; content: string }[] = []
+): Promise<string> {
+  const context = history
+    .slice(-6)
+    .map((m) => `${m.role}: ${m.content.slice(0, 500)}`)
+    .join("\n");
+
+  const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: SEARCH_DECISION_MODEL,
+      stream: false,
+      max_tokens: 60,
+      temperature: 0,
+      reasoning_effort: "low",
+      messages: [
+        {
+          role: "system",
+          content:
+            "You write web-search queries. Given the conversation and the user's latest message, work out what fact they actually need, then output the search query a skilled researcher would type into Google to find it. Resolve pronouns and references using the conversation. Strip conversational filler, first-person framing, and politeness. Prefer specific keywords, names, and dates over full sentences. Add a year or 'latest' when recency matters. Output only the query text — no quotes, no explanation.",
+        },
+        {
+          role: "user",
+          content: `${context ? `Conversation so far:\n${context}\n\n` : ""}Latest message:\n${query.slice(0, 2000)}`,
+        },
+      ],
+    }),
+  });
+
+  if (!res.ok) {
+    throw new Error(`Groq error ${res.status}: ${await res.text()}`);
+  }
+
+  const json = (await res.json()) as { choices?: { message?: { content?: string } }[] };
+  const raw = json.choices?.[0]?.message?.content?.trim().replace(/^["'`]+|["'`]+$/g, "") ?? "";
+  if (!raw) throw new Error("Groq returned no query.");
+  return raw.slice(0, 300);
+}
+
 /** SerpApi (Google engine) — https://serpapi.com/search-api */
 export async function searchWeb(apiKey: string, query: string): Promise<SearchResult[]> {
   const url = `https://serpapi.com/search.json?engine=google&num=5&q=${encodeURIComponent(query)}&api_key=${encodeURIComponent(apiKey)}`;
