@@ -110,12 +110,16 @@ export function ModelSelector({
   onChange: (m: ModelDef) => void;
   align?: "left" | "right";
 }) {
-  // Re-derive when the admin publishes catalog changes (see lib/catalogSync.ts).
+  // Re-derive when the admin publishes catalog changes (see lib/catalogSync.ts),
+  // or when the user adds/removes a custom model or Puter favorite — modelsByProvider()
+  // reads the module-level caches that chatStore.updateSettings keeps in sync, so the
+  // memo must depend on the same store slices to pick those edits up without a reload.
   const adminCatalog = useCatalogStore((s) => s.catalog);
-  const grouped = useMemo(() => modelsByProvider(), [adminCatalog]);
+  const customModels = useChatStore((s) => s.settings.customModels);
   const user = useAuthStore((s) => s.user);
   const signInWithGoogle = useAuthStore((s) => s.signInWithGoogle);
   const puterFavorites = useChatStore((s) => s.settings.puterFavoriteModels);
+  const grouped = useMemo(() => modelsByProvider(), [adminCatalog, customModels, puterFavorites]);
   const updateSettings = useChatStore((s) => s.updateSettings);
   const [pendingPuterModel, setPendingPuterModel] = useState<ModelDef | null>(null);
   const [puterBrowseOpen, setPuterBrowseOpen] = useState(false);
