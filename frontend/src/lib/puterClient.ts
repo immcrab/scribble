@@ -25,7 +25,14 @@ const EFFORT_NUDGE: Record<Effort, string> = {
 interface PuterChatChunk {
   type?: string;
   text?: string;
+  /** Present on the final streamed chunk once Puter forwards the vendor's stop reason.
+   * `"length"`/`"max_tokens"`/`"model_length"` mean the reply was cut off at the output cap. */
+  finish_reason?: string | null;
 }
+
+/** Output-token ceiling requested from Puter models — mirrors the Worker's MAX_OUTPUT_TOKENS
+ * (worker/src/adapters/base.ts) so long replies aren't silently clipped at a vendor default (~4k). */
+const PUTER_MAX_OUTPUT_TOKENS = 32768;
 
 /** One entry from Puter's live model catalog (`puter.ai.listModels()`) — see
  * https://docs.puter.com/AI/listModels/. `name`/`context` are missing for some models. */
@@ -42,7 +49,7 @@ interface PuterSDK {
   ai: {
     chat(
       messages: { role: string; content: string }[],
-      options: { model: string; stream: true }
+      options: { model: string; stream: true; max_tokens?: number }
     ): Promise<AsyncIterable<PuterChatChunk>>;
     listModels(provider?: string | null): Promise<PuterModelInfo[]>;
   };
@@ -202,16 +209,24 @@ export async function* puterStreamChat(params: {
 
   let stream: AsyncIterable<PuterChatChunk>;
   try {
-    stream = await puter.ai.chat(chatMessages, { model: model.modelId, stream: true });
+    stream = await puter.ai.chat(chatMessages, {
+      model: model.modelId,
+      stream: true,
+      max_tokens: PUTER_MAX_OUTPUT_TOKENS,
+    });
   } catch (err) {
     throw new WorkerClientError(err instanceof Error ? err.message : "Puter request failed.");
   }
 
   let emittedAny = false;
+  let finishReason: string | null = null;
   for await (const chunk of stream) {
     if (signal.aborted) return;
     if (chunk?.type === "error") {
       throw new WorkerClientError(chunk.text || "Puter returned an error.");
+    }
+    if (typeof chunk?.finish_reason === "string" && chunk.finish_reason) {
+      finishReason = chunk.finish_reason;
     }
     if (typeof chunk?.text === "string" && chunk.text) {
       emittedAny = true;
@@ -220,5 +235,10 @@ export async function* puterStreamChat(params: {
   }
   if (!emittedAny) {
     throw new WorkerClientError("Model returned an empty response. Try again or pick a different model.");
+  }
+  // Vendor hit its output-token ceiling mid-reply — mirror the Worker adapters and flag it so
+  // the UI shows the "cut off" notice + Continue button instead of a silent, incomplete answer.
+  if (finishReason === "length" || finishReason === "max_tokens" || finishReason === "model_length") {
+    yield { type: "truncated" };
   }
 }

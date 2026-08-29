@@ -400,9 +400,11 @@ export function openAICompatibleStream(upstream: Response): ReadableStream<Uint8
           sentError = true;
           controller.enqueue(ndjsonLine({ error: "Model returned an empty response. Try again or pick a different model." }));
         }
-        // `length`/`max_tokens` means the model ran out of output budget mid-reply — flag it so
-        // the client can show a "cut off" notice instead of rendering a silent, incomplete answer.
-        const truncated = finishReason === "length" || finishReason === "max_tokens";
+        // `length`/`max_tokens`/`model_length` all mean the model ran out of output budget mid-reply
+        // (Mistral reports it as `model_length`) — flag it so the client can show a "cut off" notice
+        // instead of rendering a silent, incomplete answer.
+        const truncated =
+          finishReason === "length" || finishReason === "max_tokens" || finishReason === "model_length";
         controller.enqueue(ndjsonLine(truncated && !sentError ? { done: true, truncated: true } : { done: true }));
       } catch (err) {
         controller.enqueue(ndjsonLine({ error: err instanceof Error ? err.message : "Upstream stream error" }));
