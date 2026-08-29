@@ -209,6 +209,11 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   },
 
   deleteChat: (id) => {
+    // Keep the state update cheap so the sidebar drops the row on the same
+    // frame as the click. The actual persistence (JSON.stringify of the whole
+    // history + a synchronous localStorage write + the RTDB tombstone write)
+    // is deferred to a macrotask so it can't block the repaint.
+    let persist: (() => void) | null = null;
     set((s) => {
       const gone = s.chats.find((c) => c.id === id);
       const remaining = s.chats.filter((c) => c.id !== id);
@@ -217,16 +222,20 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       // "add a chat" affordance.
       if (remaining.length === 0 && !gone?.projectId) {
         const fresh = createInitialChat("direct");
-        saveChats([fresh]);
-        deleteChatFromCloud(id, [fresh]);
+        persist = () => {
+          saveChats([fresh]);
+          deleteChatFromCloud(id, [fresh]);
+        };
         return {
           chats: [fresh],
           activeChatId: fresh.id,
           activeProjectId: null,
         };
       }
-      saveChats(remaining);
-      deleteChatFromCloud(id, remaining);
+      persist = () => {
+        saveChats(remaining);
+        deleteChatFromCloud(id, remaining);
+      };
       if (s.activeChatId !== id) return { chats: remaining };
       // Deleting the active chat: prefer another chat in the same project (stay in
       // its view, even if that leaves zero chats — the view handles empty), else
@@ -246,6 +255,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
         activeProjectId: next?.projectId ?? null,
       };
     });
+    setTimeout(() => persist?.(), 0);
   },
 
   renameChat: (id, title) => {
