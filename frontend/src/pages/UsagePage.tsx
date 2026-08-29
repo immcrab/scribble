@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Gauge, LogIn, TriangleAlert, Ban } from "lucide-react";
+import { ArrowLeft, Gauge, LogIn, TriangleAlert, Ban, Image as ImageIcon, AudioLines } from "lucide-react";
 import { useAuthStore } from "../state/authStore";
-import { useUsageStore, creditStatus, creditMultiplier } from "../lib/usage";
+import { useUsageStore, creditStatus, creditMultiplier, MEDIA_LABELS } from "../lib/usage";
 import { useCatalogStore } from "../lib/catalogSync";
 import { getAllModels, modelKey } from "../config/models";
 import { modelSlug } from "../lib/modelSlug";
@@ -175,7 +175,9 @@ export function UsagePage({ onExit }: { onExit: () => void }) {
 
         <p className="mt-3 text-xs text-slate-500">
           1 credit ≈ 1 token (your prompt + the model's reply, estimated). Some models cost more or less per token — set by
-          the admin. The free default model never counts against your limit.
+          the admin. The free default model never counts against your limit. Image generation and text to speech draw from
+          the same pool — a flat cost per image (Cloudflare Flux is cheapest, GPT Image the priciest) and, for speech, a
+          cost per word plus per second of audio.
         </p>
 
         {/* Most used */}
@@ -208,6 +210,8 @@ export function UsagePage({ onExit }: { onExit: () => void }) {
             <div className="space-y-1.5">
               {breakdown.map((row) => {
                 const mult = row.model ? creditMultiplier(row.model) : 1;
+                const mediaLabel = MEDIA_LABELS[row.slug];
+                const MediaIcon = row.slug.startsWith("speech") ? AudioLines : ImageIcon;
                 return (
                   <div
                     key={row.slug}
@@ -215,12 +219,16 @@ export function UsagePage({ onExit }: { onExit: () => void }) {
                   >
                     {row.model ? (
                       <ModelFavicon model={row.model} size={16} />
+                    ) : mediaLabel ? (
+                      <MediaIcon size={16} className="text-accent-400" />
                     ) : (
                       <Gauge size={16} className="text-slate-600" />
                     )}
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between gap-2">
-                        <span className="truncate text-sm text-slate-200">{row.model?.displayName ?? row.slug}</span>
+                        <span className="truncate text-sm text-slate-200">
+                          {row.model?.displayName ?? mediaLabel ?? row.slug}
+                        </span>
                         <span className="shrink-0 text-xs text-slate-500">
                           {formatCredits(row.credits)}
                           {mult !== 1 && <span className="ml-1 text-slate-600">({mult}×)</span>}

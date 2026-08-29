@@ -22,7 +22,15 @@ import {
   DEFAULT_MODEL_ID,
 } from "../config/models";
 import { ADMIN_EMAIL, isAdmin } from "../lib/admin";
-import { fetchAllUsage, resetUserUsage, todayUTC } from "../lib/usage";
+import {
+  fetchAllUsage,
+  resetUserUsage,
+  todayUTC,
+  MEDIA_KEYS,
+  IMAGE_BASE_CREDITS,
+  SPEECH_CREDITS_PER_WORD,
+  SPEECH_CREDITS_PER_SECOND,
+} from "../lib/usage";
 import { modelSlug } from "../lib/modelSlug";
 import { ModelFavicon, ProviderFavicon } from "../components/ProviderIcon";
 import { ToggleSwitch } from "../components/ToggleSwitch";
@@ -426,6 +434,36 @@ function LimitsTab({
                   );
                 })}
               </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="mt-6">
+        <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Image &amp; speech cost</h2>
+        <p className="mb-2 text-xs text-slate-600">
+          Base cost per generation, scaled by the multiplier (blank = 1×, 0 = free). Speech also bills{" "}
+          {SPEECH_CREDITS_PER_SECOND} per second of audio produced.
+        </p>
+        <div className="space-y-1.5">
+          {[
+            { key: MEDIA_KEYS.imageCloudflare, label: "Cloudflare Flux (image)", base: `${IMAGE_BASE_CREDITS.cloudflare.toLocaleString()} / image` },
+            { key: MEDIA_KEYS.imageXkiro, label: "GPT Image", base: `${IMAGE_BASE_CREDITS.xkiro.toLocaleString()} / image` },
+            { key: MEDIA_KEYS.speech, label: "Text to speech", base: `${SPEECH_CREDITS_PER_WORD} / word` },
+          ].map(({ key, label, base }) => (
+            <div
+              key={key}
+              className="flex items-center gap-4 rounded-lg border border-base-600/60 bg-base-900/60 px-3 py-2 text-sm"
+            >
+              <span className="min-w-0 flex-1 truncate text-slate-200">{label}</span>
+              <span className="shrink-0 text-[10px] text-slate-600">{base}</span>
+              <input
+                value={draft.modelCredits[key] ?? ""}
+                onChange={(e) => setMultiplier(key, e.target.value)}
+                placeholder="1"
+                inputMode="decimal"
+                className="w-16 rounded border border-base-600/60 bg-base-900 px-2 py-1 text-center text-xs text-white outline-none focus:border-accent-500"
+              />
             </div>
           ))}
         </div>

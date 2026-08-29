@@ -74,6 +74,23 @@ export async function listVoices({
   return Array.isArray(json.voices) ? json.voices : [];
 }
 
+/** Best-effort playback length (seconds) of a generated audio data URL — used for usage
+ * billing. Resolves 0 if the browser can't read the metadata. */
+export function audioDurationSeconds(dataUrl: string): Promise<number> {
+  return new Promise((resolve) => {
+    try {
+      const a = new Audio();
+      a.preload = "metadata";
+      const done = (v: number) => resolve(Number.isFinite(v) && v > 0 ? v : 0);
+      a.onloadedmetadata = () => done(a.duration);
+      a.onerror = () => done(0);
+      a.src = dataUrl;
+    } catch {
+      resolve(0);
+    }
+  });
+}
+
 /** POST a text block to the Worker's xKiro TTS proxy; returns a data: URL for the audio. */
 export async function generateSpeech({
   workerUrl,

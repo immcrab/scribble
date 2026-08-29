@@ -9,9 +9,11 @@ import {
   listVoices,
   speechFileName,
   speechMimeType,
+  audioDurationSeconds,
   SPEECH_FORMATS,
   type Voice,
 } from "../lib/speechClient";
+import { recordSpeechUsage, mediaUsageGate } from "../lib/usage";
 import { auth } from "../lib/firebase";
 import { useAutoScroll } from "../lib/useAutoScroll";
 import { uid } from "../lib/id";
@@ -204,6 +206,12 @@ export function SpeechMode({
       return;
     }
 
+    const gate = mediaUsageGate("speech");
+    if (!gate.ok) {
+      updateMessage(chat.id, assistantMsg.id, { streaming: false, error: gate.reason });
+      return;
+    }
+
     try {
       const dataUrl = await generateSpeech({
         workerUrl: settings.workerUrl,
@@ -213,6 +221,8 @@ export function SpeechMode({
         format,
         speed,
       });
+      const words = trimmed.split(/\s+/).filter(Boolean).length;
+      recordSpeechUsage(words, await audioDurationSeconds(dataUrl));
       updateMessage(chat.id, assistantMsg.id, {
         streaming: false,
         attachments: [

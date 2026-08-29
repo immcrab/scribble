@@ -38,6 +38,55 @@ export function creditMultiplier(m: Pick<ModelDef, "provider" | "modelId">): num
   return typeof v === "number" && v >= 0 ? v : 1;
 }
 
+/* ── Non-chat generators: image & text-to-speech ──────────────────────────────
+ * Image and speech runs burn from the same daily credit pool as chat. Each has a
+ * flat-ish base cost below; like chat models, the admin can scale each one with a
+ * multiplier stored in usageConfig().modelCredits under the synthetic keys in
+ * MEDIA_KEYS (edited on Admin → Limits).
+ */
+
+export type ImageProvider = "cloudflare" | "xkiro";
+
+/** Credits for one generated image, before the admin multiplier. Flux on Cloudflare
+ * Workers AI is cheap; GPT Image (xKiro) costs far more upstream. */
+export const IMAGE_BASE_CREDITS: Record<ImageProvider, number> = {
+  cloudflare: 1_500,
+  xkiro: 25_000,
+};
+
+/** Speech cost = words × PER_WORD + seconds × PER_SECOND, before the multiplier.
+ * Every voice bills the same — only length matters. */
+export const SPEECH_CREDITS_PER_WORD = 40;
+export const SPEECH_CREDITS_PER_SECOND = 120;
+
+/** usageConfig().modelCredits keys for the media generators (not real "{provider}:{modelId}"
+ * pairs, just stable strings the admin multiplier map is filed under). */
+export const MEDIA_KEYS = {
+  imageCloudflare: "image:cloudflare",
+  imageXkiro: "image:xkiro",
+  speech: "speech:xkiro",
+} as const;
+
+/** MEDIA_KEYS value → the slug its spend is filed under in UsageRecord.models. */
+export const MEDIA_SLUGS: Record<string, string> = {
+  [MEDIA_KEYS.imageCloudflare]: "image-cloudflare",
+  [MEDIA_KEYS.imageXkiro]: "image-xkiro",
+  [MEDIA_KEYS.speech]: "speech-xkiro",
+};
+
+/** Slug (as stored in UsageRecord.models) → friendly label for the Usage page. */
+export const MEDIA_LABELS: Record<string, string> = {
+  "image-cloudflare": "Cloudflare Flux · image",
+  "image-xkiro": "GPT Image",
+  "speech-xkiro": "Text to speech",
+};
+
+/** Admin multiplier (default 1) for one of the MEDIA_KEYS. */
+export function mediaMultiplier(key: string): number {
+  const v = usageConfig().modelCredits[key];
+  return typeof v === "number" && v >= 0 ? v : 1;
+}
+
 interface UsageStore {
   /** null until the first RTDB read resolves (or when signed out). */
   record: UsageRecord | null;
@@ -127,14 +176,35 @@ export function usageGate(model: Pick<ModelDef, "provider" | "modelId" | "displa
 export function recordCreditUsage(model: Pick<ModelDef, "provider" | "modelId">, tokens: number): void {
   const uid = auth.currentUser?.uid;
   if (!uid || tokens <= 0) return;
-  const mult = creditMultiplier(model);
-  const cost = Math.round(tokens * mult);
-  if (cost <= 0) return;
+  const cost = Math.round(tokens * creditMultiplier(model));
+  bumpUsage(uid, modelSlug(model.modelId), cost);
+}
 
+/** Charge one completed image generation to today's tally. No-op for anonymous users. */
+export function recordImageUsage(provider: ImageProvider): void {
+  const uid = auth.currentUser?.uid;
+  if (!uid) return;
+  const key = provider === "xkiro" ? MEDIA_KEYS.imageXkiro : MEDIA_KEYS.imageCloudflare;
+  const cost = Math.round(IMAGE_BASE_CREDITS[provider] * mediaMultiplier(key));
+  bumpUsage(uid, MEDIA_SLUGS[key], cost);
+}
+
+/** Charge one completed text-to-speech run — `words` of input, `seconds` of audio produced. */
+export function recordSpeechUsage(words: number, seconds: number): void {
+  const uid = auth.currentUser?.uid;
+  if (!uid) return;
+  const raw = Math.max(0, words) * SPEECH_CREDITS_PER_WORD + Math.max(0, seconds) * SPEECH_CREDITS_PER_SECOND;
+  const cost = Math.round(raw * mediaMultiplier(MEDIA_KEYS.speech));
+  bumpUsage(uid, MEDIA_SLUGS[MEDIA_KEYS.speech], cost);
+}
+
+/** Shared write path for every credit sink: add `cost` to today's total and to `slug`'s row.
+ * Best-effort — no-op when RTDB is unreachable, never throws. */
+function bumpUsage(uid: string, slug: string, cost: number): void {
+  if (cost <= 0) return;
   const db = getRtdb();
   if (!db) return;
   const day = todayUTC();
-  const slug = modelSlug(model.modelId);
   const email = auth.currentUser?.email ?? null;
 
   runTransaction(ref(db, `usage/${uid}`), (cur: UsageRecord | null) => {
@@ -149,6 +219,28 @@ export function recordCreditUsage(model: Pick<ModelDef, "provider" | "modelId">,
     base.updatedAt = Date.now();
     return base;
   }).catch(() => {});
+}
+
+/** Whether the signed-in user may start an image / speech generation right now. Anonymous
+ * users pass here — the modes gate them with their own sign-in check. Mirrors `usageGate`. */
+export function mediaUsageGate(kind: "image" | "speech"): { ok: true } | { ok: false; reason: string } {
+  const uid = auth.currentUser?.uid;
+  if (!uid) return { ok: true };
+
+  const cfg = usageConfig();
+  if (cfg.blockedUids.includes(uid)) {
+    return { ok: false, reason: `This account is limited to the free default chat model. Contact the admin to lift it.` };
+  }
+
+  const st = creditStatus();
+  if (!st.overLimit) return { ok: true };
+
+  const resets = new Date(st.resetsAt).toLocaleString(undefined, { hour: "numeric", minute: "2-digit", month: "short", day: "numeric" });
+  const label = kind === "image" ? "Image generation" : "Text to speech";
+  return {
+    ok: false,
+    reason: `Daily credit limit reached (${st.limit.toLocaleString()}). ${label} unlocks again at ${resets} — see the Usage page.`,
+  };
 }
 
 let stopSub: (() => void) | null = null;

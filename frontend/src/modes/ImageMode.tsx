@@ -6,6 +6,7 @@ import { Dropdown } from "../components/Dropdown";
 import { ImageGeneratingLoader } from "../components/ImageGeneratingLoader";
 import { generateImage } from "../lib/imageClient";
 import { IMAGE_MODELS, findImageModel } from "../config/imageModels";
+import { recordImageUsage, mediaUsageGate } from "../lib/usage";
 import { auth } from "../lib/firebase";
 import { useAutoScroll } from "../lib/useAutoScroll";
 import { uid } from "../lib/id";
@@ -65,6 +66,12 @@ export function ImageMode({
       return;
     }
 
+    const gate = mediaUsageGate("image");
+    if (!gate.ok) {
+      updateMessage(chat.id, assistantMsg.id, { streaming: false, error: gate.reason });
+      return;
+    }
+
     try {
       const dataUrl = await generateImage({
         workerUrl: settings.workerUrl,
@@ -73,6 +80,7 @@ export function ImageMode({
         provider: imageModel.provider,
         model: imageModel.model,
       });
+      recordImageUsage(imageModel.provider);
       updateMessage(chat.id, assistantMsg.id, {
         streaming: false,
         attachments: [{ id: uid(), name: "generated.png", type: "image/png", dataUrl, size: dataUrl.length }],
