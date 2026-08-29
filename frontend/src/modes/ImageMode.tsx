@@ -1,19 +1,20 @@
-import { useEffect, useState } from "react";
-import { Image as ImageIcon, Send, Loader2, ChevronDown } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Image as ImageIcon, Send, Loader2, ChevronDown, Paperclip, X, Wand2 } from "lucide-react";
 import { useChatStore } from "../state/chatStore";
 import { ChatMessage } from "../components/ChatMessage";
 import { Dropdown } from "../components/Dropdown";
 import { ImageGeneratingLoader } from "../components/ImageGeneratingLoader";
-import { generateImage } from "../lib/imageClient";
+import { generateImage, editImage } from "../lib/imageClient";
+import { fileToPreparedDataUrl } from "../lib/imagePrep";
 import { watermarkImage } from "../lib/watermark";
 import { watermarkConfig } from "../lib/catalogSync";
-import { IMAGE_MODELS, findImageModel } from "../config/imageModels";
+import { IMAGE_MODELS, findImageModel, EDIT_IMAGE_MODEL } from "../config/imageModels";
 import { IMAGE_STYLES, findImageStyle, applyImageStyle } from "../config/imageStyles";
 import { recordImageUsage, mediaUsageGate } from "../lib/usage";
 import { auth } from "../lib/firebase";
 import { useAutoScroll } from "../lib/useAutoScroll";
 import { uid } from "../lib/id";
-import type { ChatMessage as ChatMessageType } from "../types";
+import type { Attachment, ChatMessage as ChatMessageType } from "../types";
 import type { InitialPrompt } from "../App";
 
 const SUGGESTIONS = [
@@ -21,6 +22,9 @@ const SUGGESTIONS = [
   "Retro synthwave skyline at sunset, neon grid horizon",
   "A cozy cabin in the mountains, soft morning light",
 ];
+
+/** Roughly 9MB of raw image — the Worker rejects data: URLs over ~12M chars. */
+const MAX_SOURCE_BYTES = 9 * 1024 * 1024;
 
 export function ImageMode({
   chatId,
@@ -35,6 +39,10 @@ export function ImageMode({
   const settings = useChatStore((s) => s.settings);
   const { addMessage, updateMessage, maybeAutoTitle, updateSettings } = useChatStore();
   const [prompt, setPrompt] = useState("");
+  const [source, setSource] = useState<{ dataUrl: string; name: string } | null>(null);
+  const [sourceError, setSourceError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const imageModel = findImageModel(settings.imageModelId);
   const imageStyle = findImageStyle(settings.imageStyleId);
   const chatEndRef = useAutoScroll<HTMLDivElement>(chat?.messages ?? []);
@@ -43,14 +51,61 @@ export function ImageMode({
 
   const generating = chat.messages.some((m) => m.streaming);
 
+  const loadSourceFile = async (file: File | undefined) => {
+    if (!file) return;
+    setSourceError(null);
+    if (!file.type.startsWith("image/")) {
+      setSourceError("That file isn't an image.");
+      return;
+    }
+    try {
+      const prepared = await fileToPreparedDataUrl(file);
+      if (prepared.size > MAX_SOURCE_BYTES) {
+        setSourceError("That image is too large — try one under 9MB.");
+        return;
+      }
+      setSource({ dataUrl: prepared.dataUrl, name: file.name || "source.png" });
+      inputRef.current?.focus();
+    } catch (err) {
+      setSourceError(err instanceof Error ? err.message : "Could not load that image.");
+    }
+  };
+
+  const editFromAttachment = (a: Attachment) => {
+    if (!a.dataUrl) return;
+    setSourceError(null);
+    setSource({ dataUrl: a.dataUrl, name: a.name || "source.png" });
+    inputRef.current?.focus();
+  };
+
   const send = async (text: string) => {
     const trimmed = text.trim();
     if (!trimmed || generating) return;
+    const editingSource = source;
     setPrompt("");
 
-    const userMsg: ChatMessageType = { id: uid(), role: "user", content: trimmed, createdAt: Date.now() };
+    const userMsg: ChatMessageType = {
+      id: uid(),
+      role: "user",
+      content: trimmed,
+      createdAt: Date.now(),
+      ...(editingSource
+        ? {
+            attachments: [
+              {
+                id: uid(),
+                name: editingSource.name,
+                type: "image/png",
+                dataUrl: editingSource.dataUrl,
+                size: editingSource.dataUrl.length,
+              },
+            ],
+          }
+        : {}),
+    };
     addMessage(chat.id, userMsg);
     maybeAutoTitle(chat.id, trimmed);
+    setSource(null);
 
     const assistantMsg: ChatMessageType = {
       id: uid(),
@@ -65,7 +120,7 @@ export function ImageMode({
     if (!auth.currentUser) {
       updateMessage(chat.id, assistantMsg.id, {
         streaming: false,
-        error: "Sign in to generate images.",
+        error: editingSource ? "Sign in to edit images." : "Sign in to generate images.",
       });
       return;
     }
@@ -77,16 +132,24 @@ export function ImageMode({
     }
 
     try {
-      const rawUrl = await generateImage({
-        workerUrl: settings.workerUrl,
-        password: settings.password,
-        prompt: applyImageStyle(trimmed, settings.imageStyleId),
-        provider: imageModel.provider,
-        model: imageModel.model,
-      });
+      const rawUrl = editingSource
+        ? await editImage({
+            workerUrl: settings.workerUrl,
+            password: settings.password,
+            prompt: trimmed,
+            image: editingSource.dataUrl,
+            model: EDIT_IMAGE_MODEL.model,
+          })
+        : await generateImage({
+            workerUrl: settings.workerUrl,
+            password: settings.password,
+            prompt: applyImageStyle(trimmed, settings.imageStyleId),
+            provider: imageModel.provider,
+            model: imageModel.model,
+          });
       const wm = watermarkConfig();
       const dataUrl = wm.enabled ? await watermarkImage(rawUrl, wm) : rawUrl;
-      recordImageUsage(imageModel.provider);
+      recordImageUsage(editingSource ? EDIT_IMAGE_MODEL.provider : imageModel.provider);
       updateMessage(chat.id, assistantMsg.id, {
         streaming: false,
         attachments: [{ id: uid(), name: "generated.png", type: "image/png", dataUrl, size: dataUrl.length }],
@@ -200,6 +263,9 @@ export function ImageMode({
               </button>
             ))}
           </div>
+          <p className="text-xs text-slate-500">
+            …or attach an image below and describe how to change it.
+          </p>
         </div>
       ) : (
         <div className="flex-1 overflow-y-auto px-4 py-5 sm:px-8" ref={chatEndRef}>
@@ -213,7 +279,7 @@ export function ImageMode({
                   <ImageGeneratingLoader startedAt={m.thinkingStartedAt} />
                 </div>
               ) : (
-                <ChatMessage key={m.id} message={m} />
+                <ChatMessage key={m.id} message={m} onEditImage={editFromAttachment} />
               )
             )}
           </div>
@@ -221,28 +287,87 @@ export function ImageMode({
       )}
 
       <div className="mx-auto w-full max-w-3xl px-4 pb-[calc(1.25rem+env(safe-area-inset-bottom))] sm:px-8">
+        {source && (
+          <div className="mb-2 flex items-center gap-3 rounded-xl border border-accent-500/40 bg-base-850/70 p-2">
+            <img
+              src={source.dataUrl}
+              alt={source.name}
+              className="h-12 w-12 shrink-0 rounded-lg border border-base-700/60 object-cover"
+            />
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-1.5 text-xs font-medium text-accent-300">
+                <Wand2 size={12} />
+                Editing this image
+              </div>
+              <div className="truncate text-[11px] text-slate-500">{source.name}</div>
+            </div>
+            <button
+              onClick={() => setSource(null)}
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-base-700/60 hover:text-slate-200"
+              title="Cancel editing"
+            >
+              <X size={15} />
+            </button>
+          </div>
+        )}
+        {sourceError && (
+          <div className="mb-2 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">
+            {sourceError}
+          </div>
+        )}
         <div className="flex items-center gap-2 rounded-2xl border border-base-600/60 bg-base-850/70 p-2 shadow-panel">
           <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => {
+              loadSourceFile(e.target.files?.[0]);
+              e.target.value = "";
+            }}
+          />
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={generating}
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-slate-400 transition-colors hover:bg-base-700/60 hover:text-slate-200 disabled:cursor-not-allowed disabled:opacity-40"
+            title="Attach an image to edit"
+          >
+            <Paperclip size={16} />
+          </button>
+          <input
+            ref={inputRef}
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
+            onPaste={(e) => {
+              const file = Array.from(e.clipboardData.items).find((i) => i.kind === "file")?.getAsFile();
+              if (file && file.type.startsWith("image/")) {
+                e.preventDefault();
+                loadSourceFile(file);
+              }
+            }}
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
                 send(prompt);
               }
             }}
-            placeholder="Describe the image you want..."
+            placeholder={source ? "Describe the change you want..." : "Describe the image you want..."}
             className="min-w-0 flex-1 bg-transparent px-2 py-2 text-sm text-white outline-none placeholder-slate-500"
           />
           <button
             onClick={() => send(prompt)}
             disabled={!prompt.trim() || generating}
             className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-accent-500 text-base-950 transition-colors hover:bg-accent-400 disabled:cursor-not-allowed disabled:opacity-40"
-            title="Generate"
+            title={source ? "Apply edit" : "Generate"}
           >
             {generating ? <Loader2 size={16} className="animate-spin" /> : <Send size={15} />}
           </button>
         </div>
+        {source && (
+          <p className="mt-1.5 px-1 text-[11px] text-slate-500">
+            Edits run on {EDIT_IMAGE_MODEL.displayName}, regardless of the model above.
+          </p>
+        )}
       </div>
     </div>
   );

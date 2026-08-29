@@ -20,8 +20,9 @@ import {
   Brain,
   Download,
   Maximize2,
+  Wand2,
 } from "lucide-react";
-import type { ChatMessage as ChatMessageType, ToolCallRecord } from "../types";
+import type { Attachment, ChatMessage as ChatMessageType, ToolCallRecord } from "../types";
 import { Markdown } from "../lib/markdown";
 import { ModelFavicon, ProviderFavicon } from "./ProviderIcon";
 import { useLiveArtifact } from "../lib/useLiveArtifact";
@@ -251,6 +252,7 @@ export function ChatMessage({
   onRegenerateWith,
   onContinue,
   onEdit,
+  onEditImage,
   suppressCode = false,
 }: {
   message: ChatMessageType;
@@ -263,6 +265,8 @@ export function ChatMessage({
   onContinue?: () => void;
   /** Edit & resend a user message. */
   onEdit?: (newText: string) => void;
+  /** Load an image attachment back into the composer as an edit source (Image mode). */
+  onEditImage?: (attachment: Attachment) => void;
   /** True when a parent mode is already routing this message's code into the ArtifactWorkspace panel — keeps raw fences out of the bubble even mid-stream. */
   suppressCode?: boolean;
 }) {
@@ -396,6 +400,19 @@ export function ChatMessage({
                         <Maximize2 size={12} />
                         View
                       </button>
+                      {onEditImage && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onEditImage(a);
+                          }}
+                          className="flex items-center gap-1 rounded-md bg-base-950/70 px-2 py-1 text-[11px] font-medium text-slate-200 backdrop-blur-sm transition-colors hover:bg-base-950/90 hover:text-white"
+                          title="Edit this image"
+                        >
+                          <Wand2 size={12} />
+                          Edit
+                        </button>
+                      )}
                       <a
                         href={a.dataUrl}
                         download={a.name || "generated.png"}

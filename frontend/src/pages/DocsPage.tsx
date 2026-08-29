@@ -368,7 +368,9 @@ function WorkerGuidePage({ onOpen }: { onOpen: (slug: string) => void }) {
           <p>
             <strong className="text-slate-300">GPT Image</strong> (served via xKiro) reuses the same{" "}
             <code className="rounded bg-base-800 px-1 py-0.5 text-xs text-slate-300">XKIRO_API_KEY</code> as chat — no
-            extra secret. Set either backend, or both.
+            extra secret. Set either backend, or both. GPT Image can also{" "}
+            <strong className="text-slate-300">edit</strong> a picture — attach an image in Image mode (or hit{" "}
+            <span className="whitespace-nowrap">"Edit"</span> on one you already made) and describe the change.
           </p>
           <p className="mt-2">
             <strong className="text-slate-300">Text to Speech</strong> mode also runs on{" "}

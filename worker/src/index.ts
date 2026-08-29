@@ -8,7 +8,7 @@ import { geminiStreamChat } from "./adapters/gemini";
 import { openrouterStreamChat } from "./adapters/openrouter";
 import { customStreamChat } from "./adapters/custom";
 import { generateImage } from "./adapters/image";
-import { generateXkiroImage } from "./adapters/xkiroImage";
+import { generateXkiroImage, editXkiroImage } from "./adapters/xkiroImage";
 import { generateXkiroSpeech, listXkiroVoices } from "./adapters/xkiroSpeech";
 import { generateTitle } from "./adapters/title";
 import {
@@ -370,6 +370,55 @@ export default {
         return json(result, 200, cors);
       } catch (err) {
         const message = err instanceof Error ? err.message : "Image generation failed.";
+        return json({ error: message }, 502, cors);
+      }
+    }
+
+    if (url.pathname === "/api/image/edit" && request.method === "POST") {
+      if (!checkPassword(request, env)) {
+        return json({ error: "Invalid or missing Scribble password." }, 401, cors);
+      }
+
+      const clientKey = request.headers.get("CF-Connecting-IP") ?? "unknown";
+      if (isRateLimited(clientKey)) {
+        return json({ error: "Rate limit exceeded. Slow down and try again shortly." }, 429, cors);
+      }
+
+      let body: unknown;
+      try {
+        body = await request.json();
+      } catch {
+        return json({ error: "Malformed JSON body." }, 400, cors);
+      }
+
+      const b = body as Record<string, unknown>;
+      if (!b || typeof b.prompt !== "string" || !b.prompt.trim()) {
+        return json({ error: "Request must include a non-empty prompt." }, 400, cors);
+      }
+      if (typeof b.image !== "string" || !b.image.startsWith("data:")) {
+        return json({ error: "Request must include the source image as a data: URL." }, 400, cors);
+      }
+      // ~9MB of raw image once base64-decoded — matches the frontend's attach cap.
+      if (b.image.length > 12_000_000) {
+        return json({ error: "Source image is too large. Use one under about 9MB." }, 413, cors);
+      }
+
+      // Editing is xKiro-only; Cloudflare Workers AI has no edits endpoint.
+      if (!env.XKIRO_API_KEY) {
+        return json({ error: "Image editing is not configured on this Worker (missing XKIRO_API_KEY)." }, 500, cors);
+      }
+
+      try {
+        const result = await editXkiroImage({
+          apiKey: env.XKIRO_API_KEY,
+          model: typeof b.model === "string" ? b.model : undefined,
+          prompt: b.prompt,
+          size: typeof b.size === "string" ? b.size : undefined,
+          imageDataUrl: b.image,
+        });
+        return json(result, 200, cors);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Image editing failed.";
         return json({ error: message }, 502, cors);
       }
     }
