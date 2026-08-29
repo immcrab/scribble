@@ -171,6 +171,16 @@ export async function runAssistantStream(params: {
           useChatStore.getState().appendMessageContent(chatId, messageId, chunk.text);
         }
 
+        // Some providers (notably Claude models proxied through xKiro) drop the stream
+        // mid-answer without ever sending a `length` finish_reason, so `truncated` stays
+        // false and the reply just stops — often inside a code block. If the text ends on
+        // an unterminated ``` fence, treat it as cut off so auto-continue can resume it and
+        // the workspace parses the half-written file instead of discarding it.
+        if (!truncated) {
+          const soFar = useChatStore.getState().chats.find((c) => c.id === chatId)?.messages.find((m) => m.id === messageId)?.content ?? "";
+          if ((soFar.match(/```/g)?.length ?? 0) % 2 === 1) truncated = true;
+        }
+
         useChatStore.getState().updateMessage(chatId, messageId, { streaming: false, truncated, retryNotice: undefined });
         recordModelUsage(model);
         // Credit accounting: prompt tokens (everything we sent) + this reply's tokens.

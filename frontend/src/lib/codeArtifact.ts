@@ -102,6 +102,16 @@ function cleanFilename(raw: string): string {
   return raw.trim().replace(/^[`*_]+|[`*_]+$/g, "").trim();
 }
 
+/** Tidy the prose left after the code fences are pulled out: drop the "---" / "***"
+ * separator lines models scatter between files (now dangling), and collapse the runs
+ * of blank lines that leaves behind. */
+function tidyRemainingText(text: string): string {
+  return text
+    .replace(/^[ \t]*(?:-{3,}|\*{3,}|_{3,})[ \t]*$/gm, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
 /** Appends " (2)", " (3)", ... before the extension to disambiguate a name collision. */
 function dedupeName(name: string, seen: Set<string>): string {
   if (!seen.has(name)) return name;
@@ -156,7 +166,7 @@ export function extractArtifact(content: string): Artifact | null {
   }
   if (blocks.length === 0) return null;
 
-  const remainingText = content.replace(FENCE_RE, "").trim();
+  const remainingText = tidyRemainingText(content.replace(FENCE_RE, ""));
 
   const langCount: Record<string, number> = {};
   for (const b of blocks) if (!b.filename) langCount[b.lang] = (langCount[b.lang] ?? 0) + 1;
@@ -227,7 +237,7 @@ export function extractPartialArtifact(content: string): Artifact | null {
 
   const base = extractArtifact(closedPortion);
   const files = base?.files.slice() ?? [];
-  const remainingText = (base?.remainingText ?? closedPortion).trim();
+  const remainingText = base?.remainingText ?? tidyRemainingText(closedPortion);
   const seenNames = new Set(files.map((f) => f.name));
 
   if (trailingMatch) {
