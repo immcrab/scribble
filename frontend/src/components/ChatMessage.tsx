@@ -19,6 +19,7 @@ import {
   Lock,
   Brain,
   Download,
+  Maximize2,
 } from "lucide-react";
 import type { ChatMessage as ChatMessageType, ToolCallRecord } from "../types";
 import { Markdown } from "../lib/markdown";
@@ -268,8 +269,16 @@ export function ChatMessage({
   const [copied, setCopied] = useState(false);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
+  const [lightbox, setLightbox] = useState<{ src: string; name?: string } | null>(null);
   const isUser = message.role === "user";
   const compact = useChatStore((s) => s.settings.density === "compact");
+
+  useEffect(() => {
+    if (!lightbox) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setLightbox(null);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [lightbox]);
 
   const copy = async () => {
     await navigator.clipboard.writeText(message.content);
@@ -374,9 +383,30 @@ export function ChatMessage({
                     <img
                       src={a.dataUrl}
                       alt={a.name}
-                      className="max-h-56 max-w-full rounded-xl object-contain sm:max-h-72"
+                      className="max-h-56 max-w-full cursor-zoom-in rounded-xl object-contain sm:max-h-72"
                       loading="lazy"
+                      onClick={() => setLightbox({ src: a.dataUrl!, name: a.name })}
                     />
+                    <div className="absolute right-1.5 top-1.5 flex gap-1 opacity-0 transition-opacity group-hover/img:opacity-100">
+                      <button
+                        onClick={() => setLightbox({ src: a.dataUrl!, name: a.name })}
+                        className="flex items-center gap-1 rounded-md bg-base-950/70 px-2 py-1 text-[11px] font-medium text-slate-200 backdrop-blur-sm transition-colors hover:bg-base-950/90 hover:text-white"
+                        title="View larger"
+                      >
+                        <Maximize2 size={12} />
+                        View
+                      </button>
+                      <a
+                        href={a.dataUrl}
+                        download={a.name || "generated.png"}
+                        onClick={(e) => e.stopPropagation()}
+                        className="flex items-center gap-1 rounded-md bg-base-950/70 px-2 py-1 text-[11px] font-medium text-slate-200 backdrop-blur-sm transition-colors hover:bg-base-950/90 hover:text-white"
+                        title="Download image"
+                      >
+                        <Download size={12} />
+                        Download
+                      </a>
+                    </div>
                     {a.name && (
                       <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-base-950/80 to-transparent p-1.5 text-[11px] text-slate-300 opacity-0 transition-opacity group-hover/img:opacity-100 truncate">
                         {a.name}
@@ -547,6 +577,37 @@ export function ChatMessage({
           </div>
         )}
       </div>
+
+      {lightbox && (
+        <div
+          className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-base-950/90 p-4 backdrop-blur-sm animate-fade-in"
+          onClick={() => setLightbox(null)}
+        >
+          <img
+            src={lightbox.src}
+            alt={lightbox.name}
+            className="max-h-[85vh] max-w-full rounded-lg object-contain shadow-panel"
+            onClick={(e) => e.stopPropagation()}
+          />
+          <div className="mt-3 flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+            <a
+              href={lightbox.src}
+              download={lightbox.name || "generated.png"}
+              className="flex items-center gap-1.5 rounded-lg bg-accent-500 px-3 py-1.5 text-sm font-medium text-base-950 transition-colors hover:bg-accent-400"
+            >
+              <Download size={14} />
+              Download
+            </a>
+            <button
+              onClick={() => setLightbox(null)}
+              className="flex items-center gap-1.5 rounded-lg border border-base-600 px-3 py-1.5 text-sm font-medium text-slate-200 transition-colors hover:bg-base-800"
+            >
+              <X size={14} />
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
