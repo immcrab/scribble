@@ -562,12 +562,6 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
                     onChange={(v) => updateSettings({ notificationSound: v })}
                   />
                   <ToggleSwitch
-                    label="Auto-continue long replies"
-                    description="Resume a reply automatically when it's cut off at the model's length limit, up to a few times"
-                    checked={settings.autoContinueTruncated}
-                    onChange={(v) => updateSettings({ autoContinueTruncated: v })}
-                  />
-                  <ToggleSwitch
                     label="Auto-retry on rate limits"
                     description="When a request fails with a rate-limit or transient server error and no tokens have arrived yet, wait and retry automatically with backoff"
                     checked={settings.autoRetryRateLimited}

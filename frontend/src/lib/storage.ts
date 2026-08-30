@@ -73,10 +73,6 @@ export interface ScribbleSettings {
   customSystemPrompt: string;
   /** Play a short chime when an assistant reply finishes streaming — see lib/notificationSound.ts. */
   notificationSound: boolean;
-  /** When a reply is cut off at the model's output-token limit, automatically resume it in
-   * place (appending, same as the manual "Continue" button) until it finishes or a small
-   * round cap is hit. On by default. See lib/runStream.ts. */
-  autoContinueTruncated: boolean;
   /** Minimum seconds to leave between consecutive outgoing chat requests, enforced by a
    * global client-side queue (lib/requestQueue.ts). 0 = no pacing. Keeps a burst of calls
    * under an upstream provider's requests-per-minute cap — Battle / Side by Side fire two
@@ -117,7 +113,6 @@ const SETTINGS_DEFAULTS: Omit<ScribbleSettings, "workerUrl" | "password"> = {
   replyLanguage: "auto",
   customSystemPrompt: "",
   notificationSound: false,
-  autoContinueTruncated: true,
   requestSpacingSec: 0,
   autoRetryRateLimited: true,
   memoryEnabled: false,

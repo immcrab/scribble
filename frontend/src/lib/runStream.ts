@@ -194,7 +194,6 @@ export async function runAssistantStream(params: {
         const round = params.autoContinueRound ?? 0;
         const canAutoContinue =
           truncated &&
-          useChatStore.getState().settings.autoContinueTruncated &&
           round < MAX_AUTO_CONTINUE_ROUNDS &&
           !!finalMsg?.content;
         if (canAutoContinue) {
