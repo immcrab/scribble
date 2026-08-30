@@ -28,14 +28,16 @@
     <meta property="og:site_name" content="Scribble" />
     <meta property="og:title" content="Scribble — Multi-Model AI Chat" />
     <meta property="og:description" content="Battle, compare, chat, and make images with 60+ fully free AI models — no sign-up." />
-    <meta property="og:image" content="https://scribbleai.dev/favicon.svg" />
+    <!-- Social-card image must be a real raster file — an SVG doesn't render as an
+         OG/Twitter preview on most platforms. pwa-512.png is the 512×512 logo. -->
+    <meta property="og:image" content="https://scribbleai.dev/pwa-512.png" />
     <meta property="og:image:width" content="512" />
     <meta property="og:image:height" content="512" />
     <meta property="og:image:type" content="image/png" />
-    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:card" content="summary" />
     <meta name="twitter:title" content="Scribble — Multi-Model AI Chat" />
     <meta name="twitter:description" content="Battle, compare, chat, and make images with 60+ fully free AI models — no sign-up." />
-    <meta name="twitter:image" content="https://scribbleai.dev/favicon.svg" />
+    <meta name="twitter:image" content="https://scribbleai.dev/pwa-512.png" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="apple-touch-icon" href="/favicon.svg" />
     <link rel="mask-icon" href="/favicon.svg" color="#1b1a18" />
@@ -76,8 +78,9 @@
           <li><strong>Direct</strong> — one-on-one chat with a model of your choice.</li>
           <li><strong>Battle</strong> — two anonymous models answer the same prompt; you vote.</li>
           <li><strong>Side by Side</strong> — compare two named models on one prompt.</li>
-          <li><strong>Agent</strong> — a chat mode built for tool-using workflows.</li>
-          <li><strong>Image</strong> — generate images from a text prompt.</li>
+          <li><strong>Agent</strong> — a chat mode built for tool-using workflows, with an optional live web search.</li>
+          <li><strong>Image</strong> — generate images from a text prompt, or edit one you upload.</li>
+          <li><strong>Text to Speech</strong> — turn text into spoken audio.</li>
         </ul>
         <p>
           <a href="/about" style="color: #f5f0eb;">About</a> &nbsp;·&nbsp;

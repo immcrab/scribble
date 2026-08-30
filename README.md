@@ -3,11 +3,12 @@
 A polished AI playground in the spirit of Arena.ai — six modes (Battle, Agent,
 Side by Side, Direct, Image, Text to Speech), real streaming responses, and a
 dark, blue, glass-panel UI. The frontend is a static site (GitHub Pages); the Worker is a Cloudflare
-Worker that proxies xKiro, Mistral, and Gemini so API keys never touch
-the browser.
+Worker that proxies xKiro, Mistral, Gemini, and OpenRouter (chat), Cloudflare
+Workers AI / xKiro (image), xKiro (speech), and Groq (chat titles) so API keys
+never touch the browser.
 
 ```
-GitHub Pages (frontend) → Cloudflare Worker (proxy) → xKiro / Mistral / Gemini
+GitHub Pages (frontend) → Cloudflare Worker (proxy) → xKiro / Mistral / Gemini / OpenRouter / Cloudflare Workers AI / Groq
 ```
 
 ## Project structure
@@ -17,13 +18,15 @@ scribble/
 ├─ frontend/            Vite + React + TS static site
 │  ├─ src/config/        model registry — models.ts is the one file to edit
 │  │                      when a provider's catalog changes
-│  ├─ src/modes/          Battle / Agent / SideBySide / Direct screens
+│  ├─ src/modes/          Battle / Agent / SideBySide / Direct / Image / Speech screens
 │  ├─ src/components/     Sidebar, ModeSelector, ModelSelector, Composer, ...
 │  ├─ src/lib/            localStorage chat history, streaming client, markdown
 │  ├─ src/state/          zustand chat store
 │  └─ src/providers/      thin frontend-side provider abstraction
 ├─ worker/               Cloudflare Worker (Wrangler)
-│  └─ src/adapters/       xkiro.ts / mistral.ts / gemini.ts
+│  └─ src/adapters/       xkiro.ts / mistral.ts / gemini.ts / openrouter.ts /
+│                          image.ts / xkiroImage.ts / xkiroSpeech.ts / search.ts /
+│                          memory.ts / title.ts
 └─ README.md
 ```
 
@@ -136,9 +139,10 @@ Setting `VITE_WORKER_URL` at build time bakes in a default Worker endpoint so
 visitors don't have to manually configure Settings — it's just the public
 Worker URL, not a secret. Settings can still override it per-browser.
 
-`vite.config.ts` sets `base: "/scribble/"` by default — change it (or pass
-`VITE_BASE=/your-repo-name/` at build time) to match your repository name, or
-set it to `/` if you're using a custom domain at the root.
+`vite.config.ts` sets `base: "/"` by default (the live site runs on a custom
+domain at the root). If you deploy under a GitHub Pages subpath instead, pass
+`VITE_BASE=/your-repo-name/` at build time and update the matching
+`segmentCount` in `frontend/public/404.html`.
 
 Push `frontend/dist` to your repo's `gh-pages` branch (or wire up a GitHub
 Actions workflow that runs `npm run build` and publishes `frontend/dist`),
@@ -150,15 +154,20 @@ Worker's URL (and password, if you set one). Settings are stored in
 
 ## Notes
 
-- **Chat history** lives entirely in the browser's `localStorage` — there's
-  no backend database or account system.
+- **Chat history** lives in the browser's `localStorage` by default. Signing in
+  with Google (Firebase Auth) syncs chats, projects, settings, and opt-in
+  memories to Firebase Realtime Database for cross-device continuity; a public
+  copy keyed by chat id backs the `/c/{id}` share links.
+- **Gating** (sign-in required beyond the free default model, daily credit
+  limits) is enforced client-side — an honour-system speed bump, not a security
+  boundary. The Worker itself only checks the optional `SCRIBBLE_PASSWORD` and
+  the rate limiter; anyone with the Worker URL can call it directly.
 - **Rate limiting** on the Worker is a simple in-memory per-IP counter. It's a
   practical speed bump, not a distributed guarantee — Workers isolates aren't
   shared across Cloudflare's edge, so a determined client could still exceed
   it globally. Swap in Durable Objects or KV if you need a hard limit.
-- **Agent Mode** ships with the message schema and UI (`ToolActivity`) needed
-  to show real tool calls, but no tool is wired up yet — it will not fabricate
-  tool results. Wiring a real tool means having a Worker adapter emit
-  `tool_call`/`tool_result` events in the NDJSON stream in addition to
-  `delta`, and reading them into `ChatMessage.toolCalls` in the mode
-  component.
+- **Agent Mode** streams real tool activity for the built-in **web search**
+  (Groq decides per-turn whether a lookup helps, then SerpApi runs it — needs
+  `SERP_API_KEY`) and **memory** (needs `GROQ_API_KEY` and the user's opt-in).
+  Additional tools would emit more `toolCall` events in the NDJSON stream, read
+  into `ChatMessage.toolCalls` in the mode component.

@@ -41,5 +41,21 @@ export async function generateTitle({ apiKey, prompt }: { apiKey: string; prompt
   const raw = json.choices?.[0]?.message?.content?.trim();
   if (!raw) throw new Error("Groq returned no title.");
 
-  return raw.replace(/^["'`]+|["'`]+$/g, "").replace(/[.!]+$/, "").slice(0, 60);
+  // The title model (a small reasoning model) sometimes emits the title twice —
+  // on two lines, or space-joined on one — which rendered as a doubled sidebar
+  // label. Keep only the first line, collapse whitespace, then collapse an exact
+  // "X X" repeat before trimming to length.
+  let title = raw
+    .split(/\r?\n/)[0]
+    .replace(/^["'`]+|["'`]+$/g, "")
+    .replace(/[.!]+$/, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  const mid = (title.length - 1) / 2;
+  if (Number.isInteger(mid) && title[mid] === " " && title.slice(0, mid) === title.slice(mid + 1)) {
+    title = title.slice(0, mid);
+  }
+
+  return title.slice(0, 60);
 }

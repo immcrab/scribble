@@ -160,9 +160,13 @@
       <h2>What happens when you send a message</h2>
       <p>
         Your message (and any attachment) is sent to Scribble's own Cloudflare Worker, which forwards it
-        to whichever AI model provider you selected — xKiro, Mistral, or Google Gemini — and streams
-        the reply back. The Worker doesn't write your conversations to a log or database of its own; it's
-        a pass-through. Once a response finishes streaming, the Worker holds nothing.
+        to whichever AI model provider you selected and streams the reply back. Depending on the model,
+        that provider is <strong>xKiro, Mistral, Google Gemini, or OpenRouter</strong> for chat,
+        <strong>Cloudflare Workers AI or xKiro</strong> for image generation and editing, and
+        <strong>xKiro</strong> for text to speech. (A "Puter.js" model, if you pick one, is the exception —
+        those requests go straight from your browser to Puter under its own sign-in and never touch
+        Scribble's Worker.) The Worker doesn't write your conversations to a log or database of its own;
+        it's a pass-through, and once a response finishes streaming it holds nothing.
       </p>
       <p>
         The model provider you picked does receive your message content to generate a response, the same
@@ -171,20 +175,60 @@
         that matters to you.
       </p>
       <p>
-        Separately, the first message of a new chat is also sent to Groq to generate a short sidebar
-        title — this happens regardless of which model you picked for the conversation itself.
+        A few small helper calls also go out with a chat, all to <strong>Groq</strong>: the first message
+        of a new chat is sent there to generate a short sidebar title, and — when web search or memory is
+        active — the message is sent there for a quick yes/no classification of whether it needs a live
+        lookup or a stored fact. This happens regardless of which model you picked for the conversation.
       </p>
 
-      <h2>Image generation</h2>
+      <h2>Web search</h2>
       <p>
-        If you use the Image mode, your prompt is sent to Scribble's Worker, which forwards it to
-        Cloudflare Workers AI to generate an image. The generated image is returned straight to you and
-        isn't stored server-side by Scribble.
+        When automatic web search is on (it's a per-turn "search only if it would help" mode, on by
+        default), a message the classifier decides needs current information is rewritten into a search
+        query and sent to <strong>SerpApi</strong>, which runs the search and returns results that are
+        folded into the model's context. Turns that don't need a lookup never reach SerpApi.
+      </p>
+
+      <h2>Approximate location</h2>
+      <p>
+        If you allow it (Scribble asks once, and you can change it anytime in Settings), each chat request
+        includes a rough city-level location. It's estimated from your IP address via
+        <strong>ipapi.co</strong> — never the browser's GPS, and never anything more precise than
+        city / region / country. Your local date, time, and timezone are always sent, since reading the
+        system clock reveals nothing sensitive. Decline, and no location is looked up or sent.
+      </p>
+
+      <h2>Memory</h2>
+      <p>
+        Memory is off by default. If you turn it on, Scribble will save short facts you ask it to remember
+        (or that it judges worth keeping) and send them back as context in later chats. Those facts are
+        stored with your account in the same Firebase database as your synced chats, and are cleared when
+        you delete a memory, turn memory off, or delete your account.
+      </p>
+
+      <h2>Analytics and advertising</h2>
+      <p>
+        Scribble uses <strong>Google Analytics</strong> to see aggregate, non-identifying usage — page
+        views, which modes get used, roughly where visitors are — and <strong>Google AdSense</strong> to
+        display ads, which is how a free project covers its costs. Both are Google products that load when
+        a page opens and may set cookies or read local identifiers in your browser; AdSense may use these
+        to measure and (unless you've turned off ad personalization in your Google account) target ads.
+        Scribble itself does not build advertising profiles, and never sends your chat content, messages,
+        or account email to Google's ad or analytics systems.
+      </p>
+      <p>
+        You can manage or opt out of personalized ads at
+        <a href="https://myadcenter.google.com/" target="_blank" rel="noopener noreferrer">myadcenter.google.com</a>,
+        review how Google uses data from sites that use its services at
+        <a href="https://policies.google.com/technologies/partner-sites" target="_blank" rel="noopener noreferrer">policies.google.com/technologies/partner-sites</a>,
+        and block these scripts entirely with a content or ad blocker — Scribble still works with them
+        blocked.
       </p>
 
       <h2>What Scribble doesn't do</h2>
       <ul>
-        <li>No advertising, no ad trackers, no selling data to third parties.</li>
+        <li>No selling or renting of your data to anyone.</li>
+        <li>No sending of your chat content, messages, or email to advertising or analytics systems.</li>
         <li>No payment processing — the app is free to use.</li>
         <li>No server-side chat history kept by Scribble's own backend.</li>
       </ul>
@@ -193,6 +237,8 @@
       <ul>
         <li>Delete any chat from the sidebar at any time.</li>
         <li>Clear your browser's local storage to remove everything stored on-device — or use "Clear local data" in Settings.</li>
+        <li>Turn off web search, memory, and location sharing in Settings.</li>
+        <li>Opt out of personalized ads via your Google account, or block the ad/analytics scripts with a browser extension.</li>
         <li>Sign out to stop cross-device sync; sign back in later to resume it.</li>
         <li>Delete your account entirely from Settings → Account, which also removes your synced data.</li>
         <li>Use Scribble without ever signing in — the default model works fully local-only.</li>
