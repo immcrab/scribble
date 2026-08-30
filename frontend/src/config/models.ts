@@ -1,4 +1,5 @@
 import type { ModelDef, Provider } from "../types";
+import { isLocalDev } from "../lib/devMode";
 
 // Adding a model here? Also add a one-line entry to modelDocs.ts — see ADD_NEW_MODEL.md.
 
@@ -847,6 +848,7 @@ export function catalogSizeLabel(): string {
  * "Sign-in gating" slice. Checked by ModelSelector, SettingsModal's default-model
  * picker, ChatMessage's regenerate-with menu, and defensively in runStream.ts. */
 export function isModelGated(model: Pick<ModelDef, "modelId" | "provider">): boolean {
+  if (isLocalDev()) return false; // local dev: every model open, no sign-in needed
   return !(model.provider === "xkiro" && model.modelId === DEFAULT_MODEL_ID);
 }
 

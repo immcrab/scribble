@@ -2,6 +2,7 @@ import { Swords, Bot, Columns2, MessageCircle, ChevronDown, Lock, Image as Image
 import type { Mode } from "../types";
 import { Dropdown } from "./Dropdown";
 import { useAuthStore } from "../state/authStore";
+import { isLocalDev } from "../lib/devMode";
 
 const MODES: { id: Mode; label: string; desc: string; icon: typeof Swords; gated?: boolean }[] = [
   { id: "battle", label: "Battle Mode", desc: "Battle 2 anonymous models", icon: Swords, gated: true },
@@ -34,7 +35,7 @@ export function ModeSelector({ mode, onChange }: { mode: Mode; onChange: (m: Mod
       {({ close }) => (
         <>
           {MODES.map((m) => {
-            const locked = m.gated && !user;
+            const locked = m.gated && !user && !isLocalDev();
             return (
               <button
                 key={m.id}

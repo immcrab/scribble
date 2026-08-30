@@ -15,6 +15,7 @@ import {
 } from "../lib/speechClient";
 import { recordSpeechUsage, mediaUsageGate } from "../lib/usage";
 import { auth } from "../lib/firebase";
+import { isLocalDev } from "../lib/devMode";
 import { useAutoScroll } from "../lib/useAutoScroll";
 import { uid } from "../lib/id";
 import type { ChatMessage as ChatMessageType } from "../types";
@@ -201,7 +202,7 @@ export function SpeechMode({
     };
     addMessage(chat.id, assistantMsg);
 
-    if (!auth.currentUser) {
+    if (!auth.currentUser && !isLocalDev()) {
       updateMessage(chat.id, assistantMsg.id, { streaming: false, error: "Sign in to generate speech." });
       return;
     }

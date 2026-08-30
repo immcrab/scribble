@@ -4,6 +4,7 @@ import { getRtdb, auth } from "./firebase";
 import { usageConfig } from "./catalogSync";
 import { modelSlug } from "./modelSlug";
 import { modelKey, DEFAULT_MODEL_ID } from "../config/models";
+import { isLocalDev } from "./devMode";
 import type { ModelDef, UsageRecord } from "../types";
 
 /**
@@ -138,8 +139,8 @@ export function creditStatus(): CreditStatus {
     limit,
     remaining,
     fraction: limit > 0 ? Math.min(1, used / limit) : 1,
-    overLimit: used >= limit,
-    blocked: !!uid && cfg.blockedUids.includes(uid),
+    overLimit: !isLocalDev() && used >= limit,
+    blocked: !isLocalDev() && !!uid && cfg.blockedUids.includes(uid),
     byModel,
     resetsAt: nextResetAt(),
   };
@@ -148,6 +149,7 @@ export function creditStatus(): CreditStatus {
 /** Whether the signed-in user may run `model` right now. Anonymous users always pass here —
  * their gating is `isModelGated` in config/models.ts. */
 export function usageGate(model: Pick<ModelDef, "provider" | "modelId" | "displayName">): { ok: true } | { ok: false; reason: string } {
+  if (isLocalDev()) return { ok: true };
   const uid = auth.currentUser?.uid;
   if (!uid) return { ok: true };
   if (isDefaultModel(model)) return { ok: true };
@@ -224,6 +226,7 @@ function bumpUsage(uid: string, slug: string, cost: number): void {
 /** Whether the signed-in user may start an image / speech generation right now. Anonymous
  * users pass here — the modes gate them with their own sign-in check. Mirrors `usageGate`. */
 export function mediaUsageGate(kind: "image" | "speech"): { ok: true } | { ok: false; reason: string } {
+  if (isLocalDev()) return { ok: true };
   const uid = auth.currentUser?.uid;
   if (!uid) return { ok: true };
 
