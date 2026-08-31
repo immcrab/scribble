@@ -4,7 +4,7 @@ import { Sidebar } from "./components/Sidebar";
 import { ModeSelector } from "./components/ModeSelector";
 import { Composer } from "./components/Composer";
 import { EmptyState } from "./components/EmptyState";
-import { SettingsModal } from "./components/SettingsModal";
+import { SettingsModal, type SettingsTab } from "./components/SettingsModal";
 import { PWAInstallPrompt } from "./components/PWAInstallPrompt";
 import { LocationConsentPrompt } from "./components/LocationConsentPrompt";
 import { ConsentGate } from "./components/ConsentGate";
@@ -74,7 +74,7 @@ export default function App() {
   const activeProject = projects.find((p) => p.id === activeProjectId);
   const inProject = !!activeProjectId && !!activeProject;
 
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsTab, setSettingsTab] = useState<SettingsTab | null>(null);
   const [pending, setPending] = useState<InitialPrompt | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [docsSlug, setDocsSlug] = useState<string | null>(() => parseDocsSlugFromLocation());
@@ -332,6 +332,24 @@ export default function App() {
   const initialFor = (chatId: string) => (pending?.chatId === chatId ? pending : undefined);
   const consumeInitial = () => setPending(null);
 
+  // Global keyboard shortcuts. Kept deliberately few and chord-based so they don't
+  // collide with typing or the browser's own bindings. Documented in /docs/using.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const mod = e.metaKey || e.ctrlKey;
+      if (mod && e.shiftKey && e.key.toLowerCase() === "o") {
+        e.preventDefault();
+        startOwnChat();
+      } else if (mod && e.key === "\\") {
+        e.preventDefault();
+        useChatStore.getState().toggleSidebar();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   if (authAction) {
     return <AuthActionPage />;
   }
@@ -381,7 +399,7 @@ export default function App() {
   return (
     <div className={`flex h-dvh w-full overflow-hidden bg-base-950 ${settings.reduceMotion ? "motion-reduce-force" : ""}`}>
       <Sidebar
-        onOpenSettings={() => setSettingsOpen(true)}
+        onOpenSettings={(tab) => setSettingsTab(tab ?? "general")}
         mobileOpen={mobileMenuOpen}
         onCloseMobile={() => setMobileMenuOpen(false)}
       />
@@ -478,7 +496,7 @@ export default function App() {
 
       <PWAInstallPrompt />
       <LocationConsentPrompt />
-      {settingsOpen && <SettingsModal onClose={() => setSettingsOpen(false)} />}
+      {settingsTab && <SettingsModal initialTab={settingsTab} onClose={() => setSettingsTab(null)} />}
     </div>
   );
 }

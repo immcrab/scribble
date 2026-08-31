@@ -319,6 +319,7 @@ export function Composer({
           submit();
         }}
         placeholder={placeholder}
+        aria-label="Message"
         rows={1}
         inputMode="text"
         enterKeyHint={sendOnEnter ? "send" : "enter"}
@@ -340,6 +341,7 @@ export function Composer({
             onClick={() => fileInputRef.current?.click()}
             className="flex h-11 w-11 items-center justify-center rounded-xl bg-base-800/60 text-slate-400 transition-colors hover:bg-base-700/60 hover:text-white sm:h-auto sm:w-auto sm:rounded-lg sm:px-2.5 sm:py-1.5"
             title="Add images or files"
+            aria-label="Add images or files"
           >
             <Paperclip size={18} />
             <span className="hidden sm:inline">Add files</span>
@@ -347,6 +349,8 @@ export function Composer({
           <button
             type="button"
             onClick={() => setCodeMode((c) => !c)}
+            aria-pressed={codeMode}
+            aria-label="Toggle code preview panel"
             title="Code — force-open the preview panel (also opens automatically for coding requests)"
             className={`flex h-11 w-11 items-center justify-center rounded-xl border text-slate-400 transition-colors sm:h-auto sm:w-auto sm:rounded-lg sm:border-transparent ${
               codeMode
@@ -361,6 +365,7 @@ export function Composer({
             <button
               type="button"
               onClick={toggleRecording}
+              aria-label={recording ? "Stop dictating" : "Dictate with your voice"}
               title={recording ? "Stop dictating" : "Dictate with your voice"}
               className={`flex h-11 w-11 items-center justify-center rounded-xl border text-slate-400 transition-colors sm:h-auto sm:w-auto sm:rounded-lg sm:border-transparent ${
                 recording
@@ -380,6 +385,7 @@ export function Composer({
             onClick={onStop}
             className="flex h-11 w-11 items-center justify-center rounded-full bg-slate-200 text-base-950 transition-transform hover:scale-105 hover:bg-slate-300 active:scale-95"
             title="Stop generating"
+            aria-label="Stop generating"
           >
             <Square size={14} fill="currentColor" />
           </button>
@@ -390,6 +396,7 @@ export function Composer({
             disabled={!canSubmit}
             className="flex h-11 w-11 items-center justify-center rounded-xl bg-accent-500 text-base-950 transition-all hover:scale-105 hover:bg-accent-400 active:scale-95 disabled:scale-100 disabled:cursor-not-allowed disabled:bg-base-600 disabled:text-slate-500 sm:h-8 sm:w-8 sm:rounded-lg"
             title="Send"
+            aria-label="Send message"
           >
             <ArrowUp size={16} strokeWidth={2.5} />
           </button>

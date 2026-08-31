@@ -146,7 +146,14 @@ export function AgentMode({
       const nextMsg = chat.messages[nextIdx];
       if (nextMsg.role === "assistant") removeMessagesAfter(chat.id, nextMsg.id);
     }
-    const history = buildHistory(messageId);
+    // buildHistory(messageId) stops before the edited message — append the new text
+    // explicitly so the model actually sees the edit (and the first message isn't
+    // sent as an empty history).
+    const wireAttachments = msg.attachments?.map((a) => ({ name: a.name, type: a.type, dataUrl: a.dataUrl }));
+    const history: WireMessage[] = [
+      ...buildHistory(messageId),
+      { role: "user", content: newText, attachments: wireAttachments },
+    ];
     const newAssistant: ChatMessageType = {
       id: uid(),
       role: "assistant",
@@ -211,7 +218,7 @@ export function AgentMode({
           <>
             {chat.messages.length === 0 ? (
               <div className="flex-1">
-                <EmptyState heading="What would you like Scribble to do?" onPick={(p) => send(p, [])} />
+                <EmptyState mode="agent" heading="What would you like Scribble to do?" onPick={(p) => send(p, [])} />
                 <div className="mx-auto -mt-8 flex max-w-md items-start gap-2 rounded-xl border border-base-700/50 bg-base-900/40 px-3.5 py-2.5 text-xs text-slate-500">
                   <Lightbulb size={13} className="mt-0.5 shrink-0 text-accent-400" />
                   Agent Mode is built for multi-step tasks. Replies search the web automatically
@@ -222,10 +229,11 @@ export function AgentMode({
             ) : (
               <div className="flex-1 overflow-y-auto px-4 py-5 sm:px-8" ref={chatEndRef}>
                 <div className={`mx-auto flex flex-col gap-5 ${hasWorkspace ? "" : "max-w-3xl"}`}>
-                  {chat.messages.map((m) => (
+                  {chat.messages.map((m, idx) => (
                     <ChatMessage
                       key={m.id}
                       message={m}
+                      isLast={idx === chat.messages.length - 1}
                       suppressCode={hasWorkspace}
                       onRegenerate={m.role === "assistant" && !m.streaming ? () => regenerate(m.id) : undefined}
                       onRegenerateWith={

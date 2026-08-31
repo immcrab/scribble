@@ -8,7 +8,6 @@ import { EffortSelector } from "../components/EffortSelector";
 import { EmptyState } from "../components/EmptyState";
 import { ArtifactWorkspace } from "../components/ArtifactWorkspace";
 import { ChatWorkspaceSplit } from "../components/ChatWorkspaceSplit";
-import { AdUnit } from "../components/AdUnit";
 import { isCodingRequest } from "../lib/codeArtifact";
 import { useLiveArtifact, liveArtifactFor } from "../lib/useLiveArtifact";
 import { runAssistantStream, CONTINUE_NUDGE } from "../lib/runStream";
@@ -108,8 +107,15 @@ export function DirectMode({
       const nextMsg = chat.messages[nextIdx];
       if (nextMsg.role === "assistant") removeMessagesAfter(chat.id, nextMsg.id);
     }
-    // Re-send from this edited user message onward.
-    const history = buildHistory(messageId);
+    // Re-send from this edited user message onward. buildHistory(messageId) stops
+    // *before* the edited message, so the new text has to be appended explicitly —
+    // otherwise the model answers without ever seeing the edit (and an edit to the
+    // first message sends an empty history, which the Worker rejects).
+    const wireAttachments = msg.attachments?.map((a) => ({ name: a.name, type: a.type, dataUrl: a.dataUrl }));
+    const history: WireMessage[] = [
+      ...buildHistory(messageId),
+      { role: "user", content: newText, attachments: wireAttachments },
+    ];
     const newAssistant: ChatMessageType = {
       id: uid(),
       role: "assistant",
@@ -165,46 +171,27 @@ export function DirectMode({
           <>
             {chat.messages.length === 0 ? (
               <div className="flex-1">
-                <EmptyState onPick={(p) => send(p, [])} />
+                <EmptyState mode="direct" onPick={(p) => send(p, [])} />
               </div>
             ) : (
               <div className="flex-1 overflow-y-auto px-4 py-5 sm:px-8" ref={chatEndRef}>
                 <div className={`mx-auto flex flex-col gap-5 ${hasWorkspace ? "" : "max-w-3xl"}`}>
-                  {(() => {
-                    let sinceAd = 0;
-                    let gap = 2;
-                    return chat.messages.map((m) => {
-                      // Slim ad card every 2-3 completed replies (alternating
-                      // gap) — never sits next to the composer, shown on
-                      // mobile too since this list has no md:hidden guard.
-                      let showAdAfter = false;
-                      if (m.role === "assistant" && !m.streaming) {
-                        sinceAd++;
-                        if (sinceAd >= gap) {
-                          showAdAfter = true;
-                          sinceAd = 0;
-                          gap = gap === 2 ? 3 : 2;
-                        }
+                  {chat.messages.map((m, idx) => (
+                    <ChatMessage
+                      key={m.id}
+                      message={m}
+                      isLast={idx === chat.messages.length - 1}
+                      suppressCode={hasWorkspace}
+                      onRegenerate={m.role === "assistant" && !m.streaming ? () => regenerate(m.id) : undefined}
+                      onRegenerateWith={
+                        m.role === "assistant" && !m.streaming ? (modelId) => regenerate(m.id, modelId) : undefined
                       }
-                      return (
-                        <div key={m.id} className="flex flex-col gap-5">
-                          <ChatMessage
-                            message={m}
-                            suppressCode={hasWorkspace}
-                            onRegenerate={m.role === "assistant" && !m.streaming ? () => regenerate(m.id) : undefined}
-                            onRegenerateWith={
-                              m.role === "assistant" && !m.streaming ? (modelId) => regenerate(m.id, modelId) : undefined
-                            }
-                            onContinue={
-                              m.role === "assistant" && !m.streaming && m.truncated ? () => continueMessage(m.id) : undefined
-                            }
-                            onEdit={m.role === "user" && !m.streaming ? (newText) => editMessage(m.id, newText) : undefined}
-                          />
-                          {showAdAfter && <AdUnit slot="0000000001" width={320} height={80} />}
-                        </div>
-                      );
-                    });
-                  })()}
+                      onContinue={
+                        m.role === "assistant" && !m.streaming && m.truncated ? () => continueMessage(m.id) : undefined
+                      }
+                      onEdit={m.role === "user" && !m.streaming ? (newText) => editMessage(m.id, newText) : undefined}
+                    />
+                  ))}
                 </div>
               </div>
             )}

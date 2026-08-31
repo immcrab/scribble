@@ -5,12 +5,12 @@ import { useAuthStore } from "../state/authStore";
 import { isLocalDev } from "../lib/devMode";
 
 const MODES: { id: Mode; label: string; desc: string; icon: typeof Swords; gated?: boolean }[] = [
-  { id: "battle", label: "Battle Mode", desc: "Battle 2 anonymous models", icon: Swords, gated: true },
-  { id: "agent", label: "Agent Mode", desc: "Built for complex tasks", icon: Bot, gated: true },
-  { id: "side-by-side", label: "Side by Side", desc: "Compare 2 models of your choice", icon: Columns2, gated: true },
-  { id: "image", label: "Image", desc: "Generate images from a prompt", icon: ImageIcon, gated: true },
-  { id: "speech", label: "Text to Speech", desc: "Turn text into natural speech", icon: AudioLines, gated: true },
-  { id: "direct", label: "Direct", desc: "Chat with 1 model at a time", icon: MessageCircle },
+  { id: "battle", label: "Battle Mode", desc: "Two hidden models answer — you vote", icon: Swords, gated: true },
+  { id: "agent", label: "Agent Mode", desc: "Tool-using tasks with live web search", icon: Bot, gated: true },
+  { id: "side-by-side", label: "Side by Side", desc: "Compare two models you pick, side by side", icon: Columns2, gated: true },
+  { id: "image", label: "Image", desc: "Generate or edit images from a prompt", icon: ImageIcon, gated: true },
+  { id: "speech", label: "Text to Speech", desc: "Turn text into audio you can download", icon: AudioLines, gated: true },
+  { id: "direct", label: "Direct", desc: "A normal one-on-one chat with one model", icon: MessageCircle },
 ];
 
 export function ModeSelector({ mode, onChange }: { mode: Mode; onChange: (m: Mode) => void }) {
@@ -56,11 +56,13 @@ export function ModeSelector({ mode, onChange }: { mode: Mode; onChange: (m: Mod
                   <span className={`block text-sm font-medium ${m.id === mode ? "text-white" : "text-slate-200"}`}>
                     {m.label}
                   </span>
-                  <span className="block text-xs text-slate-500">
-                    {locked ? "Sign in to unlock" : m.desc}
-                  </span>
+                  <span className="block text-xs text-slate-500">{m.desc}</span>
+                  {locked && (
+                    <span className="mt-0.5 flex items-center gap-1 text-[11px] font-medium text-accent-400/90">
+                      <Lock size={10} /> Sign in to unlock
+                    </span>
+                  )}
                 </span>
-                {locked && <Lock size={13} className="mt-0.5 shrink-0 text-slate-500" />}
               </button>
             );
           })}

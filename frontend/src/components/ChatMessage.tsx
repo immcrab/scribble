@@ -201,6 +201,7 @@ function formatDuration(ms: number, precise: boolean): string {
  */
 function ThinkingBlock({ message, suppressPrelude }: { message: ChatMessageType; suppressPrelude?: boolean }) {
   const [expanded, setExpanded] = useState(false);
+  const showTokens = useChatStore((s) => s.settings.showTokenCounts);
   const isThinking = !!message.streaming && !message.content && !suppressPrelude;
   const hasReasoning = !!message.reasoning && message.reasoning.trim().length > 0;
   const elapsedMs = useElapsedMs(isThinking, message.thinkingStartedAt, isThinking ? undefined : message.thinkingMs);
@@ -215,7 +216,7 @@ function ThinkingBlock({ message, suppressPrelude }: { message: ChatMessageType;
           <span className="thinking-label animate-thinking-shimmer">
             {elapsedMs > 0 ? `Thinking for ${formatDuration(elapsedMs, false)}…` : "Thinking…"}
           </span>
-          {!!message.tokenCount && <span className="text-xs text-slate-500">~{message.tokenCount} tokens</span>}
+          {showTokens && !!message.tokenCount && <span className="text-xs text-slate-500">~{message.tokenCount} tokens</span>}
         </div>
         {hasReasoning && (
           <div className="mt-1.5 max-h-32 overflow-y-auto rounded-lg border border-base-700/40 bg-base-900/40 px-3 py-2 text-xs italic leading-relaxed text-slate-500 whitespace-pre-wrap">
@@ -248,6 +249,7 @@ function ThinkingBlock({ message, suppressPrelude }: { message: ChatMessageType;
 export function ChatMessage({
   message,
   hideModelName = false,
+  isLast = false,
   onRegenerate,
   onRegenerateWith,
   onContinue,
@@ -257,6 +259,8 @@ export function ChatMessage({
 }: {
   message: ChatMessageType;
   hideModelName?: boolean;
+  /** The last message in the thread — keeps its action row visible without a hover. */
+  isLast?: boolean;
   /** Resend the message with the same model. */
   onRegenerate?: () => void;
   /** Resend the message with a different model — omit to hide the model-picker chevron. */
@@ -276,6 +280,7 @@ export function ChatMessage({
   const [lightbox, setLightbox] = useState<{ src: string; name?: string } | null>(null);
   const isUser = message.role === "user";
   const compact = useChatStore((s) => s.settings.density === "compact");
+  const showTokenCounts = useChatStore((s) => s.settings.showTokenCounts);
 
   useEffect(() => {
     if (!lightbox) return;
@@ -467,9 +472,19 @@ export function ChatMessage({
             </div>
           )}
           {message.error ? (
-            <div className="flex items-start gap-2 text-sm text-red-400">
-              <AlertTriangle size={15} className="mt-0.5 shrink-0" />
-              <span>{message.error}</span>
+            <div className="flex flex-col gap-2">
+              <div className="flex items-start gap-2 text-sm text-red-400">
+                <AlertTriangle size={15} className="mt-0.5 shrink-0" />
+                <span>{message.error}</span>
+              </div>
+              {onRegenerate && (
+                <button
+                  onClick={onRegenerate}
+                  className="flex w-fit items-center gap-1.5 rounded-lg border border-base-600/60 bg-base-800/60 px-2.5 py-1 text-xs font-medium text-slate-300 transition-colors hover:border-accent-500/50 hover:text-white"
+                >
+                  <RotateCcw size={12} /> Retry
+                </button>
+              )}
             </div>
           ) : editing ? (
             // Inline editor for user messages
@@ -523,9 +538,10 @@ export function ChatMessage({
         </div>
         )}
 
-        {/* Token count — live estimate while generating, frozen once the turn ends.
-            Hidden during the pure "Thinking…" phase, where ThinkingBlock shows it instead. */}
-        {!isUser && !!message.tokenCount && (!message.streaming || !!message.content) && (
+        {/* Token count — opt-in (Settings → General). Live estimate while generating,
+            frozen once the turn ends. Hidden during the pure "Thinking…" phase, where
+            ThinkingBlock shows it instead. */}
+        {showTokenCounts && !isUser && !!message.tokenCount && (!message.streaming || !!message.content) && (
           <div className="mt-1 px-1 text-[11px] text-slate-500">
             {message.streaming ? `~${message.tokenCount} tokens` : `${message.tokenCount} tokens`}
           </div>
@@ -555,7 +571,11 @@ export function ChatMessage({
         {/* Action buttons — always visible on touch devices via CSS (see index.css),
             shown on hover for mouse. Made large enough for tappable use. */}
         {!isUser && !message.streaming && message.content && (
-          <div className="mt-1 flex gap-1 px-1 opacity-0 transition-opacity duration-200 group-hover:opacity-100 hover:opacity-100 sm:group-hover:opacity-100">
+          <div
+            className={`mt-1 flex gap-1 px-1 transition-opacity duration-200 group-hover:opacity-100 hover:opacity-100 ${
+              isLast ? "opacity-100" : "opacity-0 max-sm:opacity-100"
+            }`}
+          >
             <button
               onClick={copy}
               className="message-action-btn flex items-center gap-1 rounded p-1.5 text-xs text-slate-500 transition-colors hover:bg-base-700/60 hover:text-white"

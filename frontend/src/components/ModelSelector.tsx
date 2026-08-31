@@ -79,10 +79,10 @@ function ModelRow({
       {model.supportsVision && (
         <span
           title="Supports image and vision input"
-          className="hidden sm:inline-flex items-center gap-1 rounded border border-sky-500/30 bg-sky-500/15 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-sky-400 shrink-0"
+          className="inline-flex items-center gap-1 rounded border border-sky-500/30 bg-sky-500/15 px-1 py-0.5 text-[10px] font-semibold tracking-wide text-sky-400 shrink-0 sm:px-1.5"
         >
           <Eye size={10} strokeWidth={2.5} />
-          <span>Vision</span>
+          <span className="hidden sm:inline">Vision</span>
         </span>
       )}
       {endAdornment}
@@ -122,6 +122,7 @@ export function ModelSelector({
   const grouped = useMemo(() => modelsByProvider(), [adminCatalog, customModels, puterFavorites]);
   const updateSettings = useChatStore((s) => s.updateSettings);
   const [pendingPuterModel, setPendingPuterModel] = useState<ModelDef | null>(null);
+  const [modelQuery, setModelQuery] = useState("");
   const [puterBrowseOpen, setPuterBrowseOpen] = useState(false);
   const [puterSearch, setPuterSearch] = useState("");
   const [catalog, setCatalog] = useState<PuterModelInfo[] | null>(null);
@@ -237,8 +238,15 @@ export function ModelSelector({
   // model the moment it's picked, so this list IS "every Puter model you've used or
   // starred." Custom Models entries targeting "puter" still get a plain row below it,
   // same as every other provider, just without the star.
-  const favoritedPuterModels = puterFavorites;
-  const customPuterModels = (grouped.puter ?? []).filter((m) => m.isCustom && !isFavorited(m.modelId));
+  const mqTokens = modelQuery.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  const matchModel = (m: ModelDef) => {
+    if (mqTokens.length === 0) return true;
+    const hay = `${m.displayName} ${m.modelId} ${PROVIDER_LABELS[m.provider] ?? ""}`.toLowerCase();
+    return mqTokens.every((t) => hay.includes(t));
+  };
+
+  const favoritedPuterModels = puterFavorites.filter(matchModel);
+  const customPuterModels = (grouped.puter ?? []).filter((m) => m.isCustom && !isFavorited(m.modelId)).filter(matchModel);
 
   return (
     <>
@@ -274,8 +282,19 @@ export function ModelSelector({
         closeMenuRef.current = close;
         return (
         <>
-          <CloseOnUnmount onUnmount={() => setPuterBrowseOpen(false)} />
-          {providers.map((provider) => (
+          <CloseOnUnmount onUnmount={() => { setPuterBrowseOpen(false); setModelQuery(""); }} />
+          <div className="sticky top-0 z-10 border-b border-base-700/60 bg-base-850 p-2">
+            <input
+              value={modelQuery}
+              onChange={(e) => setModelQuery(e.target.value)}
+              placeholder="Filter models…"
+              className="w-full rounded-md border border-base-600/60 bg-base-900/60 px-2 py-1.5 text-sm text-slate-200 placeholder:text-slate-500 focus:border-accent-500/50 focus:outline-none"
+            />
+          </div>
+          {providers.map((provider) => {
+            const models = grouped[provider].filter(matchModel);
+            if (models.length === 0) return null;
+            return (
             <div key={provider} className="py-1.5 border-b border-base-700/40 last:border-b-0">
               <div className="flex items-center gap-1.5 px-3.5 pb-1 pt-1.5">
                 <ProviderFavicon provider={provider} size={13} />
@@ -283,7 +302,7 @@ export function ModelSelector({
                   {PROVIDER_LABELS[provider]}
                 </span>
               </div>
-              {grouped[provider].map((m) => (
+              {models.map((m) => (
                 <ModelRow
                   key={m.modelId}
                   model={m}
@@ -293,7 +312,11 @@ export function ModelSelector({
                 />
               ))}
             </div>
-          ))}
+            );
+          })}
+          {mqTokens.length > 0 && providers.every((p) => grouped[p].filter(matchModel).length === 0) && favoritedPuterModels.length === 0 && customPuterModels.length === 0 && (
+            <p className="px-3.5 py-3 text-xs text-slate-500">No models match "{modelQuery.trim()}". Try "Browse all Puter models" below.</p>
+          )}
 
           <div className="py-1.5">
             <div className="flex items-center gap-1.5 px-3.5 pb-1 pt-1.5">
@@ -366,8 +389,8 @@ export function ModelSelector({
             style={isMobile ? undefined : { top: flyoutPos?.top ?? 0, left: flyoutPos?.left ?? 0 }}
             className={
               isMobile
-                ? "fixed inset-x-3 bottom-3 z-50 flex max-h-[70vh] flex-col rounded-xl border border-base-600/70 bg-base-850/95 shadow-panel backdrop-blur-xl animate-fade-in-up"
-                : "fixed z-50 flex max-h-[26rem] w-80 flex-col rounded-xl border border-base-600/70 bg-base-850/95 shadow-panel backdrop-blur-xl animate-fade-in-up"
+                ? "fixed inset-x-3 bottom-3 z-50 flex max-h-[70vh] flex-col rounded-xl border border-base-600/70 bg-base-850 shadow-panel backdrop-blur-xl animate-fade-in-up"
+                : "fixed z-50 flex max-h-[26rem] w-80 flex-col rounded-xl border border-base-600/70 bg-base-850 shadow-panel backdrop-blur-xl animate-fade-in-up"
             }
           >
             <div className="flex items-center justify-between border-b border-base-700/40 px-3.5 py-2.5">

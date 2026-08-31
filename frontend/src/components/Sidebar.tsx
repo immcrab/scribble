@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   PenLine,
   MessageSquare,
@@ -24,11 +24,14 @@ import { LogoMark } from "./Logo";
 import { useChatStore } from "../state/chatStore";
 import { useAuthStore } from "../state/authStore";
 import { ExportChat } from "./ExportChat";
-import { AdUnit } from "./AdUnit";
 import { Dropdown } from "./Dropdown";
+import { ModelFavicon } from "./ProviderIcon";
+import { findModel } from "../config/models";
+import { useUsageStore, creditStatus } from "../lib/usage";
 import { docsPath, adminPath, usagePath } from "../lib/router";
 import { isAdmin } from "../lib/admin";
-import type { Mode } from "../types";
+import type { SettingsTab } from "./SettingsModal";
+import type { Chat, Mode } from "../types";
 
 function YouTubeIcon({ size = 16 }: { size?: number }) {
   return (
@@ -98,12 +101,41 @@ const MODE_LABEL: Record<Mode, string> = {
   speech: "Speech",
 };
 
+/** Compact "used X% of today's allowance" bar in the sidebar footer — the counterpart
+ * to the full Usage page, so the daily limit is never a surprise. Signed-in only. */
+function UsageMeter({ onOpen }: { onOpen: () => void }) {
+  const loaded = useUsageStore((s) => s.loaded);
+  useUsageStore((s) => s.record); // re-render when today's tally changes
+  if (!loaded) return null;
+  const st = creditStatus();
+  const pct = Math.round(st.fraction * 100);
+  const near = st.fraction >= 0.8;
+  return (
+    <button
+      onClick={onOpen}
+      className="mb-1 w-full rounded-lg px-3 py-2 text-left transition-colors hover:bg-base-800/70"
+      title="Open the Usage page"
+    >
+      <div className="flex items-center justify-between text-[11px] text-slate-500">
+        <span>{st.overLimit ? "Daily limit reached" : `${pct}% of today's usage`}</span>
+        <span>{st.overLimit ? "resets soon" : "Usage"}</span>
+      </div>
+      <div className="mt-1 h-1 overflow-hidden rounded-full bg-base-700/60">
+        <div
+          className={`h-full rounded-full ${st.overLimit || near ? "bg-amber-500" : "bg-accent-500"}`}
+          style={{ width: `${Math.max(2, pct)}%` }}
+        />
+      </div>
+    </button>
+  );
+}
+
 export function Sidebar({
   onOpenSettings,
   mobileOpen,
   onCloseMobile,
 }: {
-  onOpenSettings: () => void;
+  onOpenSettings: (tab?: SettingsTab) => void;
   mobileOpen: boolean;
   onCloseMobile: () => void;
 }) {
@@ -124,9 +156,10 @@ export function Sidebar({
     setActiveProject,
     moveChatToProject,
   } = useChatStore();
-  const { user, loading: authLoading, signInWithGoogle, signOut } = useAuthStore();
+  const { user, loading: authLoading, signOut } = useAuthStore();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
   const [projectEditValue, setProjectEditValue] = useState("");
@@ -174,8 +207,34 @@ export function Sidebar({
 
   const activeChat = chats.find((c) => c.id === activeChatId);
 
-  // Chats that belong to a project live inside that project's tabbed view, not the flat History list.
-  const historyChats = chats.filter((c) => !c.projectId);
+  // Chats that belong to a project live inside that project's tabbed view, not the flat
+  // History list. A brand-new zero-message chat is also kept out until it has a first
+  // message — except the one currently on screen, so the fresh compose screen still
+  // shows a highlighted row.
+  const historyChats = chats.filter(
+    (c) => !c.projectId && (c.messages.length > 0 || c.id === activeChatId)
+  );
+
+  const modelForChat = (chat: Chat) => {
+    const id = chat.modelId ?? chat.modelAId;
+    return id ? findModel(id) : undefined;
+  };
+
+  const requestDelete = (id: string) => {
+    if (confirmDeleteId === id) {
+      deleteChat(id);
+      setConfirmDeleteId(null);
+    } else {
+      setConfirmDeleteId(id);
+    }
+  };
+
+  // A pending "Delete?" confirm reverts itself if the user doesn't follow through.
+  useEffect(() => {
+    if (!confirmDeleteId) return;
+    const t = setTimeout(() => setConfirmDeleteId(null), 4000);
+    return () => clearTimeout(t);
+  }, [confirmDeleteId]);
 
   const q = query.trim().toLowerCase();
   /** First message body that contains the search term, for the snippet shown
@@ -319,8 +378,26 @@ export function Sidebar({
                           {p.name}
                         </button>
                       )}
-                      {editingProjectId !== p.id && (
-                        <span className="flex shrink-0 gap-1 opacity-0 group-hover:opacity-100">
+                      {editingProjectId !== p.id && confirmDeleteId === `project:${p.id}` && (
+                        <span className="flex shrink-0 items-center gap-1">
+                          <button
+                            onClick={() => { deleteProject(p.id); setConfirmDeleteId(null); }}
+                            className="flex h-8 items-center rounded-lg px-2 text-[11px] font-medium text-red-400 hover:bg-red-500/20"
+                            title="Delete project (keeps its chats)"
+                          >
+                            Delete?
+                          </button>
+                          <button
+                            onClick={() => setConfirmDeleteId(null)}
+                            className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-base-600 hover:text-white"
+                            title="Keep"
+                          >
+                            <X size={12} />
+                          </button>
+                        </span>
+                      )}
+                      {editingProjectId !== p.id && confirmDeleteId !== `project:${p.id}` && (
+                        <span className="flex shrink-0 gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100">
                           <button
                             onClick={() => startProjectEdit(p.id, p.name)}
                             className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-base-600 hover:text-white"
@@ -329,7 +406,7 @@ export function Sidebar({
                             <Pencil size={12} />
                           </button>
                           <button
-                            onClick={() => deleteProject(p.id)}
+                            onClick={() => setConfirmDeleteId(`project:${p.id}`)}
                             className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-red-500/20 hover:text-red-400"
                             title="Delete project (keeps its chats)"
                           >
@@ -368,10 +445,10 @@ export function Sidebar({
           )}
 
           <div className="mt-5 flex-1 space-y-1 overflow-y-auto px-2 pb-3">
-            {/* Active chat quick actions (Export) — always tappable */}
-            {activeChat && (sidebarOpen || mobileOpen) && !q && (
+            {/* Active chat quick actions (Export / Share) — always tappable */}
+            {activeChat && activeChat.messages.length > 0 && (sidebarOpen || mobileOpen) && !q && (
               <div className="px-3 pb-3">
-                <ExportChat messages={activeChat.messages} chatTitle={activeChat.title} />
+                <ExportChat messages={activeChat.messages} chatTitle={activeChat.title} chatId={activeChat.id} canShare={!!user} />
               </div>
             )}
             {historyChats.length === 0 && (
@@ -386,7 +463,11 @@ export function Sidebar({
               </p>
             )}
             <ul className="space-y-1">
-              {filteredChats.map((chat) => (
+              {filteredChats.map((chat) => {
+                const rowModel = modelForChat(chat);
+                const confirming = confirmDeleteId === chat.id;
+                const snippet = q && !chat.title.toLowerCase().includes(q) ? matchSnippet(chat) : null;
+                return (
                 <li key={chat.id}>
                   <div
                     className={`group flex items-center gap-1.5 rounded-lg border px-2 py-1 text-sm transition-all ${
@@ -414,16 +495,19 @@ export function Sidebar({
                         title={chat.title}
                       >
                         <span className="block truncate">{chat.title}</span>
-                        {q && !chat.title.toLowerCase().includes(q) && matchSnippet(chat) && (
-                          <span className="block truncate text-[11px] text-slate-500">{matchSnippet(chat)}</span>
+                        {snippet ? (
+                          <span className="block truncate text-[11px] text-slate-500">{snippet}</span>
+                        ) : (
+                          <span className="mt-0.5 flex items-center gap-1 text-[10px] text-slate-500">
+                            {rowModel && <ModelFavicon model={rowModel} size={10} />}
+                            <span className="truncate">{rowModel?.displayName ?? MODE_LABEL[chat.mode]}</span>
+                            {rowModel && <span className="shrink-0 opacity-60">· {MODE_LABEL[chat.mode]}</span>}
+                          </span>
                         )}
                       </button>
                     )}
-                    <span className="hidden shrink-0 text-[10px] text-slate-500 group-hover:hidden sm:inline">
-                      {MODE_LABEL[chat.mode]}
-                    </span>
                     {editingId === chat.id ? (
-                      <span className="flex shrink-0 gap-1 opacity-100">
+                      <span className="flex shrink-0 gap-1">
                         <button
                           onClick={commitEdit}
                           className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 hover:bg-base-600 hover:text-white"
@@ -439,57 +523,50 @@ export function Sidebar({
                           <X size={13} />
                         </button>
                       </span>
+                    ) : confirming ? (
+                      <span className="flex shrink-0 items-center gap-1">
+                        <button
+                          onClick={() => requestDelete(chat.id)}
+                          className="flex h-9 items-center rounded-lg px-2 text-[11px] font-medium text-red-400 hover:bg-red-500/20"
+                          title="Confirm delete"
+                        >
+                          Delete?
+                        </button>
+                        <button
+                          onClick={() => setConfirmDeleteId(null)}
+                          className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 hover:bg-base-600 hover:text-white"
+                          title="Keep"
+                        >
+                          <X size={13} />
+                        </button>
+                      </span>
                     ) : (
-                      <span className="opacity-0 group-hover:opacity-100 sm:group-hover:flex">
-                        <span className="hidden sm:inline flex gap-1">
-                          <MoveToProjectMenu chatId={chat.id} />
-                          <button
-                            onClick={() => startEdit(chat.id, chat.title)}
-                            className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 hover:bg-base-600 hover:text-white"
-                            title="Rename"
-                          >
-                            <Pencil size={13} />
-                          </button>
-                          <button
-                            onClick={() => deleteChat(chat.id)}
-                            className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 hover:bg-red-500/20 hover:text-red-400"
-                            title="Delete"
-                          >
-                            <Trash2 size={13} />
-                          </button>
-                        </span>
-                        <span className="sm:hidden flex gap-1">
-                          <MoveToProjectMenu chatId={chat.id} />
-                          <button
-                            onClick={() => startEdit(chat.id, chat.title)}
-                            className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 hover:bg-base-600 hover:text-white"
-                            title="Rename"
-                          >
-                            <Pencil size={13} />
-                          </button>
-                          <button
-                            onClick={() => deleteChat(chat.id)}
-                            className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 hover:bg-red-500/20 hover:text-red-400"
-                            title="Delete"
-                          >
-                            <Trash2 size={13} />
-                          </button>
-                        </span>
+                      <span className="flex shrink-0 gap-1 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
+                        <MoveToProjectMenu chatId={chat.id} />
+                        <button
+                          onClick={() => startEdit(chat.id, chat.title)}
+                          className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 hover:bg-base-600 hover:text-white"
+                          title="Rename"
+                        >
+                          <Pencil size={13} />
+                        </button>
+                        <button
+                          onClick={() => requestDelete(chat.id)}
+                          className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 hover:bg-red-500/20 hover:text-red-400"
+                          title="Delete"
+                        >
+                          <Trash2 size={13} />
+                        </button>
                       </span>
                     )}
                   </div>
                 </li>
-              ))}
+                );
+              })}
             </ul>
           </div>
 
           {!sidebarOpen && !mobileOpen && <div className="flex-1" />}
-
-          {(sidebarOpen || mobileOpen) && (
-            <div className="px-3 pb-2">
-              <AdUnit slot="0000000000" width={234} height={90} />
-            </div>
-          )}
 
           <div className="border-t border-base-700/60 p-3">
             {!authLoading && (
@@ -524,16 +601,24 @@ export function Sidebar({
                   </div>
                 ) : (
                   <button
-                    onClick={signInWithGoogle}
+                    onClick={closeOnMobileSelect(() => onOpenSettings("account"))}
                     className={`mb-1 flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-slate-400 transition-colors hover:bg-base-800/70 hover:text-white ${
                       !sidebarOpen && !mobileOpen && "md:justify-center"
                     }`}
                   >
                     <LogIn size={16} />
-                    {(sidebarOpen || mobileOpen) && "Log in with Google"}
+                    {(sidebarOpen || mobileOpen) && "Sign in"}
                   </button>
                 )}
               </>
+            )}
+            {user && (sidebarOpen || mobileOpen) && (
+              <UsageMeter
+                onOpen={closeOnMobileSelect(() => {
+                  window.history.pushState(null, "", usagePath());
+                  window.dispatchEvent(new PopStateEvent("popstate"));
+                })}
+              />
             )}
             <button
               onClick={closeOnMobileSelect(() => {

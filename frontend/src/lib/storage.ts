@@ -73,6 +73,9 @@ export interface ScribbleSettings {
   customSystemPrompt: string;
   /** Play a short chime when an assistant reply finishes streaming — see lib/notificationSound.ts. */
   notificationSound: boolean;
+  /** Show the per-message token estimate under each assistant reply. Off by default —
+   * it's a power-user detail, not something a general reader needs on every turn. */
+  showTokenCounts: boolean;
   /** Minimum seconds to leave between consecutive outgoing chat requests, enforced by a
    * global client-side queue (lib/requestQueue.ts). 0 = no pacing. Keeps a burst of calls
    * under an upstream provider's requests-per-minute cap — Battle / Side by Side fire two
@@ -113,17 +116,42 @@ const SETTINGS_DEFAULTS: Omit<ScribbleSettings, "workerUrl" | "password"> = {
   replyLanguage: "auto",
   customSystemPrompt: "",
   notificationSound: false,
+  showTokenCounts: false,
   requestSpacingSec: 0,
   autoRetryRateLimited: true,
   memoryEnabled: false,
   updatedAt: 0,
 };
 
+/** Repairs a title that got concatenated with itself ("FooFoo" → "Foo") — an old
+ * auto-title bug the write-side fix doesn't retroactively clean up. Tolerates a
+ * separating space and case differences at the seam. */
+export function dedupeDoubledTitle(title: string): string {
+  const t = title.trim();
+  if (t.length < 6) return title;
+  // "FooFoo"
+  if (t.length % 2 === 0) {
+    const half = t.length / 2;
+    if (t.slice(0, half).toLowerCase() === t.slice(half).toLowerCase()) return t.slice(0, half);
+  }
+  // "Foo Foo"
+  if (t.length % 2 === 1) {
+    const half = (t.length - 1) / 2;
+    if (t[half] === " " && t.slice(0, half).toLowerCase() === t.slice(half + 1).toLowerCase()) {
+      return t.slice(0, half);
+    }
+  }
+  return title;
+}
+
 export function loadChats(): Chat[] {
   try {
     const raw = localStorage.getItem(CHATS_KEY);
     if (!raw) return [];
-    return JSON.parse(raw) as Chat[];
+    const chats = JSON.parse(raw) as Chat[];
+    return chats.map((c) =>
+      typeof c?.title === "string" ? { ...c, title: dedupeDoubledTitle(c.title) } : c
+    );
   } catch {
     return [];
   }

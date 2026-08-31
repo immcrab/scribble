@@ -171,7 +171,7 @@ export function BattleMode({
           <>
             {chat.messages.length === 0 ? (
               <div className="flex-1">
-                <EmptyState heading="Battle two anonymous models" onPick={(p) => send(p, [])} />
+                <EmptyState mode="battle" heading="Battle two anonymous models" onPick={(p) => send(p, [])} />
               </div>
             ) : (
               <div className="flex-1 overflow-y-auto px-4 py-5 sm:px-8" ref={chatEndRef}>

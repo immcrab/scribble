@@ -20,11 +20,18 @@ import {
   Layers,
   Trophy,
   Medal,
+  Compass,
+  Keyboard,
+  Swords,
+  Bot,
+  Columns2,
+  Image as ImageIcon,
+  AudioLines,
+  MessageCircle,
 } from "lucide-react";
-import { getAllModels, PROVIDER_LABELS, isModelGated, catalogSizeLabel } from "../config/models";
+import { getAllModels, PROVIDER_LABELS, isModelGated } from "../config/models";
 import { getModelDescription } from "../config/modelDocs";
 import { ModelFavicon, ProviderFavicon } from "../components/ProviderIcon";
-import { AdUnit } from "../components/AdUnit";
 import { LogoMark } from "../components/Logo";
 import { docsPath } from "../lib/router";
 import { modelSlug } from "../lib/modelSlug";
@@ -45,36 +52,17 @@ import type { ModelCapability, ModelDef, Provider } from "../types";
  * (see ADD_NEW_MODEL.md) if that's ever a risk.
  */
 
-/**
- * Real AdSense ad-unit slot ids (client ca-pub-3679522337620689 — see AdUnit.tsx).
- * Each id below must come from an ad unit created in the AdSense dashboard
- * (Ads → By ad unit → Display ads); a slot id can't be invented, it has to be
- * copied from there. Swap every "REPLACE_ME_*" for a real slot id — until then
- * those units render as unfilled/blank space, same as any other new ad unit.
- *
- * The rails intentionally hold more than 2 ids each: they're laid out in normal
- * document flow (not sticky), so as the page scrolls each ad scrolls away and
- * the next one in the array takes its place — different creative, not the same
- * unit following the reader down the page.
- */
-const AD_SLOTS = {
-  top: "REPLACE_ME_TOP",
-  left: ["REPLACE_ME_LEFT_1", "REPLACE_ME_LEFT_2", "REPLACE_ME_LEFT_3"],
-  right: ["REPLACE_ME_RIGHT_1", "REPLACE_ME_RIGHT_2", "REPLACE_ME_RIGHT_3"],
-};
-
 /** Bump this whenever a model is added/removed/re-described — shown on the index
- * page so readers know how fresh the catalog is. The catalog size shown around
- * the docs is `catalogSizeLabel()` (rounded down to a "N+"); when it crosses the
- * next multiple of 10, also bump the static "N+ models" copy in
- * frontend/index.html's <meta> tags — see ADD_NEW_MODEL.md. */
+ * page so readers know how fresh the catalog is. The docs render the exact model
+ * count from `getAllModels().length`; the static "60+" copy in frontend/index.html's
+ * <meta> tags and the public marketing pages is approximate and rarely needs a bump. */
 const CATALOG_LAST_UPDATED = "August 2026";
 
 const FAQ_ITEMS: { question: string; answer: string }[] = [
   {
     question: "Do I need an account to use these models?",
     answer:
-      "No. Most models here are free and open the moment you pick them. A few — marked with a lock icon — need a sign-in, usually because the provider requires it or the model costs real money to run.",
+      "You can start straight away in Direct mode with the free default model — no sign-up. Every other model (marked with a lock icon) and the other modes — Battle, Agent, Side by Side, Image, Text to Speech — unlock with a free Google or email sign-in, which also syncs your chats across devices. Signing in is free; there's no paid tier.",
   },
   {
     question: "Is my chat data used to train anything?",
@@ -160,6 +148,7 @@ function CapabilityBadge({ capability }: { capability: ModelCapability }) {
 
 const DOCS_NAV = [
   { slug: "", label: "Home" },
+  { slug: "using", label: "Using Scribble" },
   { slug: "models", label: "Models" },
   { slug: "providers", label: "Providers" },
   { slug: "top-models", label: "Top models" },
@@ -474,11 +463,19 @@ function HomePage({ onOpen }: { onOpen: (slug: string) => void }) {
       <h1 className="font-serif text-3xl font-semibold text-white sm:text-4xl">Scribble Docs</h1>
       <p className="mt-3 max-w-xl text-sm leading-relaxed text-slate-400">
         Scribble is a free, open chat frontend that talks to your choice of model provider through a Cloudflare Worker
-        you control — {catalogSizeLabel()} free models across {providerCount} providers. These docs cover what's
+        you control — {modelCount} free models across {providerCount} providers. These docs cover what's
         available and how to run your own Worker behind it.
       </p>
 
       <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <HomeCard
+          onClick={() => onOpen("using")}
+          icon={<Compass size={18} />}
+          eyebrow="Start here"
+          title="Using Scribble"
+          description="The modes, signing in, projects, memory, web search, and keyboard shortcuts — everything you need to actually use the app."
+          cta="Read the guide"
+        />
         <HomeCard
           onClick={() => onOpen("models")}
           icon={<BookOpen size={18} />}
@@ -518,9 +515,129 @@ function HomePage({ onOpen }: { onOpen: (slug: string) => void }) {
   );
 }
 
+function UsingRow({ icon, title, children }: { icon: ReactNode; title: string; children: ReactNode }) {
+  return (
+    <div className="flex gap-3 border-b border-base-800/70 py-4 last:border-b-0">
+      <div className="mt-0.5 shrink-0 text-accent-400">{icon}</div>
+      <div className="min-w-0">
+        <h3 className="text-sm font-semibold text-white">{title}</h3>
+        <p className="mt-1 text-sm leading-relaxed text-slate-400">{children}</p>
+      </div>
+    </div>
+  );
+}
+
+const isMac = typeof navigator !== "undefined" && /Mac|iP(hone|ad|od)/.test(navigator.platform);
+const MOD = isMac ? "⌘" : "Ctrl";
+const SHORTCUTS: { keys: string; action: string }[] = [
+  { keys: "Enter", action: "Send the message (Shift+Enter for a newline — swap this in Settings)" },
+  { keys: `${MOD} + Shift + O`, action: "Start a new chat" },
+  { keys: `${MOD} + \\`, action: "Show or hide the sidebar" },
+  { keys: "Esc", action: "Close a dialog or dropdown" },
+];
+
+function UsingScribblePage({ onOpen }: { onOpen: (slug: string) => void }) {
+  return (
+    <div className="mx-auto max-w-2xl px-4 py-10 sm:px-6 sm:py-14">
+      <h1 className="font-serif text-3xl font-semibold text-white sm:text-4xl">Using Scribble</h1>
+      <p className="mt-3 text-sm leading-relaxed text-slate-400">
+        Scribble is a chat playground for comparing AI models. You can start typing right away — this
+        page covers everything around that.
+      </p>
+
+      <h2 className="mt-10 text-xs font-semibold uppercase tracking-wide text-slate-500">The six modes</h2>
+      <div className="mt-2">
+        <UsingRow icon={<MessageCircle size={16} />} title="Direct">
+          A normal one-on-one chat with the model you pick from the header. This is the only mode available
+          without signing in.
+        </UsingRow>
+        <UsingRow icon={<Swords size={16} />} title="Battle">
+          The same prompt goes to two hidden models. You read both answers, vote for the better one, and
+          then their names are revealed. Votes feed the monthly{" "}
+          <button className="text-accent-400 hover:underline" onClick={() => onOpen("top-models")}>leaderboard</button>.
+        </UsingRow>
+        <UsingRow icon={<Columns2 size={16} />} title="Side by Side">
+          Like Battle, but you choose both models and their names are shown the whole time — for a
+          deliberate head-to-head.
+        </UsingRow>
+        <UsingRow icon={<Bot size={16} />} title="Agent">
+          A chat turn that can run a live web search when the question needs current information. Search
+          results are folded into the model's context automatically.
+        </UsingRow>
+        <UsingRow icon={<ImageIcon size={16} />} title="Image">
+          Generate an image from a text prompt, or upload one and describe an edit. Pick the image model
+          and a style preset in the header.
+        </UsingRow>
+        <UsingRow icon={<AudioLines size={16} />} title="Text to Speech">
+          Paste text, pick a voice, and get audio you can play or download.
+        </UsingRow>
+      </div>
+
+      <h2 className="mt-10 text-xs font-semibold uppercase tracking-wide text-slate-500">Signing in</h2>
+      <div className="mt-2">
+        <UsingRow icon={<Lock size={16} />} title="What needs an account">
+          Direct mode with the free default model works with no sign-up. Every other model (marked with a
+          lock) and the other five modes unlock with a free Google or email sign-in. There is no paid tier
+          — signing in is free.
+        </UsingRow>
+        <UsingRow icon={<Server size={16} />} title="What signing in adds">
+          Your chats, projects, settings, and (opt-in) memories sync to your account, so they follow you
+          between devices. Sign out and the sync stops; your local copy stays on the device.
+        </UsingRow>
+        <UsingRow icon={<Zap size={16} />} title="Daily usage">
+          Signed-in accounts get a large daily allowance (renewed at midnight UTC) shared across chat,
+          image, and speech. If you hit it, the free default model keeps working until the reset. The{" "}
+          <span className="text-slate-300">Usage</span> link in the sidebar shows where it went.
+        </UsingRow>
+      </div>
+
+      <h2 className="mt-10 text-xs font-semibold uppercase tracking-wide text-slate-500">Organizing & context</h2>
+      <div className="mt-2">
+        <UsingRow icon={<Layers size={16} />} title="Projects">
+          Group related chats under a project in the sidebar. A project has a broadcast bar that sends one
+          prompt to every chat inside it at once.
+        </UsingRow>
+        <UsingRow icon={<Brain size={16} />} title="Memory">
+          Off by default. Turn it on in Settings → Memory and Scribble will remember short facts you ask it
+          to keep ("remember that…") and recall them in later chats. You can view and delete every stored
+          memory there.
+        </UsingRow>
+        <UsingRow icon={<Search size={16} />} title="Web search">
+          On by default (Settings → General). Before each turn, a quick check decides whether the reply
+          needs a live lookup; if it does, a search runs and the results are added to the model's context.
+          Turns that don't need it never trigger a search.
+        </UsingRow>
+      </div>
+
+      <h2 className="mt-10 text-xs font-semibold uppercase tracking-wide text-slate-500">Keyboard &amp; actions</h2>
+      <div className="mt-3 overflow-hidden rounded-xl border border-base-700/60">
+        {SHORTCUTS.map((s, i) => (
+          <div key={i} className="flex items-start gap-3 border-b border-base-800/70 px-4 py-2.5 text-sm last:border-b-0">
+            <kbd className="shrink-0 rounded border border-base-600/70 bg-base-900 px-1.5 py-0.5 font-mono text-xs text-slate-300">
+              {s.keys}
+            </kbd>
+            <span className="text-slate-400">{s.action}</span>
+          </div>
+        ))}
+      </div>
+      <p className="mt-3 flex items-center gap-1.5 text-xs text-slate-500">
+        <Keyboard size={13} /> Every chat has its own <span className="text-slate-400">/c/{"{id}"}</span> URL — bookmark or share it (share copies a public link).
+      </p>
+
+      <h2 className="mt-10 text-xs font-semibold uppercase tracking-wide text-slate-500">Your data</h2>
+      <p className="mt-2 text-sm leading-relaxed text-slate-400">
+        Without an account, everything stays in this browser. With an account, it syncs to your account and
+        you can delete any chat, or your whole account, from Settings. The full picture is in the{" "}
+        <a href="/privacy" className="text-accent-400 hover:underline">Privacy Policy</a>.
+      </p>
+    </div>
+  );
+}
+
 function DocsIndex({ onOpen }: { onOpen: (slug: string) => void }) {
   const [query, setQuery] = useState("");
   const models = getAllModels();
+  const modelCount = models.length;
   const q = query.trim().toLowerCase();
   const filtered = q
     ? models.filter((m) => m.displayName.toLowerCase().includes(q) || m.modelId.toLowerCase().includes(q))
@@ -540,7 +657,7 @@ function DocsIndex({ onOpen }: { onOpen: (slug: string) => void }) {
     <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
       <h1 className="font-serif text-2xl font-semibold text-white sm:text-3xl">Model catalog</h1>
       <p className="mt-2 max-w-2xl text-sm text-slate-400">
-        All {catalogSizeLabel()} models available in Scribble, what each is good at, and its capabilities — vision,
+        All {modelCount} models available in Scribble, what each is good at, and its capabilities — vision,
         code, reasoning, and more.
       </p>
       <p className="mt-1 text-xs text-slate-600">Catalog last updated {CATALOG_LAST_UPDATED}</p>
@@ -873,21 +990,6 @@ function ModelPage({ model, onOpen, onBackToIndex }: { model: ModelDef; onOpen: 
   );
 }
 
-/** A side rail of ad units in normal document flow — deliberately NOT sticky, so each
- * one scrolls away with the page instead of chasing the reader down it. Spaced apart
- * with a big gap so there's a clear stretch of empty rail (the "cutoff") before the
- * next, different, ad unit scrolls into view. Below `lg` there's no room beside the
- * content, so the rail drops under it instead, still stacked vertically. */
-function AdRail({ slots, order }: { slots: string[]; order: string }) {
-  return (
-    <aside className={`flex shrink-0 flex-col items-center gap-32 lg:w-[160px] ${order}`}>
-      {slots.map((slot) => (
-        <AdUnit key={slot} slot={slot} width={160} height={300} />
-      ))}
-    </aside>
-  );
-}
-
 function NotFound({ onBackToIndex }: { onBackToIndex: () => void }) {
   return (
     <div className="mx-auto flex max-w-md flex-col items-center px-4 py-24 text-center">
@@ -909,13 +1011,14 @@ export function DocsPage({ slug, onExit }: { slug: string; onExit: () => void })
   };
   const backToIndex = () => navigate("models");
 
-  const RESERVED_SLUGS = ["", "models", "providers", "top-models", "worker"];
+  const RESERVED_SLUGS = ["", "using", "models", "providers", "top-models", "worker"];
   const isReserved = RESERVED_SLUGS.includes(slug);
   const model = !isReserved ? getAllModels().find((m) => modelSlug(m.modelId) === slug) : undefined;
 
   useEffect(() => {
     const RESERVED_TITLES: Record<string, string> = {
       "": "Scribble Docs",
+      using: "Using Scribble — Scribble Docs",
       models: "Model catalog — Scribble Docs",
       providers: "Providers — Scribble Docs",
       "top-models": "Top models — Scribble Docs",
@@ -945,14 +1048,10 @@ export function DocsPage({ slug, onExit }: { slug: string; onExit: () => void })
       </div>
       <DocsHeader slug={slug} onNavigate={navigate} onExit={onExit} />
 
-      <div className="flex justify-center border-b border-base-700/40 bg-base-900/20 px-4 py-4">
-        <AdUnit slot={AD_SLOTS.top} width={728} height={90} className="w-full" />
-      </div>
-
-      <div className="mx-auto flex w-full max-w-[1400px] flex-1 flex-col gap-6 px-4 py-6 lg:flex-row lg:items-start lg:px-8">
-        <AdRail slots={AD_SLOTS.left} order="order-2 lg:order-1" />
-        <div className="min-w-0 flex-1 order-1 lg:order-2">
+      <div className="mx-auto flex w-full max-w-[900px] flex-1 flex-col gap-6 px-4 py-6 lg:px-8">
+        <div className="min-w-0 flex-1">
           {slug === "" && <HomePage onOpen={navigate} />}
+          {slug === "using" && <UsingScribblePage onOpen={navigate} />}
           {slug === "models" && <DocsIndex onOpen={navigate} />}
           {slug === "providers" && <ProvidersPage onOpen={navigate} />}
           {slug === "top-models" && <TopModelsPage onOpen={navigate} />}
@@ -960,7 +1059,6 @@ export function DocsPage({ slug, onExit }: { slug: string; onExit: () => void })
           {!isReserved && model && <ModelPage model={model} onOpen={navigate} onBackToIndex={backToIndex} />}
           {!isReserved && !model && <NotFound onBackToIndex={backToIndex} />}
         </div>
-        <AdRail slots={AD_SLOTS.right} order="order-3" />
       </div>
 
       <BackToTop visible={scrollPct > 0.15} onClick={() => scrollRef.current?.scrollTo({ top: 0, behavior: "smooth" })} />

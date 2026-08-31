@@ -735,10 +735,3 @@ select {
   animation-iteration-count: 1 !important;
 }
 .motion-reduce-force .imggen-spark { opacity: 0.55; }
-
-/* AdSense marks a slot it has no ad for with data-ad-status="unfilled". Hide it
- * outright so it never leaves a blank framed box in the layout — the AdUnit
- * component also collapses its own wrapper, this is the belt-and-suspenders. */
-.adsbygoogle[data-ad-status="unfilled"] {
-  display: none !important;
-}

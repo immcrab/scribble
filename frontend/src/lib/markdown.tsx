@@ -11,6 +11,15 @@ export function Markdown({ content }: { content: string }) {
         remarkPlugins={[remarkGfm]}
         rehypePlugins={[rehypeHighlight]}
         components={{
+          // Links in a model's reply open in a new tab — following one in place
+          // would navigate away from the chat and lose the composer's state.
+          a({ node: _node, children, href, ...props }) {
+            return (
+              <a href={href} target="_blank" rel="noopener noreferrer nofollow" {...props}>
+                {children}
+              </a>
+            );
+          },
           code({ node, className, children, ref: _ref, ...props }) {
             const match = /language-(\w+)/.exec(className || "");
             const isInline = !match && node?.position?.start.line === node?.position?.end.line;

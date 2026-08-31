@@ -278,7 +278,7 @@ export function AccountSection() {
           <Mail size={15} className="shrink-0 text-accent-400" />
           <span className="min-w-0 flex-1">
             <span className="block">Contact support</span>
-            <span className="block text-xs text-slate-500">hi@scribbleai.dev — replies come from imcrabfr@gmail.com</span>
+            <span className="block text-xs text-slate-500">hi@scribbleai.dev</span>
           </span>
         </a>
       </div>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   X,
   CheckCircle2,
@@ -20,6 +20,7 @@ import {
   Type,
   AlignJustify,
   Languages,
+  Wrench,
 } from "lucide-react";
 import { useChatStore } from "../state/chatStore";
 import { useAuthStore } from "../state/authStore";
@@ -42,7 +43,8 @@ function SectionLabel({ children }: { children: string }) {
   return <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">{children}</h3>;
 }
 
-type Tab = "general" | "appearance" | "account" | "models" | "memory";
+export type SettingsTab = "general" | "appearance" | "account" | "models" | "memory";
+type Tab = SettingsTab;
 
 const TABS: { id: Tab; label: string; icon: typeof Sliders }[] = [
   { id: "general", label: "General", icon: Sliders },
@@ -355,21 +357,33 @@ function MemorySection() {
   );
 }
 
-export function SettingsModal({ onClose }: { onClose: () => void }) {
+export function SettingsModal({ onClose, initialTab }: { onClose: () => void; initialTab?: SettingsTab }) {
   const { settings, updateSettings } = useChatStore();
   const user = useAuthStore((s) => s.user);
   const signInWithGoogle = useAuthStore((s) => s.signInWithGoogle);
-  const [tab, setTab] = useState<Tab>("general");
+  const [tab, setTab] = useState<Tab>(initialTab ?? "general");
   const [workerUrl, setWorkerUrl] = useState(settings.workerUrl);
   const [password, setPassword] = useState(settings.password);
   const [customSystemPrompt, setCustomSystemPrompt] = useState(settings.customSystemPrompt);
   const [status, setStatus] = useState<"idle" | "checking" | "ok" | "fail">("idle");
   const [pendingPuterModel, setPendingPuterModel] = useState<ModelDef | null>(null);
 
-  const save = () => {
+  // Flush the few text fields that aren't live-saved (Worker URL, password, custom
+  // instructions), then close. Every other control in here already applies on change,
+  // so there's just one "Done" — no Save/Cancel split to reason about.
+  const commitAndClose = () => {
     updateSettings({ workerUrl: workerUrl.trim(), password, customSystemPrompt: customSystemPrompt.trim() });
     onClose();
   };
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") commitAndClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [workerUrl, password, customSystemPrompt]);
 
   const test = async () => {
     setStatus("checking");
@@ -383,7 +397,7 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
     <>
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-fade-in"
-      onClick={onClose}
+      onClick={commitAndClose}
     >
       <div
         onClick={(e) => e.stopPropagation()}
@@ -391,7 +405,7 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
       >
         <div className="flex items-center justify-between px-6 pb-4 pt-6">
           <h2 className="text-lg font-semibold text-white">Settings</h2>
-          <button onClick={onClose} className="rounded-lg p-1 text-slate-400 hover:bg-base-700 hover:text-white">
+          <button onClick={commitAndClose} aria-label="Close settings" className="rounded-lg p-1 text-slate-400 hover:bg-base-700 hover:text-white">
             <X size={18} />
           </button>
         </div>
@@ -416,56 +430,6 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
         <div className="flex-1 overflow-y-auto px-6 py-5">
           {tab === "general" && (
             <div className="space-y-6">
-              <div>
-                <SectionLabel>Connection</SectionLabel>
-                <div className="space-y-4">
-                  <div>
-                    <label className="mb-1.5 block text-sm font-medium text-slate-300">Worker URL</label>
-                    <input
-                      value={workerUrl}
-                      onChange={(e) => setWorkerUrl(e.target.value)}
-                      placeholder="https://scribble-worker.your-subdomain.workers.dev"
-                      className="w-full rounded-lg border border-base-600/60 bg-base-900 px-3 py-2 text-sm text-white outline-none focus:border-accent-500"
-                    />
-                    <p className="mt-1 text-xs text-slate-500">
-                      Your deployed Cloudflare Worker endpoint. Required for chat to work.
-                    </p>
-                  </div>
-
-                  <div>
-                    <label className="mb-1.5 block text-sm font-medium text-slate-300">Access password (optional)</label>
-                    <input
-                      value={password}
-                      type="password"
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder="Only if the Worker has SCRIBBLE_PASSWORD set"
-                      className="w-full rounded-lg border border-base-600/60 bg-base-900 px-3 py-2 text-sm text-white outline-none focus:border-accent-500"
-                    />
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={test}
-                      disabled={!workerUrl.trim()}
-                      className="rounded-lg border border-base-600/60 px-3 py-1.5 text-xs font-medium text-slate-300 hover:bg-base-700/60 disabled:opacity-50"
-                    >
-                      Test connection
-                    </button>
-                    {status === "checking" && <Loader2 size={14} className="animate-spin text-slate-400" />}
-                    {status === "ok" && (
-                      <span className="flex items-center gap-1 text-xs text-emerald-400">
-                        <CheckCircle2 size={13} /> Reachable
-                      </span>
-                    )}
-                    {status === "fail" && (
-                      <span className="flex items-center gap-1 text-xs text-red-400">
-                        <XCircle size={13} /> Unreachable
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
-
               <div>
                 <SectionLabel>Preferences</SectionLabel>
                 <div className="space-y-3">
@@ -562,11 +526,91 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
                     onChange={(v) => updateSettings({ notificationSound: v })}
                   />
                   <ToggleSwitch
+                    label="Show token counts"
+                    description="Print the estimated token count under each reply"
+                    checked={settings.showTokenCounts}
+                    onChange={(v) => updateSettings({ showTokenCounts: v })}
+                  />
+                  <ToggleSwitch
                     label="Auto-retry on rate limits"
                     description="When a request fails with a rate-limit or transient server error and no tokens have arrived yet, wait and retry automatically with backoff"
                     checked={settings.autoRetryRateLimited}
                     onChange={(v) => updateSettings({ autoRetryRateLimited: v })}
                   />
+                </div>
+              </div>
+
+              <div>
+                <SectionLabel>Custom instructions</SectionLabel>
+                <textarea
+                  value={customSystemPrompt}
+                  onChange={(e) => setCustomSystemPrompt(e.target.value)}
+                  onBlur={() => updateSettings({ customSystemPrompt: customSystemPrompt.trim() })}
+                  maxLength={2000}
+                  rows={4}
+                  placeholder="e.g. Always answer in bullet points. I'm a backend engineer, skip basic explanations."
+                  className="w-full resize-y rounded-lg border border-base-600/60 bg-base-900 px-3 py-2 text-sm text-white outline-none focus:border-accent-500"
+                />
+                <p className="mt-1 text-xs text-slate-500">
+                  Added to every request, on top of Scribble's own instructions.
+                </p>
+              </div>
+
+              <details className="group rounded-lg border border-base-700/60 bg-base-900/40 [&_summary::-webkit-details-marker]:hidden">
+                <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2.5 text-sm font-medium text-slate-300 hover:text-white">
+                  <Wrench size={14} className="text-slate-500" />
+                  Advanced — Worker connection
+                  <ChevronDown size={14} className="ml-auto text-slate-500 transition-transform group-open:rotate-180" />
+                </summary>
+                <div className="space-y-4 border-t border-base-700/60 px-3 py-3.5">
+                  <div>
+                    <label className="mb-1.5 block text-sm font-medium text-slate-300">Worker URL</label>
+                    <input
+                      value={workerUrl}
+                      onChange={(e) => setWorkerUrl(e.target.value)}
+                      onBlur={() => updateSettings({ workerUrl: workerUrl.trim() })}
+                      placeholder="https://scribble-worker.your-subdomain.workers.dev"
+                      className="w-full rounded-lg border border-base-600/60 bg-base-900 px-3 py-2 text-sm text-white outline-none focus:border-accent-500"
+                    />
+                    <p className="mt-1 text-xs text-slate-500">
+                      The Cloudflare Worker that proxies chat requests. Pre-filled for scribbleai.dev — only change this if
+                      you're running your own.
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="mb-1.5 block text-sm font-medium text-slate-300">Access password (optional)</label>
+                    <input
+                      value={password}
+                      type="password"
+                      onChange={(e) => setPassword(e.target.value)}
+                      onBlur={() => updateSettings({ password })}
+                      placeholder="Only if the Worker has SCRIBBLE_PASSWORD set"
+                      className="w-full rounded-lg border border-base-600/60 bg-base-900 px-3 py-2 text-sm text-white outline-none focus:border-accent-500"
+                    />
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={test}
+                      disabled={!workerUrl.trim()}
+                      className="rounded-lg border border-base-600/60 px-3 py-1.5 text-xs font-medium text-slate-300 hover:bg-base-700/60 disabled:opacity-50"
+                    >
+                      Test connection
+                    </button>
+                    {status === "checking" && <Loader2 size={14} className="animate-spin text-slate-400" />}
+                    {status === "ok" && (
+                      <span className="flex items-center gap-1 text-xs text-emerald-400">
+                        <CheckCircle2 size={13} /> Reachable
+                      </span>
+                    )}
+                    {status === "fail" && (
+                      <span className="flex items-center gap-1 text-xs text-red-400">
+                        <XCircle size={13} /> Unreachable
+                      </span>
+                    )}
+                  </div>
+
                   <div>
                     <label className="mb-1.5 block text-sm font-medium text-slate-300">Request spacing</label>
                     <div className="flex items-center gap-2">
@@ -585,28 +629,12 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
                       <span className="text-sm text-slate-400">seconds between requests</span>
                     </div>
                     <p className="mt-1 text-xs text-slate-500">
-                      Minimum gap the app leaves between outgoing model requests, across every chat. Helps stay
-                      under a provider's per-minute limit when Battle, Side by Side, Agent Mode, project broadcasts,
-                      or auto-continue fire several in a row. 0 = off.
+                      Minimum gap between outgoing model requests. Helps stay under a provider's per-minute limit when
+                      Battle, Side by Side, Agent Mode, or project broadcasts fire several at once. 0 = off.
                     </p>
                   </div>
                 </div>
-              </div>
-
-              <div>
-                <SectionLabel>Custom instructions</SectionLabel>
-                <textarea
-                  value={customSystemPrompt}
-                  onChange={(e) => setCustomSystemPrompt(e.target.value)}
-                  maxLength={2000}
-                  rows={4}
-                  placeholder="e.g. Always answer in bullet points. I'm a backend engineer, skip basic explanations."
-                  className="w-full resize-y rounded-lg border border-base-600/60 bg-base-900 px-3 py-2 text-sm text-white outline-none focus:border-accent-500"
-                />
-                <p className="mt-1 text-xs text-slate-500">
-                  Added to every request, on top of Scribble's own instructions. Saved with the button below.
-                </p>
-              </div>
+              </details>
             </div>
           )}
 
@@ -628,17 +656,12 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
               Terms
             </a>
           </div>
-          <div className="flex gap-2">
-            <button onClick={onClose} className="rounded-lg px-3.5 py-2 text-sm text-slate-400 hover:text-white">
-              Cancel
-            </button>
-            <button
-              onClick={save}
-              className="rounded-lg bg-accent-500 px-3.5 py-2 text-sm font-medium text-base-950 hover:bg-accent-400"
-            >
-              Save
-            </button>
-          </div>
+          <button
+            onClick={commitAndClose}
+            className="rounded-lg bg-accent-500 px-4 py-2 text-sm font-medium text-base-950 hover:bg-accent-400"
+          >
+            Done
+          </button>
         </div>
       </div>
     </div>

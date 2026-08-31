@@ -45,6 +45,40 @@ export type StreamChunk =
 export class WorkerClientError extends Error {}
 
 /**
+ * Turns an upstream/Worker error body into a sentence a person can act on.
+ * The Worker returns `{"error":"…"}` JSON on a bad request and often a bare
+ * provider string on an upstream failure — without this, the raw JSON (braces
+ * and all) ended up in the chat bubble.
+ */
+export function humanizeWorkerError(raw: string, status?: number): string {
+  let msg = (raw ?? "").trim();
+  if (msg.startsWith("{")) {
+    try {
+      const parsed = JSON.parse(msg) as { error?: unknown; message?: unknown };
+      const inner = parsed.error ?? parsed.message;
+      if (typeof inner === "string" && inner.trim()) msg = inner.trim();
+      else if (inner && typeof inner === "object" && typeof (inner as { message?: unknown }).message === "string") {
+        msg = String((inner as { message: string }).message).trim();
+      }
+    } catch {
+      /* not JSON after all — fall through with the original text */
+    }
+  }
+  if (!msg) msg = status ? `The server returned an error (${status}).` : "Something went wrong.";
+
+  if (/not configured|no api key|missing.*key/i.test(msg)) {
+    return `${msg} — this model's provider isn't set up on the server. Try a different model.`;
+  }
+  if (/\b429\b|rate[\s-]?limit|too many requests|quota|overloaded/i.test(msg)) {
+    return `${msg} — the provider is rate-limiting. Wait a moment and retry, or switch models.`;
+  }
+  if (/non-empty messages array|must include provider/i.test(msg)) {
+    return "That request couldn't be sent — try retyping the message.";
+  }
+  return msg;
+}
+
+/**
  * Streams a chat completion through the Cloudflare Worker proxy. The Worker
  * normalizes every upstream provider (xKiro/Mistral/Gemini) into the
  * same newline-delimited JSON event stream, so the frontend never needs to
@@ -85,7 +119,7 @@ export async function* streamChat(params: StreamChatParams): AsyncGenerator<Stre
 
   if (!res.ok) {
     const text = await res.text().catch(() => "");
-    throw new WorkerClientError(text || `Worker request failed (${res.status})`);
+    throw new WorkerClientError(humanizeWorkerError(text, res.status));
   }
   if (!res.body) {
     throw new WorkerClientError("Worker response had no body.");
@@ -114,7 +148,7 @@ export async function* streamChat(params: StreamChatParams): AsyncGenerator<Stre
       }
 
       if ("error" in event) {
-        throw new WorkerClientError(event.error);
+        throw new WorkerClientError(humanizeWorkerError(event.error));
       }
       if ("delta" in event) {
         yield { type: "content", text: event.delta };
