@@ -46,13 +46,18 @@ export function creditMultiplier(m: Pick<ModelDef, "provider" | "modelId">): num
  * MEDIA_KEYS (edited on Admin → Limits).
  */
 
-export type ImageProvider = "cloudflare" | "xkiro";
+/** Billing bucket for one image. Not the same thing as the wire provider in
+ * config/imageModels.ts — two models on the same provider can cost wildly
+ * different amounts upstream (xKiro's SenseNova has a free tier, GPT Image
+ * does not), so each gets its own bucket. */
+export type ImageBilling = "cloudflare" | "xkiro" | "xkiro-free";
 
 /** Credits for one generated image, before the admin multiplier. Flux on Cloudflare
  * Workers AI is cheap; GPT Image (xKiro) costs far more upstream. */
-export const IMAGE_BASE_CREDITS: Record<ImageProvider, number> = {
+export const IMAGE_BASE_CREDITS: Record<ImageBilling, number> = {
   cloudflare: 1_500,
   xkiro: 25_000,
+  "xkiro-free": 1_500,
 };
 
 /** Speech cost = words × PER_WORD + seconds × PER_SECOND, before the multiplier.
@@ -65,13 +70,22 @@ export const SPEECH_CREDITS_PER_SECOND = 120;
 export const MEDIA_KEYS = {
   imageCloudflare: "image:cloudflare",
   imageXkiro: "image:xkiro",
+  imageXkiroFree: "image:xkiro-free",
   speech: "speech:xkiro",
 } as const;
+
+/** Billing bucket → the MEDIA_KEYS entry its cost and multiplier live under. */
+export const IMAGE_BILLING_KEYS: Record<ImageBilling, string> = {
+  cloudflare: MEDIA_KEYS.imageCloudflare,
+  xkiro: MEDIA_KEYS.imageXkiro,
+  "xkiro-free": MEDIA_KEYS.imageXkiroFree,
+};
 
 /** MEDIA_KEYS value → the slug its spend is filed under in UsageRecord.models. */
 export const MEDIA_SLUGS: Record<string, string> = {
   [MEDIA_KEYS.imageCloudflare]: "image-cloudflare",
   [MEDIA_KEYS.imageXkiro]: "image-xkiro",
+  [MEDIA_KEYS.imageXkiroFree]: "image-xkiro-free",
   [MEDIA_KEYS.speech]: "speech-xkiro",
 };
 
@@ -79,6 +93,7 @@ export const MEDIA_SLUGS: Record<string, string> = {
 export const MEDIA_LABELS: Record<string, string> = {
   "image-cloudflare": "Cloudflare Flux · image",
   "image-xkiro": "GPT Image",
+  "image-xkiro-free": "SenseNova U1.5 Lite",
   "speech-xkiro": "Text to speech",
 };
 
@@ -183,11 +198,11 @@ export function recordCreditUsage(model: Pick<ModelDef, "provider" | "modelId">,
 }
 
 /** Charge one completed image generation to today's tally. No-op for anonymous users. */
-export function recordImageUsage(provider: ImageProvider): void {
+export function recordImageUsage(billing: ImageBilling): void {
   const uid = auth.currentUser?.uid;
   if (!uid) return;
-  const key = provider === "xkiro" ? MEDIA_KEYS.imageXkiro : MEDIA_KEYS.imageCloudflare;
-  const cost = Math.round(IMAGE_BASE_CREDITS[provider] * mediaMultiplier(key));
+  const key = IMAGE_BILLING_KEYS[billing] ?? MEDIA_KEYS.imageCloudflare;
+  const cost = Math.round(IMAGE_BASE_CREDITS[billing] * mediaMultiplier(key));
   bumpUsage(uid, MEDIA_SLUGS[key], cost);
 }
 

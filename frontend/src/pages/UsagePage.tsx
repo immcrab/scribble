@@ -176,7 +176,7 @@ export function UsagePage({ onExit }: { onExit: () => void }) {
         <p className="mt-3 text-xs text-slate-500">
           1 credit ≈ 1 token (your prompt + the model's reply, estimated). Some models cost more or less per token — set by
           the admin. The free default model never counts against your limit. Image generation and text to speech draw from
-          the same pool — a flat cost per image (Cloudflare Flux is cheapest, GPT Image the priciest) and, for speech, a
+          the same pool — a flat cost per image (Cloudflare Flux and SenseNova are cheapest, GPT Image the priciest) and, for speech, a
           cost per word plus per second of audio.
         </p>
 

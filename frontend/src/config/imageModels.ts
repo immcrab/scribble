@@ -4,6 +4,8 @@
  * routes on the `provider` field below and, for xKiro, forwards `model`
  * straight to https://api.xkiro.com/v1/images/generations.
  */
+import type { ImageBilling } from "../lib/usage";
+
 export interface ImageModelDef {
   /** Selector id, persisted as settings.imageModelId. */
   id: string;
@@ -15,6 +17,8 @@ export interface ImageModelDef {
   desc: string;
   /** Whether this backend can edit an existing image (xKiro's /v1/images/edits). */
   supportsEdit?: boolean;
+  /** Credit bucket this model's images are charged to (lib/usage.ts). */
+  billing: ImageBilling;
 }
 
 export const IMAGE_MODELS: ImageModelDef[] = [
@@ -23,6 +27,7 @@ export const IMAGE_MODELS: ImageModelDef[] = [
     provider: "cloudflare",
     displayName: "Cloudflare Flux",
     desc: "Fast, runs on Cloudflare Workers AI",
+    billing: "cloudflare",
   },
   {
     id: "xkiro-gpt-image",
@@ -31,6 +36,15 @@ export const IMAGE_MODELS: ImageModelDef[] = [
     displayName: "GPT Image",
     desc: "Higher quality, slower — can also edit an image",
     supportsEdit: true,
+    billing: "xkiro",
+  },
+  {
+    id: "xkiro-sensenova-u1.5-lite",
+    provider: "xkiro",
+    model: "sensenova/sensenova-u1.5-lite",
+    displayName: "SenseNova U1.5 Lite",
+    desc: "Cheap and quick — generation only, no edits",
+    billing: "xkiro-free",
   },
 ];
 

@@ -449,6 +449,11 @@ function LimitsTab({
           {[
             { key: MEDIA_KEYS.imageCloudflare, label: "Cloudflare Flux (image)", base: `${IMAGE_BASE_CREDITS.cloudflare.toLocaleString()} / image` },
             { key: MEDIA_KEYS.imageXkiro, label: "GPT Image", base: `${IMAGE_BASE_CREDITS.xkiro.toLocaleString()} / image` },
+            {
+              key: MEDIA_KEYS.imageXkiroFree,
+              label: "SenseNova U1.5 Lite (image)",
+              base: `${IMAGE_BASE_CREDITS["xkiro-free"].toLocaleString()} / image`,
+            },
             { key: MEDIA_KEYS.speech, label: "Text to speech", base: `${SPEECH_CREDITS_PER_WORD} / word` },
           ].map(({ key, label, base }) => (
             <div

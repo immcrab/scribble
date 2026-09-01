@@ -150,7 +150,7 @@ export function ImageMode({
           });
       const wm = watermarkConfig();
       const dataUrl = wm.enabled ? await watermarkImage(rawUrl, wm) : rawUrl;
-      recordImageUsage(editingSource ? EDIT_IMAGE_MODEL.provider : imageModel.provider);
+      recordImageUsage(editingSource ? EDIT_IMAGE_MODEL.billing : imageModel.billing);
       updateMessage(chat.id, assistantMsg.id, {
         streaming: false,
         attachments: [{ id: uid(), name: "generated.png", type: "image/png", dataUrl, size: dataUrl.length }],
