@@ -43,7 +43,20 @@ export function isKnownAppLocation(): boolean {
   if (isAuthActionLocation()) return true;
   if (isAdminLocation()) return true;
   if (isUsageLocation()) return true;
+  if (isTutorLocation()) return true;
   return false;
+}
+
+/** "<base>/tutor" — the writing tutor that learns the user's own voice (see pages/TutorPage.tsx). */
+export function isTutorLocation(): boolean {
+  const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+  const path = window.location.pathname;
+  return path === `${base}/tutor` || path === `${base}/tutor/`;
+}
+
+export function tutorPath(): string {
+  const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+  return `${base}/tutor`;
 }
 
 /** "<base>/usage" — the signed-in user's daily credit dashboard (see pages/UsagePage.tsx). */

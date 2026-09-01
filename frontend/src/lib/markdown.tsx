@@ -1,15 +1,30 @@
 import { useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import remarkMath from "remark-math";
 import rehypeHighlight from "rehype-highlight";
+import rehypeKatex from "rehype-katex";
 import { Copy, Check } from "lucide-react";
+import "katex/dist/katex.min.css";
 
-export function Markdown({ content }: { content: string }) {
+const MATH_REMARK = [remarkGfm, remarkMath];
+const MATH_REHYPE = [rehypeHighlight, rehypeKatex];
+const PLAIN_REMARK = [remarkGfm];
+const PLAIN_REHYPE = [rehypeHighlight];
+
+/**
+ * `math` turns on LaTeX rendering: `$x^2$` inline and `$$…$$` as a display block.
+ * It's opt-in rather than always-on because chat replies routinely contain bare
+ * dollar signs ("$5 vs $8"), which the math parser would otherwise swallow. The
+ * Tutor page (pages/TutorPage.tsx) asks its models for LaTeX explicitly, so it's
+ * the one place where the trade goes the other way.
+ */
+export function Markdown({ content, math = false }: { content: string; math?: boolean }) {
   return (
     <div className="prose-scribble">
       <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
-        rehypePlugins={[rehypeHighlight]}
+        remarkPlugins={math ? MATH_REMARK : PLAIN_REMARK}
+        rehypePlugins={math ? MATH_REHYPE : PLAIN_REHYPE}
         components={{
           // Links in a model's reply open in a new tab — following one in place
           // would navigate away from the chat and lose the composer's state.

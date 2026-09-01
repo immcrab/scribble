@@ -1,7 +1,8 @@
 # Scribble
 
 A polished AI playground in the spirit of Arena.ai — six modes (Battle, Agent,
-Side by Side, Direct, Image, Text to Speech), real streaming responses, and a
+Side by Side, Direct, Image, Text to Speech), a writing Tutor that learns your
+voice from your own work, real streaming responses, and a
 dark, blue, glass-panel UI. The frontend is a static site (GitHub Pages); the Worker is a Cloudflare
 Worker that proxies xKiro, Mistral, Gemini, and OpenRouter (chat), Cloudflare
 Workers AI / xKiro (image), xKiro (speech), and Groq (chat titles) so API keys
@@ -19,6 +20,7 @@ scribble/
 │  ├─ src/config/        model registry — models.ts is the one file to edit
 │  │                      when a provider's catalog changes
 │  ├─ src/modes/          Battle / Agent / SideBySide / Direct / Image / Speech screens
+│  ├─ src/pages/          standalone routes: /docs, /admin, /usage, /tutor
 │  ├─ src/components/     Sidebar, ModeSelector, ModelSelector, Composer, ...
 │  ├─ src/lib/            localStorage chat history, streaming client, markdown
 │  ├─ src/state/          zustand chat store
@@ -166,6 +168,17 @@ Worker's URL (and password, if you set one). Settings are stored in
   practical speed bump, not a distributed guarantee — Workers isolates aren't
   shared across Cloudflare's edge, so a determined client could still exceed
   it globally. Swap in Durable Objects or KV if you need a hard limit.
+- **Tutor** (`/tutor`) is a separate screen, not a chat mode. You give it your own
+  writing — typed, dropped in as a text file, or photographed (a vision model
+  transcribes those) — and it derives a *style profile* from the corpus, which then
+  rides in the prompt of every later turn so replies are written in your voice.
+  Samples, profile, and conversation live in `localStorage` under
+  `scribble:tutor:v1` only: never cloud-synced, never in the sidebar's chat history.
+  The model is chosen per message (`src/lib/tutorRouter.ts`) — vision for images, a
+  reasoning model for maths, a coding model for code, the best prose model for
+  writing — with a manual override in the header. Maths renders as real LaTeX via
+  KaTeX (`<Markdown math />`, opt-in so ordinary chats keep bare `$` signs intact).
+
 - **Agent Mode** streams real tool activity for the built-in **web search**
   (Groq decides per-turn whether a lookup helps, then SerpApi runs it — needs
   `SERP_API_KEY`) and **memory** (needs `GROQ_API_KEY` and the user's opt-in).

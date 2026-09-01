@@ -21,6 +21,7 @@ export function Composer({
   autoFocus = false,
   model,
   sendOnEnter = true,
+  showCodeToggle = true,
 }: {
   onSend: (text: string, attachments: Attachment[], codeMode?: boolean) => void;
   onStop?: () => void;
@@ -31,6 +32,9 @@ export function Composer({
   model?: ModelDef;
   /** When false, Enter inserts a newline and Ctrl/Cmd+Enter sends instead. */
   sendOnEnter?: boolean;
+  /** The code-workspace toggle only means something where a workspace panel exists —
+   * the Tutor page has none, so it hides the button. */
+  showCodeToggle?: boolean;
 }) {
   const [text, setText] = useState("");
   const [attachments, setAttachments] = useState<Attachment[]>([]);
@@ -346,6 +350,7 @@ export function Composer({
             <Paperclip size={18} />
             <span className="hidden sm:inline">Add files</span>
           </button>
+          {showCodeToggle && (
           <button
             type="button"
             onClick={() => setCodeMode((c) => !c)}
@@ -361,6 +366,7 @@ export function Composer({
             <Code2 size={18} />
             <span className="hidden sm:inline">Code</span>
           </button>
+          )}
           {speechSupported && (
             <button
               type="button"
