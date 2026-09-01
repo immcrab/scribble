@@ -4,16 +4,24 @@
  * Deliberately separate from `chatStore`: a tutor session isn't a chat — it's a
  * corpus of the user's own writing, a style profile derived from it, and a
  * conversation that's always anchored to that profile. Keeping it in its own
- * store (and its own localStorage key) means none of it leaks into the sidebar's
- * chat history, cloud sync, or the export/share paths.
+ * store (and its own RTDB node) means none of it leaks into the sidebar's chat
+ * history, the share links, or the export paths.
  *
- * Everything here is local-only and never uploaded — the samples are the user's
- * personal writing, so they stay in this browser.
+ * Persistence is Realtime Database, not localStorage — see lib/tutorSync.ts for
+ * why and for the merge rules. The practical consequence is that a signed-out
+ * visitor's tutor session lives in memory only; the page says so.
  */
 import { create } from "zustand";
+import {
+  clearLegacyLocal,
+  emptyBlob,
+  pushTutorToCloud,
+  readLegacyLocal,
+  startTutorSync,
+  stopTutorSync,
+  type TutorBlob,
+} from "./tutorSync";
 import type { Attachment, Effort, ModelDef } from "../types";
-
-const TUTOR_KEY = "scribble:tutor:v1";
 
 /** One piece of the user's own work, the raw material the style profile is built from. */
 export interface WritingSample {
@@ -70,57 +78,17 @@ export interface TutorMessage {
   error?: string;
 }
 
-interface PersistedTutor {
-  samples: WritingSample[];
-  profile: StyleProfile | null;
-  messages: TutorMessage[];
-}
-
-function loadTutor(): PersistedTutor {
-  const empty: PersistedTutor = { samples: [], profile: null, messages: [] };
-  try {
-    const raw = localStorage.getItem(TUTOR_KEY);
-    if (!raw) return empty;
-    const parsed = JSON.parse(raw) as Partial<PersistedTutor>;
-    return {
-      samples: (parsed.samples ?? []).map((s) => ({ ...s, transcribing: false })),
-      profile: parsed.profile ?? null,
-      // A reply that was mid-stream when the tab closed can never resume — land it as
-      // an error rather than a bubble that spins forever.
-      messages: (parsed.messages ?? []).map((m) =>
-        m.streaming ? { ...m, streaming: false, error: m.error ?? "Interrupted — the page was closed mid-reply." } : m
-      ),
-    };
-  } catch {
-    return empty;
-  }
-}
-
 /**
- * Writes the whole tutor blob back to localStorage. Samples and image thumbnails make
- * this the one place in the app that can realistically hit the ~5MB quota, so on
- * overflow we drop the oldest conversation turns (the cheapest thing to lose — the
- * samples and the profile are what the user can't reconstruct) and try once more.
+ * Where the tutor's data currently lives:
+ *   "local"   — nobody signed in; this session is in memory and won't survive a reload
+ *   "loading" — signed in, first read/merge in flight
+ *   "synced"  — round-tripping to RTDB
+ *   "error"   — signed in but the database is unreachable or refused; still usable, not saved
  */
-function saveTutor(state: PersistedTutor): string | null {
-  const attempt = (messages: TutorMessage[]) =>
-    localStorage.setItem(TUTOR_KEY, JSON.stringify({ ...state, messages }));
-  try {
-    attempt(state.messages);
-    return null;
-  } catch {
-    try {
-      attempt(state.messages.slice(-10));
-      return "Storage was full — older tutor messages were dropped. Your samples and style profile are safe.";
-    } catch {
-      return "Couldn't save to this browser's storage — it's full. Remove a writing sample to free space.";
-    }
-  }
-}
+export type TutorCloudState = "local" | "loading" | "synced" | "error";
 
-interface TutorStore extends PersistedTutor {
-  /** Set when a save had to prune or failed outright; the page surfaces it once. */
-  storageNotice: string | null;
+interface TutorStore extends TutorBlob {
+  cloudState: TutorCloudState;
   /** True while the style analysis pass is running. */
   analyzing: boolean;
   addSample: (sample: WritingSample) => void;
@@ -134,61 +102,83 @@ interface TutorStore extends PersistedTutor {
   appendMessageReasoning: (id: string, text: string) => void;
   removeMessagesFrom: (id: string) => void;
   clearConversation: () => void;
-  clearNotice: () => void;
+  /** Wired to Firebase auth in state/authStore.ts. */
+  startSync: (uid: string) => void;
+  stopSync: () => void;
   /** Abort controllers for in-flight turns, keyed by message id — same pattern as chatStore. */
   abortControllers: Map<string, AbortController>;
   registerAbort: (id: string, controller: AbortController) => void;
   stop: (id: string) => void;
 }
 
-/** Persist after every mutation — write-through, the same approach chatStore uses. */
-function persist(state: PersistedTutor): { storageNotice?: string } {
-  const notice = saveTutor({ samples: state.samples, profile: state.profile, messages: state.messages });
-  return notice ? { storageNotice: notice } : {};
+/** The persisted slice of the store, handed to the sync layer. */
+function blobOf(s: TutorBlob): TutorBlob {
+  return {
+    samples: s.samples,
+    profile: s.profile,
+    messages: s.messages,
+    deletedSampleIds: s.deletedSampleIds,
+    updatedAt: s.updatedAt,
+  };
+}
+
+/**
+ * Write-through: stamp the blob and hand it to the debounced RTDB push. A no-op while
+ * signed out, which is exactly the "in memory only" behaviour the page warns about.
+ */
+function persist(next: TutorBlob): { updatedAt: number } {
+  const stamped = { ...next, updatedAt: Date.now() };
+  pushTutorToCloud(stamped);
+  return { updatedAt: stamped.updatedAt };
 }
 
 export const useTutorStore = create<TutorStore>((set, get) => ({
-  ...loadTutor(),
-  storageNotice: null,
+  // Boot from the old localStorage key if this browser still has one, so the move to
+  // RTDB doesn't strand anyone's samples — it's pushed up and deleted on next sign-in.
+  ...(readLegacyLocal() ?? emptyBlob()),
+  cloudState: "local",
   analyzing: false,
   abortControllers: new Map(),
 
   addSample: (sample) =>
     set((s) => {
       const samples = [...s.samples, sample];
-      return { samples, ...persist({ ...s, samples }) };
+      return { samples, ...persist({ ...blobOf(s), samples }) };
     }),
 
   updateSample: (id, patch) =>
     set((s) => {
       const samples = s.samples.map((x) => (x.id === id ? { ...x, ...patch } : x));
-      return { samples, ...persist({ ...s, samples }) };
+      return { samples, ...persist({ ...blobOf(s), samples }) };
     }),
 
+  // Tombstoned rather than just dropped, so the merge in tutorSync.ts can't bring it
+  // back from a stale copy on another device.
   removeSample: (id) =>
     set((s) => {
       const samples = s.samples.filter((x) => x.id !== id);
-      return { samples, ...persist({ ...s, samples }) };
+      const deletedSampleIds = s.deletedSampleIds.includes(id) ? s.deletedSampleIds : [...s.deletedSampleIds, id];
+      return { samples, deletedSampleIds, ...persist({ ...blobOf(s), samples, deletedSampleIds }) };
     }),
 
-  setProfile: (profile) => set((s) => ({ profile, ...persist({ ...s, profile }) })),
+  setProfile: (profile) => set((s) => ({ profile, ...persist({ ...blobOf(s), profile }) })),
 
   setAnalyzing: (analyzing) => set({ analyzing }),
 
   addMessage: (message) =>
     set((s) => {
       const messages = [...s.messages, message];
-      return { messages, ...persist({ ...s, messages }) };
+      return { messages, ...persist({ ...blobOf(s), messages }) };
     }),
 
   updateMessage: (id, patch) =>
     set((s) => {
       const messages = s.messages.map((m) => (m.id === id ? { ...m, ...patch } : m));
-      return { messages, ...persist({ ...s, messages }) };
+      return { messages, ...persist({ ...blobOf(s), messages }) };
     }),
 
   // Token-by-token appends fire hundreds of times per reply — mutate in memory only and
-  // let the terminal updateMessage({ streaming: false }) do the one localStorage write.
+  // let the terminal updateMessage({ streaming: false }) do the one cloud write.
   appendMessageContent: (id, text) =>
     set((s) => ({ messages: s.messages.map((m) => (m.id === id ? { ...m, content: m.content + text } : m)) })),
 
@@ -202,12 +192,35 @@ export const useTutorStore = create<TutorStore>((set, get) => ({
       const index = s.messages.findIndex((m) => m.id === id);
       if (index === -1) return {};
       const messages = s.messages.slice(0, index);
-      return { messages, ...persist({ ...s, messages }) };
+      return { messages, ...persist({ ...blobOf(s), messages }) };
     }),
 
-  clearConversation: () => set((s) => ({ messages: [], ...persist({ ...s, messages: [] }) })),
+  clearConversation: () => set((s) => ({ messages: [], ...persist({ ...blobOf(s), messages: [] }) })),
 
-  clearNotice: () => set({ storageNotice: null }),
+  startSync: (uid) => {
+    set({ cloudState: "loading" });
+    void startTutorSync(
+      uid,
+      () => blobOf(get()),
+      (blob, state) => set({ ...blob, cloudState: state }),
+      // Only drop the legacy localStorage copy once its contents have actually landed
+      // in RTDB, so a failed first push can't lose it.
+      clearLegacyLocal
+    );
+  },
+
+  // Signing out drops the data from memory as well as detaching the listener: with no
+  // local persistence, leaving it in place would only mean it merged into whichever
+  // account signed in next on this browser.
+  //
+  // Guarded on `cloudState`, because Firebase also fires its auth callback with a null
+  // user on every cold load — clearing unconditionally there would wipe a session that
+  // had just booted from the legacy localStorage key before anyone signed in.
+  stopSync: () => {
+    stopTutorSync();
+    if (get().cloudState === "local") return;
+    set({ ...emptyBlob(), cloudState: "local" });
+  },
 
   registerAbort: (id, controller) => {
     get().abortControllers.set(id, controller);

@@ -3,8 +3,8 @@
  *
  * Three things happen on this page:
  *   1. You give it your own work — typed, dropped in as a text file, or photographed
- *      (a vision model transcribes those). It all stays in this browser's localStorage;
- *      none of it is uploaded or cloud-synced (see lib/tutorStore.ts).
+ *      (a vision model transcribes those). It's saved to the signed-in account's
+ *      Realtime Database node, so it follows them between devices (lib/tutorSync.ts).
  *   2. It analyses that corpus into a style profile — how you open, how long your
  *      sentences run, what punctuation you reach for, what would read as not-you.
  *   3. Every conversation turn then rides on that profile, with the model chosen
@@ -20,10 +20,12 @@ import {
   BrainCog,
   Check,
   ChevronDown,
+  CloudOff,
   FileText,
   GraduationCap,
   Image as ImageIcon,
   Loader2,
+  LogIn,
   PenLine,
   Plus,
   RefreshCw,
@@ -42,6 +44,8 @@ import { Markdown } from "../lib/markdown";
 import { uid } from "../lib/id";
 import { fileToPreparedDataUrl } from "../lib/imagePrep";
 import { getAllModels } from "../config/models";
+import { useAuthStore } from "../state/authStore";
+import { useChatStore } from "../state/chatStore";
 import { analyzeSamples, transcribeImageSample } from "../lib/tutorAnalysis";
 import { runTutorTurn } from "../lib/tutorClient";
 import { routeTutorTurn } from "../lib/tutorRouter";
@@ -57,14 +61,15 @@ import type { Attachment, ModelDef } from "../types";
 
 /** Cap on a pasted or uploaded text sample — enough for a long essay, short of a novel. */
 const MAX_SAMPLE_CHARS = 40000;
-/** Widest edge kept for an attachment that gets persisted alongside the conversation. */
+/** Widest edge kept for an attachment saved alongside the conversation. */
 const ATTACHMENT_PREVIEW_PX = 1024;
 /** Widest edge kept for a writing sample's thumbnail — it's decoration, not data. */
 const SAMPLE_THUMB_PX = 512;
 
 const isImageAttachment = (a: Attachment) => a.type?.startsWith("image/") || a.dataUrl?.startsWith("data:image/");
 
-/** Re-encodes a data URL at a smaller size, so localStorage isn't asked to hold full-size photos. */
+/** Re-encodes a data URL at a smaller size — the whole tutor blob is rewritten on every
+ * save, so full-size photos would make each one needlessly expensive. */
 function shrinkDataUrl(dataUrl: string, maxEdge: number, quality = 0.72): Promise<string> {
   return new Promise((resolve) => {
     const image = new Image();
@@ -358,7 +363,12 @@ export function TutorPage({ onExit }: { onExit: () => void }) {
   const profile = useTutorStore((s) => s.profile);
   const messages = useTutorStore((s) => s.messages);
   const analyzing = useTutorStore((s) => s.analyzing);
-  const storageNotice = useTutorStore((s) => s.storageNotice);
+  const cloudState = useTutorStore((s) => s.cloudState);
+  const signInWithGoogle = useAuthStore((s) => s.signInWithGoogle);
+  // Custom models and connections come from the chat store's settings, so the picker
+  // re-renders when the user adds or removes one in Settings → Models.
+  const customModels = useChatStore((s) => s.settings.customModels);
+  const customProviders = useChatStore((s) => s.settings.customProviders);
 
   const [adding, setAdding] = useState(false);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
@@ -379,7 +389,25 @@ export function TutorPage({ onExit }: { onExit: () => void }) {
   }, [profile, samples]);
 
   const streaming = messages.some((m) => m.streaming);
-  const models = useMemo(() => getAllModels().filter((m) => m.supportsStreaming && !m.knownBroken), []);
+  // Everything selectable by hand, user-added models included. A custom model whose
+  // connection has since been deleted is dropped — it could only fail at the Worker.
+  const models = useMemo(
+    () =>
+      getAllModels().filter(
+        (m) =>
+          m.supportsStreaming &&
+          !m.knownBroken &&
+          (m.provider !== "custom" || customProviders.some((p) => p.id === m.customProviderId))
+      ),
+    [customModels, customProviders]
+  );
+  // A model the user picked by hand can disappear from under them (deleted in Settings);
+  // fall back to Auto rather than sending to an endpoint that's no longer configured.
+  useEffect(() => {
+    if (override && !models.some((m) => m.provider === override.provider && m.modelId === override.modelId)) {
+      setOverride(null);
+    }
+  }, [models, override]);
 
   // Follow the stream — the conversation column is its own scroll container.
   useEffect(() => {
@@ -536,8 +564,8 @@ export function TutorPage({ onExit }: { onExit: () => void }) {
       <div>
         <h2 className="text-sm font-semibold text-white">Your writing</h2>
         <p className="mt-1 text-xs leading-relaxed text-slate-500">
-          Give it work you've already done. It reads your samples, learns how you write, and keeps the profile in this
-          browser only — nothing here is uploaded or synced.
+          Give it work you've already done. It reads your samples, learns how you write, and saves the profile to your
+          account so it follows you between devices.
         </p>
       </div>
 
@@ -799,13 +827,28 @@ export function TutorPage({ onExit }: { onExit: () => void }) {
         )}
       </header>
 
-      {storageNotice && (
-        <div className="flex shrink-0 items-center gap-2 border-b border-amber-500/30 bg-amber-500/10 px-4 py-2 text-xs text-amber-300">
-          <TriangleAlert size={13} className="shrink-0" />
-          <span className="min-w-0 flex-1">{storageNotice}</span>
-          <button onClick={() => useTutorStore.getState().clearNotice()} className="shrink-0 hover:text-white">
-            <X size={13} />
+      {/* The tutor saves to Realtime Database, not this browser — so being signed out is a
+          real "nothing is being kept" state, not a detail worth burying. */}
+      {cloudState === "local" && (
+        <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-amber-500/30 bg-amber-500/10 px-4 py-2 text-xs text-amber-300">
+          <CloudOff size={13} className="shrink-0" />
+          <span className="min-w-0 flex-1">
+            You're signed out — your samples and this conversation live in memory only and won't survive a reload.
+          </span>
+          <button
+            onClick={() => void signInWithGoogle()}
+            className="flex shrink-0 items-center gap-1.5 rounded-lg bg-amber-400/20 px-2.5 py-1 font-medium text-amber-100 hover:bg-amber-400/30"
+          >
+            <LogIn size={12} /> Sign in to save
           </button>
+        </div>
+      )}
+      {cloudState === "error" && (
+        <div className="flex shrink-0 items-center gap-2 border-b border-red-500/30 bg-red-500/10 px-4 py-2 text-xs text-red-300">
+          <TriangleAlert size={13} className="shrink-0" />
+          <span className="min-w-0 flex-1">
+            Couldn't reach the database — the tutor still works, but nothing is being saved this session.
+          </span>
         </div>
       )}
 

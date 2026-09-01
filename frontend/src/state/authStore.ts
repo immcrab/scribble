@@ -15,6 +15,7 @@ import { ref, remove as dbRemove } from "firebase/database";
 import { auth, googleProvider, getRtdb } from "../lib/firebase";
 import { useChatStore } from "./chatStore";
 import { startUsageSync, stopUsageSync } from "../lib/usage";
+import { useTutorStore } from "../lib/tutorStore";
 
 /** Where Firebase's verification / reset emails send the user once they finish.
  * Points back at this deployment's root; with a custom action URL configured in
@@ -269,8 +270,10 @@ onAuthStateChanged(auth, (user) => {
   if (user) {
     useChatStore.getState().startCloudSync(user.uid);
     startUsageSync(user.uid);
+    useTutorStore.getState().startSync(user.uid);
   } else {
     useChatStore.getState().stopCloudSync();
     stopUsageSync();
+    useTutorStore.getState().stopSync();
   }
 });

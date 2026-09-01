@@ -115,8 +115,22 @@ function toWireAttachments(attachments?: Attachment[]) {
   return attachments?.map((a) => ({ name: a.name, type: a.type, dataUrl: a.dataUrl }));
 }
 
+/**
+ * A user-added model can point at one of their own OpenAI-compatible endpoints
+ * (Settings → Models). Those credentials are never stored server-side, so they have
+ * to travel with each request — same as every other mode does via runStream.ts.
+ */
+function customProviderFor(model: ModelDef): { baseUrl: string; apiKey: string } | undefined {
+  if (model.provider !== "custom") return undefined;
+  const found = useChatStore.getState().settings.customProviders.find((p) => p.id === model.customProviderId);
+  return found ? { baseUrl: found.baseUrl, apiKey: found.apiKey } : undefined;
+}
+
 /** Shared pre-flight: the sign-in gate and the daily credit gate, in that order. */
 function gateFor(model: ModelDef): string | null {
+  if (model.provider === "custom" && !customProviderFor(model)) {
+    return `${model.displayName} points at a connection that no longer exists — re-add it in Settings → Models.`;
+  }
   if (isModelGated(model) && !auth.currentUser) {
     return `Sign in to use ${model.displayName} — the free default (Mistral Small 4) doesn't need an account.`;
   }
@@ -158,6 +172,7 @@ export async function completeOnce(params: {
     model: params.model,
     messages: params.messages,
     signal: params.signal,
+    customProvider: customProviderFor(params.model),
     effort: params.effort,
     clientContext,
   })) {
@@ -224,6 +239,7 @@ export async function runTutorTurn(params: {
       model: params.model,
       messages,
       signal: controller.signal,
+      customProvider: customProviderFor(params.model),
       effort: params.effort,
       clientContext,
     })) {

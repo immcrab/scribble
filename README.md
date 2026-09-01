@@ -172,8 +172,12 @@ Worker's URL (and password, if you set one). Settings are stored in
   writing — typed, dropped in as a text file, or photographed (a vision model
   transcribes those) — and it derives a *style profile* from the corpus, which then
   rides in the prompt of every later turn so replies are written in your voice.
-  Samples, profile, and conversation live in `localStorage` under
-  `scribble:tutor:v1` only: never cloud-synced, never in the sidebar's chat history.
+  Samples, profile, and conversation are saved to Realtime Database at
+  `users/{uid}/tutorJson` (`src/lib/tutorSync.ts`) — covered by the existing `users`
+  rule, so no new rule is needed. They stay out of the sidebar's chat history and out
+  of the `/c/{id}` share links. Because RTDB is the only store, a signed-out visitor's
+  tutor session is in-memory only and the page says so; the model picker includes the
+  user's own models from Settings → Models, custom endpoints included.
   The model is chosen per message (`src/lib/tutorRouter.ts`) — vision for images, a
   reasoning model for maths, a coding model for code, the best prose model for
   writing — with a manual override in the header. Maths renders as real LaTeX via

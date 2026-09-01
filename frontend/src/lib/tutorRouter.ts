@@ -16,6 +16,7 @@
  */
 import { getAllModels, getDefaultModel, isModelGated } from "../config/models";
 import { auth } from "./firebase";
+import { useChatStore } from "../state/chatStore";
 import { usageGate } from "./usage";
 import type { Effort, ModelDef } from "../types";
 import type { TutorTask } from "./tutorStore";
@@ -137,22 +138,24 @@ export function detectTask(text: string, hasImages: boolean): TutorTask {
 }
 
 /**
- * Models this browser can actually send to right now. Puter and custom-provider
- * models are excluded from *automatic* selection — Puter has its own sign-in popup
- * and a custom endpoint is whatever the user pointed it at, so neither belongs in a
- * pick the user didn't make. Both stay available via the page's manual override.
+ * Models this browser can actually send to right now — including the ones the user
+ * added themselves in Settings → Models, whether they point at a built-in provider or
+ * at one of their own OpenAI-compatible endpoints.
+ *
+ * A custom model is only a candidate while the connection that owns it still exists;
+ * deleting a provider in Settings would otherwise leave models behind that fail at the
+ * Worker with no key. Puter stays out of *automatic* selection because it opens its own
+ * sign-in popup mid-turn — it's still selectable from the page's manual override.
  */
 function candidates(): ModelDef[] {
   const signedIn = !!auth.currentUser;
-  return getAllModels().filter(
-    (m) =>
-      m.supportsStreaming &&
-      !m.knownBroken &&
-      m.provider !== "puter" &&
-      m.provider !== "custom" &&
-      (signedIn || !isModelGated(m)) &&
-      usageGate(m).ok
-  );
+  const providers = useChatStore.getState().settings.customProviders;
+  return getAllModels().filter((m) => {
+    if (!m.supportsStreaming || m.knownBroken) return false;
+    if (m.provider === "puter") return false;
+    if (m.provider === "custom" && !providers.some((p) => p.id === m.customProviderId)) return false;
+    return (signedIn || !isModelGated(m)) && usageGate(m).ok;
+  });
 }
 
 /** Capability score for `task`, used only when no preferred id survives. */
