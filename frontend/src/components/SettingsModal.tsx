@@ -533,7 +533,7 @@ export function SettingsModal({ onClose, initialTab }: { onClose: () => void; in
                   />
                   <ToggleSwitch
                     label="Auto-retry on rate limits"
-                    description="When a request fails with a rate-limit or transient server error and no tokens have arrived yet, wait and retry automatically with backoff"
+                    description="Wait out rate limits, usage caps and transient server errors and keep retrying with backoff until the reply lands — a reply cut off mid-stream resumes where it stopped instead of restarting. Stop cancels at any point."
                     checked={settings.autoRetryRateLimited}
                     onChange={(v) => updateSettings({ autoRetryRateLimited: v })}
                   />
