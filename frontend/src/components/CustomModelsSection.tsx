@@ -7,7 +7,7 @@ import type { CustomProvider, ModelDef, Provider } from "../types";
 import { ModelFavicon, ProviderFavicon, detectCustomProviderLogo } from "./ProviderIcon";
 import { ToggleSwitch } from "./ToggleSwitch";
 
-const BUILT_IN_PROVIDERS: Provider[] = ["xkiro", "mistral", "gemini", "openrouter", "puter"];
+const BUILT_IN_PROVIDERS: Provider[] = ["xkiro", "mistral", "gemini", "openrouter", "zai", "puter"];
 
 function SubLabel({ children }: { children: string }) {
   return <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">{children}</h4>;

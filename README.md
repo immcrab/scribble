@@ -4,12 +4,12 @@ A polished AI playground in the spirit of Arena.ai — six modes (Battle, Agent,
 Side by Side, Direct, Image, Text to Speech), a writing Tutor that learns your
 voice from your own work, real streaming responses, and a
 dark, blue, glass-panel UI. The frontend is a static site (GitHub Pages); the Worker is a Cloudflare
-Worker that proxies xKiro, Mistral, Gemini, and OpenRouter (chat), Cloudflare
+Worker that proxies xKiro, Mistral, Gemini, OpenRouter, and Z.ai / GLM (chat), Cloudflare
 Workers AI / xKiro (image), xKiro (speech), and Groq (chat titles) so API keys
 never touch the browser.
 
 ```
-GitHub Pages (frontend) → Cloudflare Worker (proxy) → xKiro / Mistral / Gemini / OpenRouter / Cloudflare Workers AI / Groq
+GitHub Pages (frontend) → Cloudflare Worker (proxy) → xKiro / Mistral / Gemini / OpenRouter / Z.ai (GLM) / Cloudflare Workers AI / Groq
 ```
 
 ## Project structure
@@ -26,7 +26,7 @@ scribble/
 │  ├─ src/state/          zustand chat store
 │  └─ src/providers/      thin frontend-side provider abstraction
 ├─ worker/               Cloudflare Worker (Wrangler)
-│  └─ src/adapters/       xkiro.ts / mistral.ts / gemini.ts / openrouter.ts /
+│  └─ src/adapters/       xkiro.ts / mistral.ts / gemini.ts / openrouter.ts / zai.ts /
 │                          image.ts / xkiroImage.ts / xkiroSpeech.ts / search.ts /
 │                          memory.ts / title.ts
 └─ README.md
@@ -95,6 +95,8 @@ cd worker
 npx wrangler secret put XKIRO_API_KEY
 npx wrangler secret put MISTRAL_API_KEY
 npx wrangler secret put GEMINI_API_KEY
+npx wrangler secret put OPENROUTER_API_KEY
+npx wrangler secret put ZAI_API_KEY          # Z.ai / Zhipu AI — the GLM model family
 
 # optional — gates the Worker behind a shared password (see below)
 npx wrangler secret put SCRIBBLE_PASSWORD

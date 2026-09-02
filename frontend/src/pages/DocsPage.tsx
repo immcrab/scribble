@@ -716,6 +716,11 @@ const PROVIDERS_META: Record<Provider, { description: string; link?: { href: str
       "A gateway that proxies many upstream model providers behind one API — how Scribble reaches models it has no direct integration for.",
     link: { href: "https://openrouter.ai", label: "openrouter.ai" },
   },
+  zai: {
+    description:
+      "Zhipu AI's GLM model family, called directly through Z.ai's first-party API. Only its free \"Flash\" tier is listed here.",
+    link: { href: "https://z.ai", label: "z.ai" },
+  },
   puter: {
     description:
       "Puter.js, an in-browser AI SDK. Requests go straight from your browser to Puter with its own sign-in and billing — they never touch Scribble's Worker or its provider keys.",

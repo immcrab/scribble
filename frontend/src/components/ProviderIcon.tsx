@@ -185,6 +185,8 @@ export function ProviderFavicon({
       return <XKiroIcon size={size} className={className} />;
     case "openrouter":
       return <OpenRouterIcon size={size} className={className} />;
+    case "zai":
+      return <GlmIcon size={size} className={className} />;
     case "puter":
       return <PuterIcon size={size} className={className} />;
     case "custom":

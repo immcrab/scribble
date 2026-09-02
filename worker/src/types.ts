@@ -5,6 +5,8 @@ export interface Env {
   MISTRAL_API_KEY?: string;
   GEMINI_API_KEY?: string;
   OPENROUTER_API_KEY?: string;
+  /** Z.ai (Zhipu AI) key for the GLM family — see adapters/zai.ts. */
+  ZAI_API_KEY?: string;
   SCRIBBLE_PASSWORD?: string;
   /** Cloudflare account id + Workers AI token, for /api/image/generate. */
   CF_ACCOUNT_ID?: string;
@@ -13,7 +15,7 @@ export interface Env {
   SERP_API_KEY?: string;
 }
 
-export type Provider = "xkiro" | "mistral" | "gemini" | "openrouter" | "custom";
+export type Provider = "xkiro" | "mistral" | "gemini" | "openrouter" | "zai" | "custom";
 
 /** Claude-Code-style reasoning depth. Gemini maps it to a native
  * thinkingBudget param; providers without one (xKiro, Mistral,

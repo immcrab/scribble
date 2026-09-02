@@ -44,6 +44,11 @@ export const MODEL_DOCS: Record<string, string> = {
   "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free": "Small NVIDIA omni-modal Nemotron with an explicit reasoning mode — reads images, 256K context.",
   "openrouter/free": "OpenRouter's own router — picks a free upstream model for each request, so quality varies but you never hit a paywall.",
 
+  // Z.ai (Zhipu AI's GLM family, first-party API — free "Flash" tier only)
+  "glm-4.7-flash": "Z.ai's GLM-4.7 Flash — the free, lightweight GLM-4.7: a ~30B mixture-of-experts model tuned for coding and reasoning, ~200K context.",
+  "glm-4.6v-flash": "GLM-4.6V Flash — Z.ai's free vision model, with native function calling for multimodal agents, ~128K context.",
+  "glm-4.5-flash": "GLM-4.5 Flash — the previous free GLM Flash, a solid general-purpose text and reasoning model at ~128K context.",
+
   // xKiro
   "qwen/qwen3.8-max:free": "Qwen's largest current model via xKiro — top-tier reasoning and vision at 1M context.",
   "qwen/qwen3.7-max:free": "Qwen 3.7 Max — large-context reasoning model, no vision.",

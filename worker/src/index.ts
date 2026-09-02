@@ -6,6 +6,7 @@ import { xkiroStreamChat } from "./adapters/xkiro";
 import { mistralStreamChat } from "./adapters/mistral";
 import { geminiStreamChat } from "./adapters/gemini";
 import { openrouterStreamChat } from "./adapters/openrouter";
+import { zaiStreamChat } from "./adapters/zai";
 import { customStreamChat } from "./adapters/custom";
 import { generateImage } from "./adapters/image";
 import { generateXkiroImage, editXkiroImage } from "./adapters/xkiroImage";
@@ -28,6 +29,7 @@ const ADAPTERS: Partial<Record<Provider, ProviderAdapter>> = {
   mistral: mistralStreamChat,
   gemini: geminiStreamChat,
   openrouter: openrouterStreamChat,
+  zai: zaiStreamChat,
 };
 
 const API_KEY_ENV: Partial<Record<Provider, keyof Env>> = {
@@ -35,6 +37,7 @@ const API_KEY_ENV: Partial<Record<Provider, keyof Env>> = {
   mistral: "MISTRAL_API_KEY",
   gemini: "GEMINI_API_KEY",
   openrouter: "OPENROUTER_API_KEY",
+  zai: "ZAI_API_KEY",
 };
 
 function json(body: unknown, status: number, headers: HeadersInit): Response {
@@ -49,7 +52,7 @@ const VALID_EFFORTS = ["low", "medium", "high", "extra", "ultra"];
 function isValidBody(body: unknown): body is ChatRequestBody {
   if (!body || typeof body !== "object") return false;
   const b = body as Record<string, unknown>;
-  if (!["xkiro", "mistral", "gemini", "openrouter", "custom"].includes(b.provider as string)) return false;
+  if (!["xkiro", "mistral", "gemini", "openrouter", "zai", "custom"].includes(b.provider as string)) return false;
   if (typeof b.model !== "string" || !b.model) return false;
   if (!Array.isArray(b.messages) || b.messages.length === 0) return false;
   if (b.effort !== undefined && !VALID_EFFORTS.includes(b.effort as string)) return false;

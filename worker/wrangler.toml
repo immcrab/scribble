@@ -14,6 +14,7 @@ ALLOWED_ORIGINS = "http://localhost:5173,https://immcrab.github.io,https://scrib
 #   MISTRAL_API_KEY
 #   GEMINI_API_KEY
 #   OPENROUTER_API_KEY
+#   ZAI_API_KEY         (Z.ai / Zhipu AI — the GLM model family)
 #   SCRIBBLE_PASSWORD   (optional — omit to leave Scribble open/unauthenticated)
 #   CF_ACCOUNT_ID       (Cloudflare account id — powers /api/image/generate)
 #   CF_AI_TOKEN         (Workers AI-scoped API token — powers /api/image/generate)

@@ -811,6 +811,53 @@ const OPENROUTER_MODELS: ModelDef[] = [
 ];
 
 /**
+ * Z.ai (Zhipu AI) — the GLM family's first-party API, OpenAI-compatible at
+ * https://api.z.ai/api/paas/v4/chat/completions (worker/src/adapters/zai.ts).
+ * Only Z.ai's own free-tier models belong here — the ones its pricing page
+ * (https://docs.z.ai/guides/overview/pricing) marks $0 in *and* out. As of
+ * Sep 2026 that's the three "Flash" models below; everything else in the GLM
+ * lineup (GLM-4.7, GLM-5.x, GLM-4.6V, ...) is paid. Re-check that page and:
+ *   curl -s https://api.z.ai/api/paas/v4/models -H "Authorization: Bearer $ZAI_API_KEY"
+ * The OpenRouter block above separately carries "z-ai/glm-5.2:free" — that's
+ * OpenRouter's free promo of a paid GLM over its own route, kept distinct.
+ */
+const ZAI_MODELS: ModelDef[] = [
+  {
+    provider: "zai",
+    modelId: "glm-4.7-flash",
+    displayName: "GLM-4.7 Flash",
+    icon: "Sparkles",
+    contextLength: 200000,
+    capabilities: ["text", "reasoning", "code"],
+    free: true,
+    supportsStreaming: true,
+    supportsVision: false,
+  },
+  {
+    provider: "zai",
+    modelId: "glm-4.6v-flash",
+    displayName: "GLM-4.6V Flash",
+    icon: "Sparkles",
+    contextLength: 131072,
+    capabilities: ["text", "vision"],
+    free: true,
+    supportsStreaming: true,
+    supportsVision: true,
+  },
+  {
+    provider: "zai",
+    modelId: "glm-4.5-flash",
+    displayName: "GLM-4.5 Flash",
+    icon: "Sparkles",
+    contextLength: 131072,
+    capabilities: ["text", "reasoning"],
+    free: true,
+    supportsStreaming: true,
+    supportsVision: false,
+  },
+];
+
+/**
  * Puter.js — https://js.puter.com/v2/, an in-browser SDK loaded directly by the frontend
  * (see lib/puterClient.ts) rather than proxied through the Worker: Puter funds inference
  * itself and authenticates the user with its own one-time sign-in popup, so no Worker
@@ -826,6 +873,7 @@ export const ALL_MODELS: ModelDef[] = [
   ...MISTRAL_MODELS,
   ...GEMINI_MODELS,
   ...OPENROUTER_MODELS,
+  ...ZAI_MODELS,
 ];
 
 export const DEFAULT_MODEL_ID = "mistralai/mistral-small-2603";
@@ -857,6 +905,7 @@ export const PROVIDER_LABELS: Record<Provider, string> = {
   mistral: "Mistral",
   gemini: "Google Gemini",
   openrouter: "OpenRouter",
+  zai: "Z.ai (GLM)",
   puter: "Puter.js",
   custom: "Custom",
 };
