@@ -27,8 +27,33 @@ const MODE = params.get("mode");
 const OOB = params.get("oobCode") ?? "";
 const CONTINUE_URL = params.get("continueUrl");
 
+/*
+ * `continueUrl` reaches this page through the query string, so it's
+ * attacker-controllable even though Firebase validated it when the email went
+ * out — anyone can hand around a link to this page with a continueUrl of their
+ * choosing. Rendering it unchecked would make the page an open redirect on a
+ * domain the user was just told to trust, so only our own hosts are honoured;
+ * anything else falls back to the app root.
+ */
+const ALLOWED_CONTINUE_HOSTS = new Set([
+  "scribbleai.dev",
+  "www.scribbleai.dev",
+  "owenis.me",
+  "www.owenis.me",
+  "immcrab.github.io",
+  "localhost",
+]);
+
 function appHref(): string {
-  return CONTINUE_URL || import.meta.env.BASE_URL || "/";
+  const fallback = import.meta.env.BASE_URL || "/";
+  if (!CONTINUE_URL) return fallback;
+  try {
+    const url = new URL(CONTINUE_URL, window.location.origin);
+    if (url.protocol !== "https:" && url.hostname !== "localhost") return fallback;
+    return ALLOWED_CONTINUE_HOSTS.has(url.hostname) ? url.href : fallback;
+  } catch {
+    return fallback;
+  }
 }
 
 type Phase =
@@ -246,7 +271,7 @@ export function AuthActionPage() {
         <button
           type="submit"
           disabled={busy}
-          className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-accent-500/90 px-3 py-2 text-sm font-medium text-white hover:bg-accent-500 disabled:opacity-50"
+          className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-accent-500/90 px-3 py-2 text-sm font-medium text-base-950 hover:bg-accent-500 disabled:opacity-50"
         >
           {busy && <Loader2 size={13} className="animate-spin" />}
           Set new password
