@@ -272,13 +272,13 @@ export function AccountSection() {
       <div>
         <SubLabel>Support</SubLabel>
         <a
-          href="mailto:hi@scribbleai.dev"
+          href="mailto:support@scribbleai.dev"
           className="flex items-center gap-3 rounded-lg border border-base-600/60 bg-base-900/60 px-3 py-2.5 text-sm text-slate-200 hover:border-accent-500/50 hover:bg-base-700/60"
         >
           <Mail size={15} className="shrink-0 text-accent-400" />
           <span className="min-w-0 flex-1">
             <span className="block">Contact support</span>
-            <span className="block text-xs text-slate-500">hi@scribbleai.dev</span>
+            <span className="block text-xs text-slate-500">support@scribbleai.dev</span>
           </span>
         </a>
       </div>
