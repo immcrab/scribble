@@ -91,7 +91,7 @@ function SignInForms() {
         <button
           type="submit"
           disabled={busy}
-          className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-accent-500/90 px-3 py-2 text-sm font-medium text-white hover:bg-accent-500 disabled:opacity-50"
+          className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-accent-500/90 px-3 py-2 text-sm font-medium text-base-950 hover:bg-accent-500 disabled:opacity-50"
         >
           {busy && <Loader2 size={13} className="animate-spin" />}
           {mode === "signup" ? "Create account" : "Sign in"}
