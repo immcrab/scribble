@@ -27,4 +27,3 @@ VERIFY_EMAIL_FROM = "Scribble <scribble@owenis.me>"
 #   SERP_API_KEY        (SerpApi key — powers Agent Mode's web-search toggle)
 #   FIREBASE_SERVICE_ACCOUNT  (full Firebase service account JSON — /api/auth/send-verification)
 #   RESEND_API_KEY            (Resend key re_... — sends the verification email)
-#   VERIFY_ENDPOINT_SECRET    (shared secret the caller sends as X-Verify-Secret)

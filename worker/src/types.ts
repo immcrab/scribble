@@ -18,9 +18,6 @@ export interface Env {
   FIREBASE_SERVICE_ACCOUNT?: string;
   /** Resend API key (re_...) — sends the verification email. */
   RESEND_API_KEY?: string;
-  /** Shared secret the caller must present as X-Verify-Secret to hit
-   * /api/auth/send-verification. */
-  VERIFY_ENDPOINT_SECRET?: string;
   /** From address for the verification email, e.g. "Scribble <scribble@owenis.me>".
    * Plain var (not secret) — see wrangler.toml [vars]. */
   VERIFY_EMAIL_FROM?: string;

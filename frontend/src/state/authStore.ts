@@ -4,7 +4,6 @@ import {
   signInWithPopup,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
-  sendEmailVerification,
   sendPasswordResetEmail,
   signOut as firebaseSignOut,
   deleteUser,
@@ -16,14 +15,32 @@ import { auth, googleProvider, getRtdb } from "../lib/firebase";
 import { useChatStore } from "./chatStore";
 import { startUsageSync, stopUsageSync } from "../lib/usage";
 import { useTutorStore } from "../lib/tutorStore";
+import { loadSettings } from "../lib/storage";
 
-/** Where Firebase's verification / reset emails send the user once they finish.
- * Points back at this deployment's root; with a custom action URL configured in
- * the Firebase console (Authentication → Templates), the whole flow lands on
- * `/auth/action` (see pages/AuthActionPage.tsx) and this becomes the "Continue"
- * target after it succeeds. */
+/** Where Firebase's reset emails send the user once they finish. Points back at
+ * this deployment's root; with a custom action URL configured in the Firebase
+ * console (Authentication → Templates), the whole flow lands on `/auth/action`
+ * (see pages/AuthActionPage.tsx) and this becomes the "Continue" target after it
+ * succeeds. */
 function emailActionSettings(): ActionCodeSettings {
   return { url: window.location.origin + import.meta.env.BASE_URL, handleCodeInApp: false };
+}
+
+/** Send the verification email ourselves via the Worker, instead of Firebase's
+ * locked console template. The Worker verifies this ID token and reads the email
+ * address straight out of it, so there's no secret for the static bundle to
+ * leak. See worker/src/verifyEmail.ts. */
+async function requestVerificationEmail(user: User): Promise<{ alreadyVerified?: boolean }> {
+  const base = loadSettings().workerUrl.replace(/\/$/, "");
+  const idToken = await user.getIdToken();
+  const res = await fetch(`${base}/api/auth/send-verification`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ idToken }),
+  });
+  const data = (await res.json().catch(() => ({}))) as { error?: string; alreadyVerified?: boolean };
+  if (!res.ok) throw new Error(data.error || `Verification request failed (${res.status}).`);
+  return data;
 }
 
 /** Turns Firebase's `auth/...` error codes into short human sentences. */
@@ -130,7 +147,7 @@ export const useAuthStore = create<AuthStore>((set) => ({
     try {
       const cred = await createUserWithEmailAndPassword(auth, email.trim(), password);
       try {
-        await sendEmailVerification(cred.user, emailActionSettings());
+        await requestVerificationEmail(cred.user);
         set({ notice: `Verification email sent to ${cred.user.email}. Check your inbox (and spam).` });
       } catch {
         set({ notice: "Account created, but the verification email couldn't be sent. Try resending it." });
@@ -148,8 +165,12 @@ export const useAuthStore = create<AuthStore>((set) => ({
       return;
     }
     try {
-      await sendEmailVerification(user, emailActionSettings());
-      set({ notice: `Verification email sent to ${user.email}. Check your inbox (and spam).` });
+      const { alreadyVerified } = await requestVerificationEmail(user);
+      set({
+        notice: alreadyVerified
+          ? "This email is already verified."
+          : `Verification email sent to ${user.email}. Check your inbox (and spam).`,
+      });
     } catch (err) {
       set({ error: authMessage(err, "Couldn't send the verification email.") });
     }
