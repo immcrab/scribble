@@ -12,7 +12,7 @@ export function corsHeaders(request: Request, env: Env): HeadersInit {
   return {
     "Access-Control-Allow-Origin": origin ?? "null",
     "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, X-Scribble-Password",
+    "Access-Control-Allow-Headers": "Content-Type, X-Scribble-Password, X-Verify-Secret",
     "Access-Control-Max-Age": "86400",
     Vary: "Origin",
   };

@@ -20,6 +20,7 @@ import {
   isOwnLocationAlreadyKnown,
 } from "./adapters/search";
 import { extractMemory, shouldRecallMemory } from "./adapters/memory";
+import { handleSendVerification } from "./verifyEmail";
 import { ndjsonLine } from "./adapters/base";
 
 // "custom" isn't in here — it has no Worker secret; its key comes from the
@@ -95,6 +96,10 @@ export default {
 
     if (url.pathname === "/api/health") {
       return json({ ok: true }, 200, cors);
+    }
+
+    if (url.pathname === "/api/auth/send-verification" && request.method === "POST") {
+      return handleSendVerification(request, env, cors);
     }
 
     if (url.pathname === "/api/chat/stream" && request.method === "POST") {

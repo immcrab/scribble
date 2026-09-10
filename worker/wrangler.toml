@@ -7,6 +7,12 @@ compatibility_date = "2024-11-01"
 # below if you don't mind it being public — it's not sensitive).
 [vars]
 ALLOWED_ORIGINS = "http://localhost:5173,https://immcrab.github.io,https://scribbleai.dev"
+# From address for the verification email (not sensitive). Domain must be
+# verified in Resend.
+VERIFY_EMAIL_FROM = "Scribble <scribble@owenis.me>"
+# Optional: where the verification link sends the user after the code is
+# consumed. Leave unset to use Firebase's default post-verification page.
+# VERIFY_CONTINUE_URL = "https://scribbleai.dev/signin"
 
 # Secrets (never commit real values — set these with `wrangler secret put NAME`):
 #   XKIRO_API_KEY       (chat provider + the GPT Image backend for /api/image/generate + /api/speech text-to-speech)
@@ -19,3 +25,6 @@ ALLOWED_ORIGINS = "http://localhost:5173,https://immcrab.github.io,https://scrib
 #   CF_ACCOUNT_ID       (Cloudflare account id — powers /api/image/generate)
 #   CF_AI_TOKEN         (Workers AI-scoped API token — powers /api/image/generate)
 #   SERP_API_KEY        (SerpApi key — powers Agent Mode's web-search toggle)
+#   FIREBASE_SERVICE_ACCOUNT  (full Firebase service account JSON — /api/auth/send-verification)
+#   RESEND_API_KEY            (Resend key re_... — sends the verification email)
+#   VERIFY_ENDPOINT_SECRET    (shared secret the caller sends as X-Verify-Secret)

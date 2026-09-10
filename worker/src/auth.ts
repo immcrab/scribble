@@ -2,7 +2,7 @@ import type { Env } from "./types";
 
 /** Length-independent constant-time string compare, so a wrong guess can't be
  * timed against the real password character by character. */
-function timingSafeEqual(a: string, b: string): boolean {
+export function timingSafeEqual(a: string, b: string): boolean {
   const enc = new TextEncoder();
   const ab = enc.encode(a);
   const bb = enc.encode(b);

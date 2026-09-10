@@ -13,6 +13,20 @@ export interface Env {
   CF_AI_TOKEN?: string;
   /** SerpApi key — powers Agent Mode's web-search toggle. */
   SERP_API_KEY?: string;
+  /** Full Firebase service account JSON (one line), for /api/auth/send-verification.
+   * Set with: wrangler secret put FIREBASE_SERVICE_ACCOUNT */
+  FIREBASE_SERVICE_ACCOUNT?: string;
+  /** Resend API key (re_...) — sends the verification email. */
+  RESEND_API_KEY?: string;
+  /** Shared secret the caller must present as X-Verify-Secret to hit
+   * /api/auth/send-verification. */
+  VERIFY_ENDPOINT_SECRET?: string;
+  /** From address for the verification email, e.g. "Scribble <scribble@owenis.me>".
+   * Plain var (not secret) — see wrangler.toml [vars]. */
+  VERIFY_EMAIL_FROM?: string;
+  /** Optional: URL the verification link bounces back to after the code is
+   * consumed (ActionCodeSettings.continueUrl). Plain var. */
+  VERIFY_CONTINUE_URL?: string;
 }
 
 export type Provider = "xkiro" | "mistral" | "gemini" | "openrouter" | "zai" | "custom";
