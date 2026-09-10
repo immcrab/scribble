@@ -24,6 +24,11 @@ export interface Env {
   /** Optional: URL the verification link bounces back to after the code is
    * consumed (ActionCodeSettings.continueUrl). Plain var. */
   VERIFY_CONTINUE_URL?: string;
+  /** Optional: rewrite the verification link to land on our own action page
+   * (e.g. "https://scribbleai.dev/auth/action") instead of Firebase's default
+   * handler — the console's custom-action-URL setting is locked on this
+   * project. Plain var. */
+  VERIFY_ACTION_URL?: string;
 }
 
 export type Provider = "xkiro" | "mistral" | "gemini" | "openrouter" | "zai" | "custom";

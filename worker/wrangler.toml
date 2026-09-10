@@ -10,6 +10,10 @@ ALLOWED_ORIGINS = "http://localhost:5173,https://immcrab.github.io,https://scrib
 # From address for the verification email (not sensitive). Domain must be
 # verified in Resend.
 VERIFY_EMAIL_FROM = "Scribble <scribble@owenis.me>"
+# Rewrites the verification link to land on our own branded action page
+# (pages/AuthActionPage.tsx) instead of Firebase's default handler — the
+# console's custom-action-URL field is locked on this project.
+VERIFY_ACTION_URL = "https://scribbleai.dev/auth/action"
 # Optional: where the verification link sends the user after the code is
 # consumed. Leave unset to use Firebase's default post-verification page.
 # VERIFY_CONTINUE_URL = "https://scribbleai.dev/signin"

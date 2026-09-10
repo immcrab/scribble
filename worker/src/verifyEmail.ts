@@ -70,7 +70,7 @@ function verificationEmailHtml(link: string): string {
 </html>`;
 }
 
-async function sendViaResend(env: Env, to: string, link: string): Promise<void> {
+async function sendViaResend(env: Env, to: string, link: string): Promise<string | undefined> {
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: {
@@ -84,10 +84,11 @@ async function sendViaResend(env: Env, to: string, link: string): Promise<void> 
       html: verificationEmailHtml(link),
     }),
   });
+  const payload = (await res.json().catch(() => ({}))) as { id?: string; message?: string; name?: string };
   if (!res.ok) {
-    const err = (await res.json().catch(() => ({}))) as { message?: string; name?: string };
-    throw new Error(`Resend send failed: ${err.message || err.name || res.status}`);
+    throw new Error(`Resend send failed: ${payload.message || payload.name || res.status}`);
   }
+  return payload.id;
 }
 
 export async function handleSendVerification(
@@ -142,9 +143,10 @@ export async function handleSendVerification(
   try {
     const link = await generateEmailVerificationLink(sa, email, {
       continueUrl: env.VERIFY_CONTINUE_URL,
+      actionUrl: env.VERIFY_ACTION_URL,
     });
-    await sendViaResend(env, email, link);
-    return json({ ok: true }, 200, cors);
+    const id = await sendViaResend(env, email, link);
+    return json({ ok: true, id }, 200, cors);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to send verification email.";
     return json({ error: message }, 502, cors);

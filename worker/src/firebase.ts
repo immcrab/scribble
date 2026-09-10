@@ -119,6 +119,16 @@ async function mintAccessToken(sa: ServiceAccount): Promise<string> {
 
 export interface VerificationLinkOptions {
   continueUrl?: string;
+  /**
+   * If set, the returned link's origin + path are rewritten to this URL while
+   * the query string (mode, oobCode, apiKey, lang) is kept as-is. Lets the link
+   * land on our own branded /auth/action page instead of Firebase's default
+   * <project>.firebaseapp.com/__/auth/action handler — the oobCode is validated
+   * server-side by Firebase either way, so who applies it doesn't matter.
+   * This is the console's "custom action URL" done from code, since the Firebase
+   * email template (and that field) is locked on this project.
+   */
+  actionUrl?: string;
 }
 
 /**
@@ -155,6 +165,18 @@ export async function generateEmailVerificationLink(
   const data = (await res.json()) as { oobLink?: string; error?: { message?: string } };
   if (!res.ok || !data.oobLink) {
     throw new Error(`sendOobCode failed: ${data.error?.message || res.status}`);
+  }
+
+  if (opts.actionUrl) {
+    try {
+      const original = new URL(data.oobLink);
+      const target = new URL(opts.actionUrl);
+      target.search = original.search; // keep mode / oobCode / apiKey / lang
+      return target.toString();
+    } catch {
+      // Malformed actionUrl — fall back to Firebase's own handler link.
+      return data.oobLink;
+    }
   }
   return data.oobLink;
 }
