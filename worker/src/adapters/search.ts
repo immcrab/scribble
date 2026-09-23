@@ -6,6 +6,16 @@ export interface SearchResult {
   faviconUrl?: string;
 }
 
+/** A small, free favicon endpoint for providers that return result links but
+ * not icons themselves. Only the destination hostname is sent to it. */
+function fallbackFavicon(url: string): string | undefined {
+  try {
+    return `https://icons.duckduckgo.com/ip3/${encodeURIComponent(new URL(url).hostname)}.ico`;
+  } catch {
+    return undefined;
+  }
+}
+
 /** A user should not have to depend on a classifier recognising that they have
  * explicitly asked us to use the web.  This intentionally covers natural
  * phrasing as well as a pasted URL. */
@@ -232,13 +242,16 @@ async function searchXkiro(apiKey: string, query: string): Promise<SearchResult[
 
   return (json.results ?? [])
     .slice(0, 5)
-    .map((r) => ({
-      title: r.title || "",
-      link: r.url || "",
-      snippet: r.snippet || "",
-      ...(r.thumbnailUrl ? { thumbnailUrl: r.thumbnailUrl } : {}),
-      ...(r.faviconUrl ? { faviconUrl: r.faviconUrl } : {}),
-    }))
+    .map((r) => {
+      const link = r.url || "";
+      return {
+        title: r.title || "",
+        link,
+        snippet: r.snippet || "",
+        ...(r.thumbnailUrl ? { thumbnailUrl: r.thumbnailUrl } : {}),
+        ...(r.faviconUrl || fallbackFavicon(link) ? { faviconUrl: r.faviconUrl || fallbackFavicon(link) } : {}),
+      };
+    })
     .filter((r) => r.title && r.link);
 }
 
@@ -274,7 +287,10 @@ async function searchBingRss(query: string): Promise<SearchResult[]> {
 
   return Array.from(xml.matchAll(/<item>([\s\S]*?)<\/item>/gi))
     .slice(0, 5)
-    .map((match) => ({ title: field(match[1], "title"), link: field(match[1], "link"), snippet: field(match[1], "description") }))
+    .map((match) => {
+      const link = field(match[1], "link");
+      return { title: field(match[1], "title"), link, snippet: field(match[1], "description"), faviconUrl: fallbackFavicon(link) };
+    })
     .filter((result) => result.title && /^https?:\/\//i.test(result.link));
 }
 

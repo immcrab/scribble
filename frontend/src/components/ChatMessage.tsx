@@ -118,6 +118,13 @@ function ToolActivity({ toolCalls }: { toolCalls: ToolCallRecord[] }) {
   const [open, setOpen] = useState(true);
   const liveSearch = toolCalls.find((t) => t.name === "Web search" && t.status === "running");
   const listed = toolCalls.filter((t) => t !== liveSearch);
+  const hostname = (url: string) => {
+    try {
+      return new URL(url).hostname.replace(/^www\./, "");
+    } catch {
+      return url;
+    }
+  };
 
   return (
     <>
@@ -137,51 +144,51 @@ function ToolActivity({ toolCalls }: { toolCalls: ToolCallRecord[] }) {
               {listed.map((t) => {
                 const Icon = TOOL_STATUS_ICON[t.status];
                 const isSearch = t.name === "Web search";
+                const query = typeof t.input?.query === "string" ? t.input.query : "";
                 return (
-                  <div key={t.id} className="flex items-start gap-2 text-xs">
-                    {isSearch ? (
-                      <Globe2 size={12} className="text-accent-300" />
-                    ) : (
-                      <Icon
-                        size={12}
-                        className={`mt-0.5 shrink-0 ${
-                          t.status === "running" || t.status === "pending" ? "animate-spin text-accent-400" : ""
-                        } ${t.status === "done" ? "text-emerald-400" : ""} ${t.status === "error" ? "text-red-400" : ""}`}
-                      />
+                  <div key={t.id} className="text-xs">
+                    <div className="flex items-start gap-2">
+                      {isSearch ? (
+                        <Globe2 size={12} className="mt-0.5 shrink-0 text-accent-300" />
+                      ) : (
+                        <Icon
+                          size={12}
+                          className={`mt-0.5 shrink-0 ${
+                            t.status === "running" || t.status === "pending" ? "animate-spin text-accent-400" : ""
+                          } ${t.status === "done" ? "text-emerald-400" : ""} ${t.status === "error" ? "text-red-400" : ""}`}
+                        />
+                      )}
+                      <span className="min-w-0 flex-1">
+                        <span className="font-medium text-slate-300">{isSearch && query ? "Searched" : t.name}</span>
+                        {isSearch && query ? <span className="ml-1 text-slate-400">{query}</span> : t.output && <span className="block truncate text-slate-500">{t.output}</span>}
+                      </span>
+                    </div>
+                    {isSearch && t.previews && t.previews.length > 0 && (
+                      <div className="ml-5 mt-2 space-y-1">
+                        {t.previews.slice(0, 5).map((preview) => (
+                          <a
+                            key={preview.url}
+                            href={preview.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="flex items-center gap-2 rounded-md px-1.5 py-1 text-slate-400 hover:bg-base-800 hover:text-slate-200"
+                            title={`Open ${preview.title}`}
+                          >
+                            {preview.faviconUrl ? (
+                              <img className="h-4 w-4 shrink-0 rounded-sm" src={preview.faviconUrl} alt="" />
+                            ) : (
+                              <Globe2 size={14} className="shrink-0 text-slate-500" />
+                            )}
+                            <span className="min-w-0 flex-1 truncate">{preview.title || hostname(preview.url)}</span>
+                            <span className="max-w-32 truncate text-[11px] text-slate-600">{hostname(preview.url)}</span>
+                            <ExternalLink size={11} className="shrink-0 text-slate-600" />
+                          </a>
+                        ))}
+                      </div>
                     )}
-                    <span className="min-w-0 flex-1">
-                      <span className="font-medium text-slate-300">{t.name}</span>
-                      {t.output && <span className="block truncate text-slate-500">{t.output}</span>}
-                    </span>
                   </div>
                 );
               })}
-              {listed.flatMap((t) => (t.name === "Web search" ? t.previews ?? [] : [])).slice(0, 3).map((preview) => (
-                <a
-                  key={preview.url}
-                  href={preview.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="website-preview-card group"
-                  title={`Open ${preview.title}`}
-                >
-                  <div className="website-preview-image">
-                    {preview.thumbnailUrl ? (
-                      <img src={preview.thumbnailUrl} alt="" />
-                    ) : (
-                      <div className="website-preview-placeholder"><Globe2 size={18} /></div>
-                    )}
-                  </div>
-                  <div className="min-w-0 p-2.5">
-                    <div className="flex items-center gap-1.5">
-                      {preview.faviconUrl && <img className="h-3.5 w-3.5 rounded-sm" src={preview.faviconUrl} alt="" />}
-                      <span className="truncate text-xs font-medium text-slate-200">{preview.title}</span>
-                      <ExternalLink size={11} className="ml-auto shrink-0 text-slate-500 group-hover:text-accent-300" />
-                    </div>
-                    {preview.snippet && <p className="mt-1 line-clamp-2 text-[11px] leading-relaxed text-slate-500">{preview.snippet}</p>}
-                  </div>
-                </a>
-              ))}
             </div>
           )}
         </div>
