@@ -22,6 +22,7 @@ import {
   Maximize2,
   Wand2,
   Globe2,
+  ExternalLink,
 } from "lucide-react";
 import type { Attachment, ChatMessage as ChatMessageType, ToolCallRecord } from "../types";
 import { Markdown } from "../lib/markdown";
@@ -98,9 +99,8 @@ const TOOL_STATUS_ICON: Record<ToolCallRecord["status"], typeof Loader2> = {
   error: XCircle,
 };
 
-/** A "Web search" tool call still in flight gets its own live pill (globe
- * replaced with the search engine's logo — always Google, see worker/src/adapters/search.ts)
- * instead of sitting inside the collapsed activity list, so the query is visible
+/** A "Web search" tool call still in flight gets its own live pill instead of
+ * sitting inside the collapsed activity list, so the query is visible
  * the instant the search starts rather than only once it resolves. */
 function SearchingPill({ toolCall }: { toolCall: ToolCallRecord }) {
   const query = typeof toolCall.input?.query === "string" ? toolCall.input.query : "";
@@ -156,6 +156,32 @@ function ToolActivity({ toolCalls }: { toolCalls: ToolCallRecord[] }) {
                   </div>
                 );
               })}
+              {listed.flatMap((t) => (t.name === "Web search" ? t.previews ?? [] : [])).slice(0, 3).map((preview) => (
+                <a
+                  key={preview.url}
+                  href={preview.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="website-preview-card group"
+                  title={`Open ${preview.title}`}
+                >
+                  <div className="website-preview-image">
+                    {preview.thumbnailUrl ? (
+                      <img src={preview.thumbnailUrl} alt="" />
+                    ) : (
+                      <div className="website-preview-placeholder"><Globe2 size={18} /></div>
+                    )}
+                  </div>
+                  <div className="min-w-0 p-2.5">
+                    <div className="flex items-center gap-1.5">
+                      {preview.faviconUrl && <img className="h-3.5 w-3.5 rounded-sm" src={preview.faviconUrl} alt="" />}
+                      <span className="truncate text-xs font-medium text-slate-200">{preview.title}</span>
+                      <ExternalLink size={11} className="ml-auto shrink-0 text-slate-500 group-hover:text-accent-300" />
+                    </div>
+                    {preview.snippet && <p className="mt-1 line-clamp-2 text-[11px] leading-relaxed text-slate-500">{preview.snippet}</p>}
+                  </div>
+                </a>
+              ))}
             </div>
           )}
         </div>

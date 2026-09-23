@@ -2,6 +2,8 @@ export interface SearchResult {
   title: string;
   link: string;
   snippet: string;
+  thumbnailUrl?: string;
+  faviconUrl?: string;
 }
 
 /** Plain arithmetic (nothing but digits/whitespace/math symbols), or a message
@@ -150,13 +152,19 @@ export async function searchWeb(apiKey: string, query: string): Promise<SearchRe
   }
 
   const json = (await res.json()) as {
-    results?: Array<{ title?: string; url?: string; snippet?: string }>;
+    results?: Array<{ title?: string; url?: string; snippet?: string; thumbnailUrl?: string | null; faviconUrl?: string | null }>;
     error?: string | { message?: string };
   };
   if (json.error) throw new Error(typeof json.error === "string" ? json.error : json.error.message || "xKiro web search failed.");
 
   return (json.results ?? [])
     .slice(0, 5)
-    .map((r) => ({ title: r.title || "", link: r.url || "", snippet: r.snippet || "" }))
+    .map((r) => ({
+      title: r.title || "",
+      link: r.url || "",
+      snippet: r.snippet || "",
+      ...(r.thumbnailUrl ? { thumbnailUrl: r.thumbnailUrl } : {}),
+      ...(r.faviconUrl ? { faviconUrl: r.faviconUrl } : {}),
+    }))
     .filter((r) => r.title && r.link);
 }

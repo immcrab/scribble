@@ -159,9 +159,14 @@ export default {
             // "where am I" style questions are already answered by clientContext.location
             // (IP-derived, see frontend/src/lib/clientContext.ts) — searching would just
             // spend search quota confirming a fact we already have.
+            // A person can explicitly ask to preview a site; treat that as a
+            // lookup even if the general-purpose classifier would have judged
+            // the short request as conversational rather than factual.
+            const wantsSitePreview = /\b(?:show|preview|look at|what does)\b[\s\S]{0,80}\b(?:site|website|webpage|page)\b|\b(?:website|site|webpage)\s+(?:preview|image|screenshot)\b/i.test(query);
             let worthSearching =
               !looksLikeArithmetic(query) && !isOwnLocationAlreadyKnown(query, body.clientContext?.location);
-            if (query && worthSearching && env.GROQ_API_KEY) {
+            if (wantsSitePreview) worthSearching = true;
+            if (query && worthSearching && env.GROQ_API_KEY && !wantsSitePreview) {
               try {
                 worthSearching = await shouldSearchWeb(env.GROQ_API_KEY, query);
               } catch {
@@ -212,6 +217,13 @@ export default {
                       status: "done",
                       input: { query: searchQuery },
                       output: `${results.length} result${results.length === 1 ? "" : "s"}`,
+                      previews: results.slice(0, 3).map((r) => ({
+                        title: r.title,
+                        url: r.link,
+                        snippet: r.snippet,
+                        thumbnailUrl: r.thumbnailUrl,
+                        faviconUrl: r.faviconUrl,
+                      })),
                     },
                   })
                 );

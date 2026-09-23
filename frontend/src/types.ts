@@ -164,6 +164,16 @@ export interface ToolCallRecord {
   status: "pending" | "running" | "done" | "error";
   input?: Record<string, unknown>;
   output?: string;
+  /** Optional visual cards returned by xKiro web search. These are result
+   * thumbnails, not browser screenshots, and let someone judge a page before
+   * choosing whether to open it. */
+  previews?: Array<{
+    title: string;
+    url: string;
+    snippet?: string;
+    thumbnailUrl?: string;
+    faviconUrl?: string;
+  }>;
 }
 
 export interface ChatMessage {

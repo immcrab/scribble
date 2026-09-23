@@ -633,6 +633,45 @@ select {
   border-color: rgb(var(--accent-500) / 0.62);
   box-shadow: 0 0 0 3px rgb(var(--accent-500) / 0.11), 0 12px 38px rgb(0 0 0 / 0.22);
 }
+
+/* Search cards show xKiro's result thumbnails in the chat itself. They are a
+   lightweight visual preview of a destination, not a claim that Scribble has
+   loaded or inspected the page. */
+.website-preview-card {
+  display: grid;
+  grid-template-columns: 84px minmax(0, 1fr);
+  overflow: hidden;
+  border: 1px solid rgb(var(--base-700) / 0.7);
+  border-radius: 10px;
+  background: rgb(var(--base-850) / 0.7);
+  color: inherit;
+  text-decoration: none;
+  transition: border-color 160ms ease, transform 160ms ease, background 160ms ease;
+}
+.website-preview-card:hover {
+  border-color: rgb(var(--accent-500) / 0.52);
+  background: rgb(var(--base-800) / 0.78);
+  transform: translateY(-1px);
+}
+.website-preview-image {
+  min-height: 72px;
+  overflow: hidden;
+  background: rgb(var(--base-800));
+}
+.website-preview-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.website-preview-placeholder {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  min-height: 72px;
+  place-items: center;
+  color: rgb(var(--accent-400));
+  background: radial-gradient(circle at 50% 20%, rgb(var(--accent-500) / 0.23), transparent 65%);
+}
 .imggen-ground {
   position: absolute;
   left: 0;
