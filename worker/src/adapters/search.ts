@@ -186,7 +186,7 @@ export async function buildSearchQuery(
         {
           role: "system",
           content:
-            "You write web-search queries. Given the conversation and the user's latest message, work out what fact they actually need, then output the search query a skilled researcher would type into Google to find it. Resolve pronouns and references using the conversation. Strip conversational filler, first-person framing, and politeness. Prefer specific keywords, names, and dates over full sentences. Add a year or 'latest' when recency matters. Output only the query text — no quotes, no explanation.",
+            "You write web-search queries. Given the conversation and the user's latest message, work out what fact they actually need, then output the search query a skilled researcher would type into Google to find it. Resolve pronouns and references using the conversation. Strip conversational filler, first-person framing, and politeness. Prefer specific keywords, names, and dates over full sentences. Never add names, products, dates, claims, or possible answers that the user or conversation did not supply. Output only the query text — no quotes, no explanation.",
         },
         {
           role: "user",

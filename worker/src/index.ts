@@ -208,12 +208,15 @@ export default {
             }
             if (query && worthSearching && !pageUrl) {
               const toolId = crypto.randomUUID();
-              // Reformulate the raw message into a focused query before searching.
-              // The message as typed is often a weak query (filler, first-person
-              // framing, unresolved pronouns from earlier turns). Fails open to the
-              // raw message if the rewrite call errors or no Groq key is set.
+              // Reformulate a conversational query only when it is safe to do so.
+              // For fresh/current questions, the user's exact wording is already a
+              // strong query and a rewriter can accidentally invent candidate
+              // answers (for example adding model names to "latest AI model").
+              // Preserve it verbatim so the search engine, not a helper model,
+              // decides what is current.
               let searchQuery = query;
-              if (env.GROQ_API_KEY) {
+              const asksForCurrentInfo = /\b(?:latest|newest|current|today|right now|recent|recently|this week|this month|this year)\b/i.test(query);
+              if (env.GROQ_API_KEY && !asksForCurrentInfo) {
                 try {
                   searchQuery = await buildSearchQuery(
                     env.GROQ_API_KEY,
