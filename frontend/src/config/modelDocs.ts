@@ -50,6 +50,7 @@ export const MODEL_DOCS: Record<string, string> = {
   "glm-4.5-flash": "GLM-4.5 Flash — the previous free GLM Flash, a solid general-purpose text and reasoning model at ~128K context.",
 
   // xKiro
+  "qwen/qwen3.8-omni-flash:free": "Qwen's current fast multimodal model via xKiro — free, reasoning-capable, vision-enabled, and built for a 1M-token context window.",
   "qwen/qwen3.8-max:free": "Qwen's largest current model via xKiro — top-tier reasoning and vision at 1M context.",
   "qwen/qwen3.7-max:free": "Qwen 3.7 Max — large-context reasoning model, no vision.",
   "qwen/qwen3.7-plus:free": "Qwen 3.7 Plus — strong reasoning and vision at 1M context.",
@@ -69,7 +70,7 @@ export const MODEL_DOCS: Record<string, string> = {
   "qwen/qwen-plus-2025-07-28:free": "Qwen Plus snapshot build — reasoning and vision.",
   "mistralai/mistral-large-2512": "Mistral's flagship via xKiro — vision-capable, large context.",
   "mistralai/mistral-medium-3.5": "Mistral Medium 3.5 via xKiro — reasoning and vision, mid-tier cost.",
-  "mistralai/mistral-small-2603": "Mistral Small 4 via xKiro — the app's free default, balanced text/reasoning/vision.",
+  "mistralai/mistral-small-2603": "Mistral Small 4 via xKiro — a balanced text, reasoning, and vision model.",
   "mistralai/ministral-14b": "Mid-size Mistral model — vision-capable, no reasoning mode.",
   "mistralai/ministral-8b": "Compact Mistral model for simple, fast tasks — vision-capable.",
   "mistralai/ministral-3b": "Smallest Mistral available here — lowest latency, lightest tasks only.",

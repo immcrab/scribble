@@ -31,6 +31,17 @@ import { isLocalDev } from "../lib/devMode";
 const XKIRO_MODELS: ModelDef[] = [
   {
     provider: "xkiro",
+    modelId: "qwen/qwen3.8-omni-flash:free",
+    displayName: "Qwen3.8 Omni Flash",
+    icon: "Sparkles",
+    contextLength: 1000000,
+    capabilities: ["text", "reasoning", "vision"],
+    free: true,
+    supportsStreaming: true,
+    supportsVision: true,
+  },
+  {
+    provider: "xkiro",
     modelId: "qwen/qwen3.8-max:free",
     displayName: "Qwen3.8 Max",
     icon: "Sparkles",
@@ -876,7 +887,8 @@ export const ALL_MODELS: ModelDef[] = [
   ...ZAI_MODELS,
 ];
 
-export const DEFAULT_MODEL_ID = "mistralai/mistral-small-2603";
+// The free, current all-purpose entry point: reasoning + vision, 1M context.
+export const DEFAULT_MODEL_ID = "qwen/qwen3.8-omni-flash:free";
 
 /**
  * Catalog size as a rounded-down "N+" string (e.g. 56 built-ins -> "50+"),
