@@ -183,6 +183,21 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // A signed-in user's private history is merged asynchronously after the app has
+  // mounted. If they reload one of their own /c/{id} URLs, the public lookup above
+  // can win that short race and temporarily render the read-only shared version.
+  // Re-check whenever the local chat list changes: as soon as cloud sync supplies
+  // the owned chat, make it the editable active chat instead. This also makes an
+  // old browser with an empty local cache recover cleanly after sign-in.
+  useEffect(() => {
+    if (shareState.status === "idle") return;
+    const urlId = parseChatIdFromLocation();
+    if (!urlId) return;
+    if (!chats.some((chat) => chat.id === urlId)) return;
+    useChatStore.getState().setActiveChat(urlId);
+    setShareState({ status: "idle" });
+  }, [chats, shareState.status]);
+
   // Back/forward navigation: re-resolve whichever chat (local or shared) the URL now points at.
   useEffect(
     () =>
