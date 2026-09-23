@@ -593,6 +593,46 @@ select {
   border: 1px solid rgb(var(--base-700) / 0.6);
   background: radial-gradient(120% 80% at 50% 0%, rgb(var(--base-800) / 0.85), rgb(var(--base-900) / 0.9));
 }
+.image-studio-grid {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background:
+    linear-gradient(rgb(var(--base-900) / 0.78), rgb(var(--base-900) / 0.96)),
+    linear-gradient(90deg, rgb(var(--base-700) / 0.12) 1px, transparent 1px),
+    linear-gradient(rgb(var(--base-700) / 0.12) 1px, transparent 1px);
+  background-size: auto, 28px 28px, 28px 28px;
+}
+.image-studio-grid::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  width: min(44rem, 90vw);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgb(var(--accent-500) / 0.18), transparent 66%);
+  filter: blur(14px);
+  animation: studio-orbit 12s ease-in-out infinite alternate;
+}
+.image-studio-orb {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border: 1px solid rgb(var(--accent-400) / 0.42);
+  border-radius: 16px;
+  color: rgb(var(--accent-300));
+  background: linear-gradient(135deg, rgb(var(--accent-500) / 0.2), rgb(var(--base-850) / 0.7));
+  box-shadow: 0 0 42px rgb(var(--accent-500) / 0.16), inset 0 1px rgb(255 255 255 / 0.08);
+  animation: studio-float 4s ease-in-out infinite;
+}
+.image-composer {
+  box-shadow: 0 12px 38px rgb(0 0 0 / 0.22), inset 0 1px rgb(255 255 255 / 0.025);
+}
+.image-composer:focus-within {
+  border-color: rgb(var(--accent-500) / 0.62);
+  box-shadow: 0 0 0 3px rgb(var(--accent-500) / 0.11), 0 12px 38px rgb(0 0 0 / 0.22);
+}
 .imggen-ground {
   position: absolute;
   left: 0;
@@ -687,13 +727,23 @@ select {
   25% { opacity: 1; }
   100% { opacity: 0; transform: translateY(-54px) scale(1); }
 }
+@keyframes studio-orbit {
+  from { transform: translate3d(-13%, -9%, 0) scale(0.9); }
+  to { transform: translate3d(13%, 10%, 0) scale(1.08); }
+}
+@keyframes studio-float {
+  0%, 100% { transform: translateY(0) rotate(-2deg); }
+  50% { transform: translateY(-6px) rotate(2deg); }
+}
 
 @media (prefers-reduced-motion: reduce) {
   .imggen-buddy,
   .imggen-buddy-flip,
   .imggen-body,
   .imggen-leg,
-  .imggen-spark {
+  .imggen-spark,
+  .image-studio-grid::before,
+  .image-studio-orb {
     animation-duration: 0.001ms !important;
     animation-iteration-count: 1 !important;
   }

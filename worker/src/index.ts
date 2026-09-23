@@ -146,7 +146,7 @@ export default {
           const lastUserIdx = messages.map((m, i) => ({ m, i })).filter((x) => x.m.role === "user").pop()?.i;
           const query = lastUserIdx !== undefined ? messages[lastUserIdx].content.trim() : "";
 
-          if (body.webSearch && env.SERP_API_KEY) {
+          if (body.webSearch && env.XKIRO_API_KEY) {
             // "webSearch" now means "auto" mode — decide per-turn instead of always
             // searching. A fast Groq classification keeps irrelevant turns (general
             // knowledge, coding, math) from paying the search latency/cost at all.
@@ -158,7 +158,7 @@ export default {
             // model and can get misjudged as a lookup-worthy ID/serial number. Likewise,
             // "where am I" style questions are already answered by clientContext.location
             // (IP-derived, see frontend/src/lib/clientContext.ts) — searching would just
-            // spend SerpApi quota confirming a fact we already have.
+            // spend search quota confirming a fact we already have.
             let worthSearching =
               !looksLikeArithmetic(query) && !isOwnLocationAlreadyKnown(query, body.clientContext?.location);
             if (query && worthSearching && env.GROQ_API_KEY) {
@@ -192,7 +192,7 @@ export default {
                 })
               );
               try {
-                const results = await searchWeb(env.SERP_API_KEY, searchQuery);
+                const results = await searchWeb(env.XKIRO_API_KEY, searchQuery);
                 const resultsText = results.length
                   ? results.map((r, i) => `${i + 1}. ${r.title} — ${r.link}\n${r.snippet}`).join("\n\n")
                   : "No results found.";

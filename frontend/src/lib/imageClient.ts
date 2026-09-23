@@ -8,6 +8,7 @@ export async function generateImage({
   prompt,
   provider,
   model,
+  size,
   signal,
 }: {
   workerUrl: string;
@@ -17,6 +18,8 @@ export async function generateImage({
   provider?: "cloudflare" | "xkiro";
   /** Provider-specific model id (xKiro). */
   model?: string;
+  /** xKiro canvas size, e.g. 1024x1024 or 1792x1024. */
+  size?: string;
   signal?: AbortSignal;
 }): Promise<string> {
   if (!workerUrl) {
@@ -29,7 +32,7 @@ export async function generateImage({
       "Content-Type": "application/json",
       ...(password ? { "X-Scribble-Password": password } : {}),
     },
-    body: JSON.stringify({ prompt, ...(provider ? { provider } : {}), ...(model ? { model } : {}) }),
+    body: JSON.stringify({ prompt, ...(provider ? { provider } : {}), ...(model ? { model } : {}), ...(size ? { size } : {}) }),
     signal,
   });
 
@@ -54,6 +57,7 @@ export async function editImage({
   prompt,
   image,
   model,
+  size,
   signal,
 }: {
   workerUrl: string;
@@ -63,6 +67,7 @@ export async function editImage({
   image: string;
   /** Provider-specific model id (xKiro). */
   model?: string;
+  size?: string;
   signal?: AbortSignal;
 }): Promise<string> {
   if (!workerUrl) {
@@ -75,7 +80,7 @@ export async function editImage({
       "Content-Type": "application/json",
       ...(password ? { "X-Scribble-Password": password } : {}),
     },
-    body: JSON.stringify({ prompt, image, ...(model ? { model } : {}) }),
+    body: JSON.stringify({ prompt, image, ...(model ? { model } : {}), ...(size ? { size } : {}) }),
     signal,
   });
 

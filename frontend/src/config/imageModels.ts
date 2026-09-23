@@ -32,9 +32,9 @@ export const IMAGE_MODELS: ImageModelDef[] = [
   {
     id: "xkiro-gpt-image",
     provider: "xkiro",
-    model: "gpt-image",
-    displayName: "GPT Image",
-    desc: "Higher quality, slower — can also edit an image",
+    model: "openai/gpt-image-2.5",
+    displayName: "ChatGPT Images",
+    desc: "Highest quality — supports image editing and re-framing",
     supportsEdit: true,
     billing: "xkiro",
   },

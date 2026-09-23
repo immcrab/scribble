@@ -18,7 +18,7 @@ export function looksLikeArithmetic(query: string): boolean {
 /** Same "asking about my own whereabouts" pattern the frontend uses to decide whether to
  * re-offer the location popup (frontend/src/lib/clientContext.ts). If the message matches
  * and clientContext already carries an IP-derived location, the answer's already in hand —
- * a web search would just burn SerpApi quota confirming a fact we were handed for free. */
+ * a web search would just burn quota confirming a fact we were handed for free. */
 const OWN_LOCATION_RE =
   /\bwhere\s+(am\s+i|are\s+we)\b|\bmy\s+(current\s+)?location\b|\bwhat\s+city\s+am\s+i\b|\bcurrent\s+location\b|\bwhat.?s\s+my\s+location\b/i;
 
@@ -76,7 +76,7 @@ export async function shouldSearchWeb(apiKey: string, query: string): Promise<bo
 
 /**
  * Rewrite the user's raw message into a focused web-search query before it hits
- * SerpApi. The message as typed is often a poor query — it carries conversational
+ * xKiro. The message as typed is often a poor query — it carries conversational
  * filler ("hey can you tell me..."), first-person framing, or pronouns that only
  * resolve against earlier turns ("how tall is he?"). This asks the same cheap Groq
  * model to think about what the user actually wants to know and emit the keywords
@@ -131,22 +131,32 @@ export async function buildSearchQuery(
   return raw.slice(0, 300);
 }
 
-/** SerpApi (Google engine) — https://serpapi.com/search-api */
+/** xKiro Web Search — https://docs.xkiro.com/api/web-search/
+ *
+ * Search stays server-side, so the browser never sees the credential used for
+ * chat, images, or web results. A single XKIRO_API_KEY covers all three.
+ */
 export async function searchWeb(apiKey: string, query: string): Promise<SearchResult[]> {
-  const url = `https://serpapi.com/search.json?engine=google&num=5&q=${encodeURIComponent(query)}&api_key=${encodeURIComponent(apiKey)}`;
-  const res = await fetch(url);
+  const res = await fetch("https://api.xkiro.com/v1/search", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({ model: "xkiro/web-search", query, max_results: 5 }),
+  });
   if (!res.ok) {
-    throw new Error(`SerpApi error ${res.status}: ${await res.text()}`);
+    throw new Error(`xKiro web search error ${res.status}: ${await res.text()}`);
   }
 
   const json = (await res.json()) as {
-    organic_results?: Array<{ title?: string; link?: string; snippet?: string }>;
-    error?: string;
+    results?: Array<{ title?: string; url?: string; snippet?: string }>;
+    error?: string | { message?: string };
   };
-  if (json.error) throw new Error(json.error);
+  if (json.error) throw new Error(typeof json.error === "string" ? json.error : json.error.message || "xKiro web search failed.");
 
-  return (json.organic_results ?? [])
+  return (json.results ?? [])
     .slice(0, 5)
-    .map((r) => ({ title: r.title || "", link: r.link || "", snippet: r.snippet || "" }))
+    .map((r) => ({ title: r.title || "", link: r.url || "", snippet: r.snippet || "" }))
     .filter((r) => r.title && r.link);
 }

@@ -21,6 +21,7 @@ import {
   Download,
   Maximize2,
   Wand2,
+  Globe2,
 } from "lucide-react";
 import type { Attachment, ChatMessage as ChatMessageType, ToolCallRecord } from "../types";
 import { Markdown } from "../lib/markdown";
@@ -30,7 +31,6 @@ import { modelsByProvider, PROVIDER_LABELS, isModelGated } from "../config/model
 import { useAuthStore } from "../state/authStore";
 import { useChatStore } from "../state/chatStore";
 import { Dropdown } from "./Dropdown";
-import { GoogleLogo } from "./icons/GoogleLogo";
 
 /** Small chevron-trigger dropdown next to Regenerate — lets you re-run the
  * same turn against a different model instead of the one that answered. */
@@ -106,7 +106,7 @@ function SearchingPill({ toolCall }: { toolCall: ToolCallRecord }) {
   const query = typeof toolCall.input?.query === "string" ? toolCall.input.query : "";
   return (
     <div className="stream-prelude mb-2">
-      <GoogleLogo size={13} />
+      <Globe2 size={13} className="text-accent-300" />
       <span className="thinking-label animate-thinking-shimmer">
         Searching {query && <span className="text-slate-300">{query}</span>}
       </span>
@@ -140,7 +140,7 @@ function ToolActivity({ toolCalls }: { toolCalls: ToolCallRecord[] }) {
                 return (
                   <div key={t.id} className="flex items-start gap-2 text-xs">
                     {isSearch ? (
-                      <GoogleLogo size={12} />
+                      <Globe2 size={12} className="text-accent-300" />
                     ) : (
                       <Icon
                         size={12}

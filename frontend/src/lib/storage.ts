@@ -16,6 +16,9 @@ export interface ScribbleSettings {
   imageModelId?: string;
   /** Image-mode style preset — id from config/imageStyles.ts. "none"/unset sends the prompt untouched. */
   imageStyleId?: string;
+  /** xKiro image canvas ratio. Stored independently from the model so changing
+   * models doesn't throw away the composition the user chose. */
+  imageAspectRatio?: "1:1" | "3:4" | "4:3" | "9:16" | "16:9";
   /** Text-to-speech voice id (xKiro), persisted across Speech-mode sessions. Falls back to the
    * first voice the /api/speech/voices list returns when unset. */
   speechVoiceId?: string;

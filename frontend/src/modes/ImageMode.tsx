@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Image as ImageIcon, Send, Loader2, ChevronDown, Paperclip, X, Wand2 } from "lucide-react";
+import { Image as ImageIcon, Send, Loader2, ChevronDown, Paperclip, X, Wand2, Sparkles } from "lucide-react";
 import { useChatStore } from "../state/chatStore";
 import { ChatMessage } from "../components/ChatMessage";
 import { Dropdown } from "../components/Dropdown";
@@ -19,10 +19,18 @@ import type { Attachment, ChatMessage as ChatMessageType } from "../types";
 import type { InitialPrompt } from "../App";
 
 const SUGGESTIONS = [
-  "A watercolor fox reading a book in a forest clearing",
-  "Retro synthwave skyline at sunset, neon grid horizon",
-  "A cozy cabin in the mountains, soft morning light",
+  "Editorial campaign for a translucent running shoe, studio light, product close-up",
+  "A tiny moonbase greenhouse at blue hour, cinematic wide shot",
+  "Dreamy boutique hotel lobby in Lisbon, warm afternoon light, interior photography",
 ];
+
+const ASPECT_RATIOS = [
+  { id: "1:1", label: "Square", size: "1024x1024" },
+  { id: "3:4", label: "Portrait", size: "1024x1365" },
+  { id: "4:3", label: "Landscape", size: "1365x1024" },
+  { id: "9:16", label: "Story", size: "1024x1792" },
+  { id: "16:9", label: "Wide", size: "1792x1024" },
+] as const;
 
 /** Roughly 9MB of raw image — the Worker rejects data: URLs over ~12M chars. */
 const MAX_SOURCE_BYTES = 9 * 1024 * 1024;
@@ -46,6 +54,7 @@ export function ImageMode({
   const inputRef = useRef<HTMLInputElement>(null);
   const imageModel = findImageModel(settings.imageModelId);
   const imageStyle = findImageStyle(settings.imageStyleId);
+  const aspectRatio = ASPECT_RATIOS.find((ratio) => ratio.id === settings.imageAspectRatio) ?? ASPECT_RATIOS[0];
   const chatEndRef = useAutoScroll<HTMLDivElement>(chat?.messages ?? []);
 
   if (!chat) return null;
@@ -140,6 +149,7 @@ export function ImageMode({
             prompt: trimmed,
             image: editingSource.dataUrl,
             model: EDIT_IMAGE_MODEL.model,
+            size: aspectRatio.size,
           })
         : await generateImage({
             workerUrl: settings.workerUrl,
@@ -147,6 +157,7 @@ export function ImageMode({
             prompt: applyImageStyle(trimmed, settings.imageStyleId),
             provider: imageModel.provider,
             model: imageModel.model,
+            size: imageModel.provider === "xkiro" ? aspectRatio.size : undefined,
           });
       const wm = watermarkConfig();
       const dataUrl = wm.enabled ? await watermarkImage(rawUrl, wm) : rawUrl;
@@ -249,10 +260,14 @@ export function ImageMode({
       </div>
 
       {chat.messages.length === 0 ? (
-        <div className="flex flex-1 flex-col items-center justify-center gap-6 px-4 text-center">
-          <h1 className="font-serif text-3xl font-light tracking-tighter text-slate-100 sm:text-4xl">
-            What should we create?
-          </h1>
+        <div className="image-studio-grid flex flex-1 flex-col items-center justify-center gap-6 px-4 text-center">
+          <div className="image-studio-orb"><Sparkles size={21} /></div>
+          <div>
+            <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-accent-300">Creative studio</p>
+            <h1 className="font-serif text-3xl font-light tracking-tighter text-slate-100 sm:text-4xl">
+              Make a direction, not just an image.
+            </h1>
+          </div>
           <div className="flex flex-col gap-2 sm:flex-row">
             {SUGGESTIONS.map((s) => (
               <button
@@ -264,9 +279,7 @@ export function ImageMode({
               </button>
             ))}
           </div>
-          <p className="text-xs text-slate-500">
-            …or attach an image below and describe how to change it.
-          </p>
+          <p className="text-xs text-slate-500">Choose a format, write a direction, or attach an image to refine it.</p>
         </div>
       ) : (
         <div className="flex-1 overflow-y-auto px-4 py-5 sm:px-8" ref={chatEndRef}>
@@ -316,7 +329,27 @@ export function ImageMode({
             {sourceError}
           </div>
         )}
-        <div className="flex items-center gap-2 rounded-2xl border border-base-600/60 bg-base-850/70 p-2 shadow-panel">
+        <div className="mb-2 flex items-center justify-between gap-2 px-1">
+          <div className="flex items-center gap-1 overflow-x-auto pb-1">
+            {ASPECT_RATIOS.map((ratio) => (
+              <button
+                key={ratio.id}
+                onClick={() => updateSettings({ imageAspectRatio: ratio.id })}
+                disabled={generating}
+                className={`rounded-lg border px-2.5 py-1 text-[11px] font-medium transition-colors ${
+                  ratio.id === aspectRatio.id
+                    ? "border-accent-500/50 bg-accent-500/10 text-accent-200"
+                    : "border-base-700/70 bg-base-850/40 text-slate-500 hover:border-base-600 hover:text-slate-300"
+                } disabled:cursor-not-allowed disabled:opacity-50`}
+                title={`${ratio.label} (${ratio.id})`}
+              >
+                {ratio.id}
+              </button>
+            ))}
+          </div>
+          <span className="hidden shrink-0 text-[11px] text-slate-500 sm:inline">{aspectRatio.label}</span>
+        </div>
+        <div className="image-composer flex items-center gap-2 rounded-2xl border border-base-600/60 bg-base-850/70 p-2 shadow-panel">
           <input
             ref={fileInputRef}
             type="file"

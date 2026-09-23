@@ -10,7 +10,7 @@
  */
 const XKIRO_IMAGE_URL = "https://api.xkiro.com/v1/images/generations";
 const XKIRO_EDIT_URL = "https://api.xkiro.com/v1/images/edits";
-const DEFAULT_MODEL = "gpt-image";
+const DEFAULT_MODEL = "openai/gpt-image-2.5";
 const POLL_INTERVAL_MS = 2500;
 const MAX_POLL_MS = 90_000;
 

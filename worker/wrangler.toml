@@ -19,7 +19,7 @@ VERIFY_ACTION_URL = "https://scribbleai.dev/auth/action"
 # VERIFY_CONTINUE_URL = "https://scribbleai.dev/signin"
 
 # Secrets (never commit real values — set these with `wrangler secret put NAME`):
-#   XKIRO_API_KEY       (chat provider + the GPT Image backend for /api/image/generate + /api/speech text-to-speech)
+#   XKIRO_API_KEY       (chat provider + web search + GPT Image backend + text-to-speech)
 #   GROQ_API_KEY        (not a selectable provider — only powers chat-title generation)
 #   MISTRAL_API_KEY
 #   GEMINI_API_KEY
@@ -28,6 +28,5 @@ VERIFY_ACTION_URL = "https://scribbleai.dev/auth/action"
 #   SCRIBBLE_PASSWORD   (optional — omit to leave Scribble open/unauthenticated)
 #   CF_ACCOUNT_ID       (Cloudflare account id — powers /api/image/generate)
 #   CF_AI_TOKEN         (Workers AI-scoped API token — powers /api/image/generate)
-#   SERP_API_KEY        (SerpApi key — powers Agent Mode's web-search toggle)
 #   FIREBASE_SERVICE_ACCOUNT  (full Firebase service account JSON — /api/auth/send-verification)
 #   RESEND_API_KEY            (Resend key re_... — sends the verification email)

@@ -11,8 +11,6 @@ export interface Env {
   /** Cloudflare account id + Workers AI token, for /api/image/generate. */
   CF_ACCOUNT_ID?: string;
   CF_AI_TOKEN?: string;
-  /** SerpApi key — powers Agent Mode's web-search toggle. */
-  SERP_API_KEY?: string;
   /** Full Firebase service account JSON (one line), for /api/auth/send-verification.
    * Set with: wrangler secret put FIREBASE_SERVICE_ACCOUNT */
   FIREBASE_SERVICE_ACCOUNT?: string;
@@ -92,7 +90,7 @@ export interface ChatRequestBody {
   effort?: Effort;
   /** The client's "auto web search" setting. When true, the Worker first asks a fast
    * Groq classifier whether the latest user message actually needs a live search, and
-   * only then runs the SerpApi lookup — see the /api/chat/stream handler. */
+   * only then runs an xKiro lookup — see the /api/chat/stream handler. */
   webSearch?: boolean;
   /** The client's "memory" setting. When true, the Worker asks a fast Groq classifier
    * whether the latest user message contains something worth remembering, and if so,

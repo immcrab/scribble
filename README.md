@@ -186,7 +186,7 @@ Worker's URL (and password, if you set one). Settings are stored in
   KaTeX (`<Markdown math />`, opt-in so ordinary chats keep bare `$` signs intact).
 
 - **Agent Mode** streams real tool activity for the built-in **web search**
-  (Groq decides per-turn whether a lookup helps, then SerpApi runs it — needs
-  `SERP_API_KEY`) and **memory** (needs `GROQ_API_KEY` and the user's opt-in).
+  (Groq can decide per-turn whether a lookup helps, then xKiro runs it with the
+  existing `XKIRO_API_KEY`) and **memory** (needs `GROQ_API_KEY` and the user's opt-in).
   Additional tools would emit more `toolCall` events in the NDJSON stream, read
   into `ChatMessage.toolCalls` in the mode component.
