@@ -503,7 +503,7 @@ export function SettingsModal({ onClose, initialTab }: { onClose: () => void; in
                   />
                   <ToggleSwitch
                     label="Web search"
-                    description="Scribble decides per message whether a live web search would help, in every chat mode"
+                    description="Scribble searches current topics automatically; asking it to browse or use a website always triggers a live search"
                     checked={settings.autoWebSearch}
                     onChange={(v) => updateSettings({ autoWebSearch: v })}
                   />

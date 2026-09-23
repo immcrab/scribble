@@ -6,6 +6,79 @@ export interface SearchResult {
   faviconUrl?: string;
 }
 
+/** A user should not have to depend on a classifier recognising that they have
+ * explicitly asked us to use the web.  This intentionally covers natural
+ * phrasing as well as a pasted URL. */
+export function explicitlyRequestsWeb(query: string): boolean {
+  return (
+    /\b(?:search|google|look\s*up|browse|visit|open|check|use)\b[\s\S]{0,80}\b(?:the\s+)?(?:web|internet|site|website|webpage|page)\b/i.test(query) ||
+    /\b(?:search|google|look\s*up)\b[\s\S]{0,80}\b(?:for|about)\b/i.test(query) ||
+    /\b(?:can|could|will)\s+you\s+(?:browse|search|visit|open|check|use)\b/i.test(query) ||
+    /https?:\/\/[^\s]+/i.test(query)
+  );
+}
+
+/** Returns the first public http(s) URL in a message, if it is safe for the
+ * Worker to retrieve. This is intentionally conservative: a chat prompt must
+ * never turn into a request to a local/private network address. */
+export function publicUrlIn(query: string): string | undefined {
+  const raw = query.match(/https?:\/\/[^\s<>"')\]]+/i)?.[0];
+  if (!raw) return undefined;
+  try {
+    const url = new URL(raw);
+    const host = url.hostname.toLowerCase();
+    const privateIpv4 = /^(?:127\.|10\.|0\.|169\.254\.|192\.168\.|172\.(?:1[6-9]|2\d|3[0-1])\.)/.test(host);
+    if (
+      url.protocol !== "https:" ||
+      host === "localhost" ||
+      host.endsWith(".localhost") ||
+      privateIpv4 ||
+      host === "::1" ||
+      host.startsWith("fc") ||
+      host.startsWith("fd")
+    ) {
+      return undefined;
+    }
+    return url.toString();
+  } catch {
+    return undefined;
+  }
+}
+
+/** Fetch a user-supplied public page and reduce it to readable text for the
+ * model. This is deliberately small and dependency-free so it works on the
+ * Worker free tier. It is not a browser: JavaScript-rendered/logged-in pages
+ * can still fall back to a normal search result. */
+export async function readWebPage(url: string): Promise<{ title: string; text: string }> {
+  const response = await fetch(url, {
+    headers: { "User-Agent": "ScribbleAI web reader", Accept: "text/html,application/xhtml+xml,text/plain" },
+    redirect: "follow",
+  });
+  if (!response.ok) throw new Error(`Website returned ${response.status}.`);
+  const contentType = response.headers.get("content-type") ?? "";
+  if (!/^(?:text\/html|application\/xhtml\+xml|text\/plain)/i.test(contentType)) {
+    throw new Error("That URL is not a readable web page.");
+  }
+  const source = (await response.text()).slice(0, 750_000);
+  const title = source.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1] ?? new URL(url).hostname;
+  const text = source
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, " ")
+    .replace(/<noscript\b[^>]*>[\s\S]*?<\/noscript>/gi, " ")
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 12_000);
+  if (!text) throw new Error("The website did not provide readable page text.");
+  return { title: title.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim(), text };
+}
+
 /** Plain arithmetic (nothing but digits/whitespace/math symbols), or a message
  * containing a long run of consecutive digits — id-like number noise that a cheap
  * classifier can misjudge as a lookup-worthy serial/tracking number even when it's
@@ -138,7 +211,7 @@ export async function buildSearchQuery(
  * Search stays server-side, so the browser never sees the credential used for
  * chat, images, or web results. A single XKIRO_API_KEY covers all three.
  */
-export async function searchWeb(apiKey: string, query: string): Promise<SearchResult[]> {
+async function searchXkiro(apiKey: string, query: string): Promise<SearchResult[]> {
   const res = await fetch("https://api.xkiro.com/v1/search", {
     method: "POST",
     headers: {
@@ -167,4 +240,55 @@ export async function searchWeb(apiKey: string, query: string): Promise<SearchRe
       ...(r.faviconUrl ? { faviconUrl: r.faviconUrl } : {}),
     }))
     .filter((r) => r.title && r.link);
+}
+
+/**
+ * Keyless fallback for chat providers other than xKiro. Bing's public RSS
+ * response has a small, stable XML surface and lets a Worker retrieve ordinary
+ * web results without exposing a key or charging the user. It is deliberately
+ * a fallback: xKiro results include richer previews when that integration is
+ * configured.
+ */
+async function searchBingRss(query: string): Promise<SearchResult[]> {
+  const res = await fetch(`https://www.bing.com/search?format=rss&q=${encodeURIComponent(query)}`, {
+    headers: { Accept: "application/rss+xml, application/xml, text/xml" },
+  });
+  if (!res.ok) throw new Error(`Free web search error ${res.status}.`);
+
+  const xml = await res.text();
+  const decode = (value: string) =>
+    value
+      .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1")
+      .replace(/<[^>]*>/g, " ")
+      .replace(/&amp;/g, "&")
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">")
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+      .replace(/\s+/g, " ")
+      .trim();
+  const field = (item: string, tag: string) => {
+    const match = item.match(new RegExp(`<${tag}>([\\s\\S]*?)</${tag}>`, "i"));
+    return match ? decode(match[1]) : "";
+  };
+
+  return Array.from(xml.matchAll(/<item>([\s\S]*?)<\/item>/gi))
+    .slice(0, 5)
+    .map((match) => ({ title: field(match[1], "title"), link: field(match[1], "link"), snippet: field(match[1], "description") }))
+    .filter((result) => result.title && /^https?:\/\//i.test(result.link));
+}
+
+/** Search without making the selected chat provider matter.  xKiro remains an
+ * optional richer backend; when it is absent or temporarily unavailable, every
+ * model (including Mistral Small 4) receives free live results. */
+export async function searchWeb(apiKey: string | undefined, query: string): Promise<SearchResult[]> {
+  if (apiKey) {
+    try {
+      const results = await searchXkiro(apiKey, query);
+      if (results.length) return results;
+    } catch {
+      // The free backend below keeps search working during xKiro outages too.
+    }
+  }
+  return searchBingRss(query);
 }

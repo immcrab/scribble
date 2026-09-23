@@ -90,7 +90,7 @@ export interface ChatRequestBody {
   effort?: Effort;
   /** The client's "auto web search" setting. When true, the Worker first asks a fast
    * Groq classifier whether the latest user message actually needs a live search, and
-   * only then runs an xKiro lookup — see the /api/chat/stream handler. */
+   * then uses the optional xKiro backend or a keyless web-search fallback. */
   webSearch?: boolean;
   /** The client's "memory" setting. When true, the Worker asks a fast Groq classifier
    * whether the latest user message contains something worth remembering, and if so,

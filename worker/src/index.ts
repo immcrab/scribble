@@ -18,6 +18,9 @@ import {
   buildSearchQuery,
   looksLikeArithmetic,
   isOwnLocationAlreadyKnown,
+  explicitlyRequestsWeb,
+  publicUrlIn,
+  readWebPage,
 } from "./adapters/search";
 import { extractMemory, shouldRecallMemory } from "./adapters/memory";
 import { handleSendVerification } from "./verifyEmail";
@@ -146,7 +149,37 @@ export default {
           const lastUserIdx = messages.map((m, i) => ({ m, i })).filter((x) => x.m.role === "user").pop()?.i;
           const query = lastUserIdx !== undefined ? messages[lastUserIdx].content.trim() : "";
 
-          if (body.webSearch && env.XKIRO_API_KEY) {
+          if (body.webSearch) {
+            const pageUrl = publicUrlIn(query);
+            if (pageUrl && lastUserIdx !== undefined) {
+              const toolId = crypto.randomUUID();
+              controller.enqueue(ndjsonLine({ toolCall: { id: toolId, name: "Read webpage", status: "running", input: { url: pageUrl } } }));
+              try {
+                const page = await readWebPage(pageUrl);
+                messages = messages.map((m, i) =>
+                  i === lastUserIdx
+                    ? { ...m, content: `${m.content}\n\n[Live webpage content from ${pageUrl} (${page.title}) — use this to answer accurately:\n${page.text}]` }
+                    : m
+                );
+                controller.enqueue(
+                  ndjsonLine({
+                    toolCall: { id: toolId, name: "Read webpage", status: "done", input: { url: pageUrl }, output: page.title },
+                  })
+                );
+              } catch (err) {
+                controller.enqueue(
+                  ndjsonLine({
+                    toolCall: {
+                      id: toolId,
+                      name: "Read webpage",
+                      status: "error",
+                      input: { url: pageUrl },
+                      output: err instanceof Error ? err.message : "Website read failed.",
+                    },
+                  })
+                );
+              }
+            }
             // "webSearch" now means "auto" mode — decide per-turn instead of always
             // searching. A fast Groq classification keeps irrelevant turns (general
             // knowledge, coding, math) from paying the search latency/cost at all.
@@ -162,18 +195,18 @@ export default {
             // A person can explicitly ask to preview a site; treat that as a
             // lookup even if the general-purpose classifier would have judged
             // the short request as conversational rather than factual.
-            const wantsSitePreview = /\b(?:show|preview|look at|what does)\b[\s\S]{0,80}\b(?:site|website|webpage|page)\b|\b(?:website|site|webpage)\s+(?:preview|image|screenshot)\b/i.test(query);
+            const wantsWeb = explicitlyRequestsWeb(query);
             let worthSearching =
               !looksLikeArithmetic(query) && !isOwnLocationAlreadyKnown(query, body.clientContext?.location);
-            if (wantsSitePreview) worthSearching = true;
-            if (query && worthSearching && env.GROQ_API_KEY && !wantsSitePreview) {
+            if (wantsWeb) worthSearching = true;
+            if (query && worthSearching && env.GROQ_API_KEY && !wantsWeb) {
               try {
                 worthSearching = await shouldSearchWeb(env.GROQ_API_KEY, query);
               } catch {
                 worthSearching = true;
               }
             }
-            if (query && worthSearching) {
+            if (query && worthSearching && !pageUrl) {
               const toolId = crypto.randomUUID();
               // Reformulate the raw message into a focused query before searching.
               // The message as typed is often a weak query (filler, first-person
