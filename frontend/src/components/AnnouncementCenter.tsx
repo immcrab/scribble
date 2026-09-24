@@ -30,17 +30,28 @@ function AnnouncementCard({ item, onClose }: { item: Announcement; onClose?: () 
 
 export function AnnouncementLaunch() {
   const announcements = useCatalogStore((s) => s.catalog.announcements ?? []);
-  const enabled = useChatStore((s) => s.settings.announcementsEnabled);
+  const settings = useChatStore((s) => s.settings);
+  const updateSettings = useChatStore((s) => s.updateSettings);
+  const enabled = settings.announcementsEnabled;
   const [current, setCurrent] = useState<Announcement | null>(null);
   useEffect(() => {
     if (!enabled) return setCurrent(null);
-    const next = announcements.find((item) => !readSeen().includes(item.id)) ?? null;
+    // Keep the card mounted after recording it as seen. The settings update below
+    // triggers this effect again, so without this guard the card would immediately
+    // dismiss itself on the next render.
+    if (current) return;
+    const seen = new Set([...readSeen(), ...(settings.seenAnnouncementIds ?? [])]);
+    const next = announcements.find((item) => !seen.has(item.id)) ?? null;
     // “Seen” means the card was presented, not merely that its close button was
     // pressed. Otherwise a reload while it is on screen causes the exact same
     // release note to repeat indefinitely.
-    if (next) markSeen(next.id);
+    if (next) {
+      markSeen(next.id);
+      const ids = [...new Set([...(settings.seenAnnouncementIds ?? []), next.id])].slice(-100);
+      updateSettings({ seenAnnouncementIds: ids });
+    }
     setCurrent(next);
-  }, [announcements, enabled]);
+  }, [announcements, enabled, settings.seenAnnouncementIds, updateSettings, current]);
   if (!current) return null;
   const close = () => { markSeen(current.id); setCurrent(null); };
   return <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4 backdrop-blur-md animate-fade-in" role="dialog" aria-modal="true" aria-label="New announcement">

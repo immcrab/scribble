@@ -38,6 +38,9 @@ export interface ScribbleSettings {
   autoWebSearch: boolean;
   /** Receive new product announcements. Turning this off also stops launch popups. */
   announcementsEnabled: boolean;
+  /** Announcements that have already been presented to this user. Synced for signed-in
+   * users so a browser-storage reset cannot make old releases reappear. */
+  seenAnnouncementIds: string[];
   /** Consent state for sending an IP-derived approximate location (city-level, via ipapi.co —
    * no browser geolocation prompt) with each chat request — see lib/clientContext.ts.
    * "unset": never asked yet, in-site popup will ask once. "granted"/"denied": user's answer,
@@ -108,6 +111,7 @@ const SETTINGS_DEFAULTS: Omit<ScribbleSettings, "workerUrl" | "password"> = {
   autoOpenCode: true,
   autoWebSearch: true,
   announcementsEnabled: true,
+  seenAnnouncementIds: [],
   locationConsent: "unset",
   theme: "dark",
   effort: "medium",
