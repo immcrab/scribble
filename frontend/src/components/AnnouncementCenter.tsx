@@ -34,7 +34,12 @@ export function AnnouncementLaunch() {
   const [current, setCurrent] = useState<Announcement | null>(null);
   useEffect(() => {
     if (!enabled) return setCurrent(null);
-    setCurrent(announcements.find((item) => !readSeen().includes(item.id)) ?? null);
+    const next = announcements.find((item) => !readSeen().includes(item.id)) ?? null;
+    // “Seen” means the card was presented, not merely that its close button was
+    // pressed. Otherwise a reload while it is on screen causes the exact same
+    // release note to repeat indefinitely.
+    if (next) markSeen(next.id);
+    setCurrent(next);
   }, [announcements, enabled]);
   if (!current) return null;
   const close = () => { markSeen(current.id); setCurrent(null); };
