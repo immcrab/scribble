@@ -27,10 +27,8 @@ export interface Env {
    * handler — the console's custom-action-URL setting is locked on this
    * project. Plain var. */
   VERIFY_ACTION_URL?: string;
-  /** Optional R2 bucket for admin announcement artwork. Configure a public custom domain
-   * in ANNOUNCEMENT_ASSET_BASE, e.g. https://assets.scribbleai.dev. */
+  /** R2 bucket for admin announcement artwork, served through the Worker. */
   ANNOUNCEMENT_ASSETS?: R2Bucket;
-  ANNOUNCEMENT_ASSET_BASE?: string;
   FIREBASE_PROJECT_ID?: string;
 }
 

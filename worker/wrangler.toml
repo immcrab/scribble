@@ -14,13 +14,12 @@ VERIFY_EMAIL_FROM = "Scribble <scribble@owenis.me>"
 # (pages/AuthActionPage.tsx) instead of Firebase's default handler — the
 # console's custom-action-URL field is locked on this project.
 VERIFY_ACTION_URL = "https://scribbleai.dev/auth/action"
-# Optional announcement artwork storage. Create an R2 bucket, bind it as
-# ANNOUNCEMENT_ASSETS, and point ANNOUNCEMENT_ASSET_BASE at its public custom domain.
-# FIREBASE_PROJECT_ID = "rypotic-playground"
-# ANNOUNCEMENT_ASSET_BASE = "https://assets.scribbleai.dev"
-# [[r2_buckets]]
-# binding = "ANNOUNCEMENT_ASSETS"
-# bucket_name = "scribble-announcements"
+# Announcement artwork storage. Images are served through this Worker, so no
+# separate public R2 domain is needed.
+FIREBASE_PROJECT_ID = "rypotic-playground"
+[[r2_buckets]]
+binding = "ANNOUNCEMENT_ASSETS"
+bucket_name = "scribble-announcements"
 # Optional: where the verification link sends the user after the code is
 # consumed. Leave unset to use Firebase's default post-verification page.
 # VERIFY_CONTINUE_URL = "https://scribbleai.dev/signin"

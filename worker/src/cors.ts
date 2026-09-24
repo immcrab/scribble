@@ -12,7 +12,10 @@ export function corsHeaders(request: Request, env: Env): HeadersInit {
   return {
     "Access-Control-Allow-Origin": origin ?? "null",
     "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, X-Scribble-Password",
+    // Announcement uploads authenticate with a Firebase bearer token. If this header
+    // is absent the browser rejects the request during preflight as “Failed to fetch”,
+    // before the Worker can return a useful error.
+    "Access-Control-Allow-Headers": "Content-Type, X-Scribble-Password, Authorization",
     "Access-Control-Max-Age": "86400",
     Vary: "Origin",
   };

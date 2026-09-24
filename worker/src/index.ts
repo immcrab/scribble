@@ -113,8 +113,8 @@ export default {
     // someone discovers the worker URL, and it stays unavailable until the R2 binding/domain
     // are configured (see wrangler.toml).
     if (url.pathname === "/api/admin/announcement-image" && request.method === "POST") {
-      if (!env.ANNOUNCEMENT_ASSETS || !env.ANNOUNCEMENT_ASSET_BASE || !env.FIREBASE_PROJECT_ID) {
-        return json({ error: "Announcement uploads are not configured. Add the R2 binding and public asset URL to the Worker." }, 503, cors);
+      if (!env.ANNOUNCEMENT_ASSETS || !env.FIREBASE_PROJECT_ID) {
+        return json({ error: "Announcement uploads are not configured. Add the R2 binding to the Worker." }, 503, cors);
       }
       const auth = request.headers.get("Authorization")?.replace(/^Bearer\s+/i, "");
       if (!auth) return json({ error: "Sign in as an admin to upload artwork." }, 401, cors);
@@ -132,7 +132,18 @@ export default {
       const ext = type === "image/png" ? "png" : type === "image/webp" ? "webp" : type === "image/gif" ? "gif" : "jpg";
       const key = `announcements/${Date.now()}-${crypto.randomUUID()}.${ext}`;
       await env.ANNOUNCEMENT_ASSETS.put(key, body, { httpMetadata: { contentType: type, cacheControl: "public, max-age=31536000, immutable" } });
-      return json({ url: `${env.ANNOUNCEMENT_ASSET_BASE.replace(/\/$/, "")}/${key}` }, 201, cors);
+      // The Worker serves this public, unguessable object URL below. This avoids a
+      // second R2 custom-domain prerequisite while keeping assets cacheable.
+      return json({ url: `${url.origin}/api/announcement-image/${key}` }, 201, cors);
+    }
+
+    if (url.pathname.startsWith("/api/announcement-image/") && request.method === "GET") {
+      if (!env.ANNOUNCEMENT_ASSETS) return json({ error: "Announcement asset storage is unavailable." }, 503, cors);
+      const key = url.pathname.slice("/api/announcement-image/".length);
+      if (!key.startsWith("announcements/") || key.includes("..")) return json({ error: "Invalid asset path." }, 400, cors);
+      const object = await env.ANNOUNCEMENT_ASSETS.get(key);
+      if (!object) return json({ error: "Image not found." }, 404, cors);
+      return new Response(object.body, { headers: { ...cors, "Content-Type": object.httpMetadata?.contentType ?? "application/octet-stream", "Cache-Control": object.httpMetadata?.cacheControl ?? "public, max-age=31536000, immutable" } });
     }
 
     if (url.pathname === "/api/chat/stream" && request.method === "POST") {
