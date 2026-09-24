@@ -508,6 +508,12 @@ export function SettingsModal({ onClose, initialTab }: { onClose: () => void; in
                     onChange={(v) => updateSettings({ autoWebSearch: v })}
                   />
                   <ToggleSwitch
+                    label="Product announcements"
+                    description="Show new-release popups and keep updates in the Announcements tab"
+                    checked={settings.announcementsEnabled}
+                    onChange={(v) => updateSettings({ announcementsEnabled: v })}
+                  />
+                  <ToggleSwitch
                     label="Reduce motion"
                     description="Turn off streaming/hover animations"
                     checked={settings.reduceMotion}

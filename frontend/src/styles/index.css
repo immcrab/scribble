@@ -196,8 +196,16 @@ body,
 
 body {
   font-family: var(--app-font, "Inter", ui-sans-serif, system-ui, sans-serif);
-  background: rgb(var(--base-950));
+  background: radial-gradient(80rem 44rem at 84% -18%, rgb(var(--accent-500) / .12), transparent 52%), rgb(var(--base-950));
 }
+
+/* A quiet, dimensional shell rather than a flat set of panes. */
+.app-topbar {
+  border-bottom: 1px solid rgb(var(--base-700) / .48);
+  background: linear-gradient(90deg, rgb(var(--base-950) / .78), rgb(var(--base-900) / .4));
+  backdrop-filter: blur(18px);
+}
+.glass-panel { box-shadow: 1px 0 0 rgb(255 255 255 / .025), 18px 0 50px rgb(0 0 0 / .12); }
 
 /* "Bolder" appearance toggle — nudges the whole UI up one weight step. */
 :root[data-bold="true"] body {

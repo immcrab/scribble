@@ -14,6 +14,7 @@ import { runAssistantStream, CONTINUE_NUDGE } from "../lib/runStream";
 import { sendDirectMessage } from "../lib/sendDirect";
 import { useAutoScroll } from "../lib/useAutoScroll";
 import { uid } from "../lib/id";
+import { AUTO_MODEL, AUTO_MODEL_ID, chooseModelForRequest } from "../lib/autoModel";
 import type { Attachment, ChatMessage as ChatMessageType } from "../types";
 import type { WireMessage } from "../providers";
 import type { InitialPrompt } from "../App";
@@ -35,7 +36,7 @@ export function DirectMode({
 
   if (!chat) return null;
 
-  const model = (chat.modelId ? findModel(chat.modelId) : undefined) ?? getDefaultModel();
+  const model = chat.modelId === AUTO_MODEL_ID ? AUTO_MODEL : (chat.modelId ? findModel(chat.modelId) : undefined) ?? getDefaultModel();
   const effort = chat.effort ?? settings.effort;
   const generating = chat.messages.some((m) => m.streaming);
 
@@ -58,7 +59,7 @@ export function DirectMode({
   };
 
   const regenerate = (assistantId: string, withModelId?: string) => {
-    const runModel = (withModelId && findModel(withModelId)) || model;
+    const runModel = (withModelId && findModel(withModelId)) || (chat.modelId === AUTO_MODEL_ID ? chooseModelForRequest(chat.messages.find((m) => m.role === "user")?.content ?? "") : model);
     if (!runModel) return;
     const history = buildHistory(assistantId);
     removeMessagesAfter(chat.id, assistantId);
@@ -121,11 +122,11 @@ export function DirectMode({
       role: "assistant",
       content: "",
       createdAt: Date.now(),
-      model,
+      model: chat.modelId === AUTO_MODEL_ID ? chooseModelForRequest(newText, !!msg.attachments?.some((a) => a.type.startsWith("image/"))) : model,
       streaming: true,
     };
     addMessage(chat.id, newAssistant);
-    runAssistantStream({ chatId: chat.id, messageId: newAssistant.id, model, history, effort, webSearch: settings.autoWebSearch });
+    runAssistantStream({ chatId: chat.id, messageId: newAssistant.id, model: newAssistant.model!, history, effort, webSearch: settings.autoWebSearch });
   };
 
   const stop = () => {

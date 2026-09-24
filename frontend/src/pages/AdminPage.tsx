@@ -11,8 +11,11 @@ import {
   Ban,
   RefreshCw,
   Gift,
+  Bell,
+  ImagePlus,
 } from "lucide-react";
 import { useAuthStore } from "../state/authStore";
+import { useChatStore } from "../state/chatStore";
 import { useCatalogStore, publishCatalog, DEFAULT_USAGE, DEFAULT_WATERMARK } from "../lib/catalogSync";
 import {
   PROVIDER_LABELS,
@@ -35,7 +38,7 @@ import { modelSlug } from "../lib/modelSlug";
 import { ModelFavicon, ProviderFavicon } from "../components/ProviderIcon";
 import { ToggleSwitch } from "../components/ToggleSwitch";
 import { LogoMark } from "../components/Logo";
-import type { AdminCatalog, ModelDef, Provider, UsageConfig, UsageRecord, WatermarkConfig } from "../types";
+import type { AdminCatalog, Announcement, ModelDef, Provider, UsageConfig, UsageRecord, WatermarkConfig } from "../types";
 
 /** Providers the admin can publish an official model against — the ones the Worker
  * already holds a key for, plus Puter (in-browser, no key). "custom" is per-browser only,
@@ -53,7 +56,7 @@ function formatContext(n: number): string {
   return String(n);
 }
 
-type PatchableCatalog = Partial<Pick<AdminCatalog, "added" | "hiddenKeys" | "usage" | "watermark">>;
+type PatchableCatalog = Partial<Pick<AdminCatalog, "added" | "hiddenKeys" | "usage" | "watermark" | "announcements">>;
 
 function GateScreen({ onExit }: { onExit: () => void }) {
   const user = useAuthStore((s) => s.user);
@@ -834,6 +837,46 @@ function WatermarkTab({
   );
 }
 
+/* ──────────────────────── Announcements tab ──────────────────────── */
+
+function AnnouncementsTab({ catalog, busy, run }: { catalog: AdminCatalog; busy: boolean; run: (patch: PatchableCatalog) => void }) {
+  const [draft, setDraft] = useState({ title: "", body: "", imageUrl: "", ctaLabel: "", ctaUrl: "" });
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const publish = () => {
+    if (!draft.title.trim() || !draft.body.trim()) return;
+    const item: Announcement = { id: crypto.randomUUID(), title: draft.title.trim(), body: draft.body.trim(), imageUrl: draft.imageUrl.trim() || undefined, ctaLabel: draft.ctaLabel.trim() || undefined, ctaUrl: draft.ctaUrl.trim() || undefined, publishedAt: Date.now() };
+    run({ announcements: [item, ...(catalog.announcements ?? [])].slice(0, 30) });
+    setDraft({ title: "", body: "", imageUrl: "", ctaLabel: "", ctaUrl: "" });
+  };
+  const upload = async (file: File) => {
+    if (!file.type.startsWith("image/") || file.size > 5 * 1024 * 1024) { setUploadError("Choose an image under 5 MB."); return; }
+    const user = useAuthStore.getState().user;
+    if (!user) return;
+    setUploading(true); setUploadError(null);
+    try {
+      const worker = useChatStore.getState().settings.workerUrl.replace(/\/$/, "");
+      const token = await user.getIdToken();
+      const res = await fetch(`${worker}/api/admin/announcement-image`, { method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": file.type }, body: file });
+      const data = await res.json().catch(() => ({})) as { url?: string; error?: string };
+      if (!res.ok || !data.url) throw new Error(data.error || "Upload failed.");
+      setDraft((d) => ({ ...d, imageUrl: data.url! }));
+    } catch (e) { setUploadError(e instanceof Error ? e.message : "Upload failed."); } finally { setUploading(false); }
+  };
+  return <>
+    <p className="mb-5 rounded-lg border border-base-700/60 bg-base-900/40 px-3 py-2 text-xs text-slate-400">Publish a product update once and it reaches everyone on their next load. Unseen announcements open as a polished launch card; all updates remain in the sidebar’s Announcements center.</p>
+    <section className="mb-8 rounded-xl border border-dashed border-base-600/60 p-4">
+      <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-white"><Bell size={15} className="text-accent-400" />New announcement</h2>
+      <div className="space-y-3"><input value={draft.title} onChange={(e) => setDraft((d) => ({ ...d, title: e.target.value }))} placeholder="Headline" className={inputClass} /><textarea value={draft.body} onChange={(e) => setDraft((d) => ({ ...d, body: e.target.value }))} placeholder="What changed? Keep it clear and useful." rows={4} className={`${inputClass} resize-none`} /><input value={draft.imageUrl} onChange={(e) => setDraft((d) => ({ ...d, imageUrl: e.target.value }))} placeholder="Image URL (optional)" className={inputClass} />
+      <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-base-600/60 px-3 py-2 text-xs text-slate-300 hover:border-accent-500/50"><ImagePlus size={14} className="text-accent-400" />{uploading ? "Uploading to R2…" : "Upload image to Cloudflare R2"}<input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && void upload(e.target.files[0])} /></label>{uploadError && <p className="text-xs text-red-300">{uploadError}</p>}
+      {draft.imageUrl && <img src={draft.imageUrl} alt="Preview" className="max-h-40 w-full rounded-lg object-cover" />}
+      <div className="grid gap-3 sm:grid-cols-2"><input value={draft.ctaLabel} onChange={(e) => setDraft((d) => ({ ...d, ctaLabel: e.target.value }))} placeholder="Button label (optional)" className={inputClass} /><input value={draft.ctaUrl} onChange={(e) => setDraft((d) => ({ ...d, ctaUrl: e.target.value }))} placeholder="https:// link (optional)" className={inputClass} /></div>
+      <button onClick={publish} disabled={busy || !draft.title.trim() || !draft.body.trim()} className="rounded-lg bg-accent-500 px-3 py-2 text-xs font-semibold text-base-950 hover:bg-accent-400 disabled:opacity-40">Publish announcement</button></div>
+    </section>
+    <section><h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Published</h2><div className="space-y-2">{(catalog.announcements ?? []).map((item) => <div key={item.id} className="flex items-center gap-3 rounded-lg border border-base-600/60 bg-base-900/60 p-3"><Bell size={14} className="text-accent-400" /><div className="min-w-0 flex-1"><p className="truncate text-sm text-slate-200">{item.title}</p><p className="text-xs text-slate-500">{new Date(item.publishedAt).toLocaleDateString()}</p></div><button onClick={() => run({ announcements: (catalog.announcements ?? []).filter((a) => a.id !== item.id) })} disabled={busy} className="rounded p-1 text-slate-500 hover:bg-red-500/10 hover:text-red-400"><Trash2 size={14} /></button></div>)}{!(catalog.announcements ?? []).length && <p className="text-sm text-slate-500">Nothing published yet.</p>}</div></section>
+  </>;
+}
+
 /* ─────────────────────────── Shell ─────────────────────────── */
 
 const TABS = [
@@ -841,6 +884,7 @@ const TABS = [
   { id: "users", label: "Users" },
   { id: "limits", label: "Limits" },
   { id: "watermark", label: "Watermark" },
+  { id: "announcements", label: "Announcements" },
 ] as const;
 type TabId = (typeof TABS)[number]["id"];
 
@@ -861,6 +905,7 @@ export function AdminPage({ onExit }: { onExit: () => void }) {
         hiddenKeys: catalog.hiddenKeys,
         usage: catalog.usage ?? DEFAULT_USAGE,
         watermark: catalog.watermark ?? DEFAULT_WATERMARK,
+        announcements: catalog.announcements ?? [],
         ...patch,
       });
     } catch (e) {
@@ -922,6 +967,7 @@ export function AdminPage({ onExit }: { onExit: () => void }) {
         {tab === "limits" && <LimitsTab catalog={catalog} busy={busy} run={run} />}
         {tab === "users" && <UsersTab catalog={catalog} busy={busy} run={run} />}
         {tab === "watermark" && <WatermarkTab catalog={catalog} busy={busy} run={run} />}
+        {tab === "announcements" && <AnnouncementsTab catalog={catalog} busy={busy} run={run} />}
       </div>
     </div>
   );

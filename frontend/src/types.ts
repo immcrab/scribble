@@ -50,6 +50,9 @@ export interface AdminCatalog {
    * catalog blob published before this feature existed still parses (defaults fill in — see
    * lib/catalogSync.ts's `DEFAULT_WATERMARK`). */
   watermark?: WatermarkConfig;
+  /** Global product updates, newest first. They are shown once per browser and remain
+   * available from the Announcements center. */
+  announcements?: Announcement[];
   /** Date.now() of the last admin edit — last-write-wins if two admin tabs race. */
   updatedAt: number;
 }
@@ -174,6 +177,16 @@ export interface ToolCallRecord {
     thumbnailUrl?: string;
     faviconUrl?: string;
   }>;
+}
+
+export interface Announcement {
+  id: string;
+  title: string;
+  body: string;
+  imageUrl?: string;
+  ctaLabel?: string;
+  ctaUrl?: string;
+  publishedAt: number;
 }
 
 export interface ChatMessage {

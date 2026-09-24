@@ -36,6 +36,8 @@ export interface ScribbleSettings {
    * classification call — whether the reply needs a live web search, and run one
    * automatically if so. See worker/src/adapters/search.ts. */
   autoWebSearch: boolean;
+  /** Receive new product announcements. Turning this off also stops launch popups. */
+  announcementsEnabled: boolean;
   /** Consent state for sending an IP-derived approximate location (city-level, via ipapi.co —
    * no browser geolocation prompt) with each chat request — see lib/clientContext.ts.
    * "unset": never asked yet, in-site popup will ask once. "granted"/"denied": user's answer,
@@ -105,6 +107,7 @@ const SETTINGS_DEFAULTS: Omit<ScribbleSettings, "workerUrl" | "password"> = {
   reduceMotion: false,
   autoOpenCode: true,
   autoWebSearch: true,
+  announcementsEnabled: true,
   locationConsent: "unset",
   theme: "dark",
   effort: "medium",

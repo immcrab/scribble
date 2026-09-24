@@ -2,6 +2,8 @@ import { useChatStore } from "../state/chatStore";
 import { findModel, getDefaultModel } from "../config/models";
 import { runAssistantStream } from "./runStream";
 import { uid } from "./id";
+import { AUTO_MODEL_ID, chooseModelForRequest } from "./autoModel";
+import { useAuthStore } from "../state/authStore";
 import type { Attachment, ChatMessage } from "../types";
 import type { WireMessage } from "../providers";
 
@@ -19,7 +21,9 @@ export function sendDirectMessage(chatId: string, text: string, attachments: Att
   const chat = store.chats.find((c) => c.id === chatId);
   if (!chat) return;
 
-  const model = (chat.modelId ? findModel(chat.modelId) : undefined) ?? getDefaultModel(store.settings.defaultModelId);
+  const model = chat.modelId === AUTO_MODEL_ID && useAuthStore.getState().user
+    ? chooseModelForRequest(text, attachments.some((a) => a.type.startsWith("image/")))
+    : (chat.modelId ? findModel(chat.modelId) : undefined) ?? getDefaultModel(store.settings.defaultModelId);
   if (!chat.modelId) store.setChatModels(chat.id, { modelId: model.modelId });
 
   const userMsg: ChatMessage = {

@@ -20,6 +20,7 @@ import {
   FolderKanban,
   FolderPlus,
   FolderInput,
+  Bell,
 } from "lucide-react";
 import { LogoMark } from "./Logo";
 import { useChatStore } from "../state/chatStore";
@@ -133,10 +134,12 @@ function UsageMeter({ onOpen }: { onOpen: () => void }) {
 
 export function Sidebar({
   onOpenSettings,
+  onOpenAnnouncements,
   mobileOpen,
   onCloseMobile,
 }: {
   onOpenSettings: (tab?: SettingsTab) => void;
+  onOpenAnnouncements: () => void;
   mobileOpen: boolean;
   onCloseMobile: () => void;
 }) {
@@ -306,6 +309,13 @@ export function Sidebar({
             >
               <PenLine size={16} className="text-accent-400" />
               {(sidebarOpen || mobileOpen) && "New Chat"}
+            </button>
+          </div>
+
+          <div className="mt-2 px-3">
+            <button onClick={closeOnMobileSelect(onOpenAnnouncements)} className={`flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm text-slate-400 transition-colors hover:bg-base-800/70 hover:text-white ${!sidebarOpen && !mobileOpen && "md:justify-center"}`} title="Announcements">
+              <Bell size={16} className="text-accent-400" />
+              {(sidebarOpen || mobileOpen) && "Announcements"}
             </button>
           </div>
 

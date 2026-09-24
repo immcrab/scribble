@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { onValue, ref, set as dbSet } from "firebase/database";
 import { getRtdb } from "./firebase";
 import { setAdminCatalog } from "../config/models";
-import type { AdminCatalog, ModelDef, UsageConfig, WatermarkConfig } from "../types";
+import type { AdminCatalog, Announcement, ModelDef, UsageConfig, WatermarkConfig } from "../types";
 
 /**
  * The shared, admin-curated model catalog overlay. One global RTDB node,
@@ -57,6 +57,7 @@ export const EMPTY_CATALOG: AdminCatalog = {
   hiddenKeys: [],
   usage: DEFAULT_USAGE,
   watermark: DEFAULT_WATERMARK,
+  announcements: [],
   updatedAt: 0,
 };
 
@@ -71,6 +72,24 @@ function sanitizeWatermark(raw: unknown): WatermarkConfig {
     opacity: clamp(w.opacity, 0, 1, DEFAULT_WATERMARK.opacity),
     scale: clamp(w.scale, 0.005, 0.15, DEFAULT_WATERMARK.scale),
   };
+}
+
+function sanitizeAnnouncements(raw: unknown): Announcement[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter((item): item is Record<string, unknown> => !!item && typeof item === "object")
+    .map((item) => ({
+      id: typeof item.id === "string" ? item.id.slice(0, 80) : "",
+      title: typeof item.title === "string" ? item.title.slice(0, 120).trim() : "",
+      body: typeof item.body === "string" ? item.body.slice(0, 3000).trim() : "",
+      imageUrl: typeof item.imageUrl === "string" && /^https:\/\//.test(item.imageUrl) ? item.imageUrl : undefined,
+      ctaLabel: typeof item.ctaLabel === "string" ? item.ctaLabel.slice(0, 40).trim() || undefined : undefined,
+      ctaUrl: typeof item.ctaUrl === "string" && /^https?:\/\//.test(item.ctaUrl) ? item.ctaUrl : undefined,
+      publishedAt: typeof item.publishedAt === "number" ? item.publishedAt : 0,
+    }))
+    .filter((item) => item.id && item.title && item.body)
+    .sort((a, b) => b.publishedAt - a.publishedAt)
+    .slice(0, 30);
 }
 
 function sanitizeUsage(raw: unknown): UsageConfig {
@@ -106,6 +125,7 @@ function sanitize(raw: unknown): AdminCatalog {
     hiddenKeys: Array.isArray(c.hiddenKeys) ? c.hiddenKeys.filter((k): k is string => typeof k === "string") : [],
     usage: sanitizeUsage(c.usage),
     watermark: sanitizeWatermark(c.watermark),
+    announcements: sanitizeAnnouncements(c.announcements),
     updatedAt: typeof c.updatedAt === "number" ? c.updatedAt : 0,
   };
 }

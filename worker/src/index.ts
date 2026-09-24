@@ -25,6 +25,9 @@ import {
 import { extractMemory, shouldRecallMemory } from "./adapters/memory";
 import { handleSendVerification } from "./verifyEmail";
 import { ndjsonLine } from "./adapters/base";
+import { verifyFirebaseIdToken } from "./firebaseVerifyToken";
+
+const ADMIN_EMAIL = "imcrabfr@gmail.com";
 
 // "custom" isn't in here — it has no Worker secret; its key comes from the
 // request body instead (see the dispatch branch in the handler below).
@@ -105,6 +108,33 @@ export default {
       return handleSendVerification(request, env, cors);
     }
 
+    // Product artwork belongs in R2, not in the shared RTDB JSON catalog. The catalog only
+    // stores the public URL returned here. This endpoint is deliberately admin-only even if
+    // someone discovers the worker URL, and it stays unavailable until the R2 binding/domain
+    // are configured (see wrangler.toml).
+    if (url.pathname === "/api/admin/announcement-image" && request.method === "POST") {
+      if (!env.ANNOUNCEMENT_ASSETS || !env.ANNOUNCEMENT_ASSET_BASE || !env.FIREBASE_PROJECT_ID) {
+        return json({ error: "Announcement uploads are not configured. Add the R2 binding and public asset URL to the Worker." }, 503, cors);
+      }
+      const auth = request.headers.get("Authorization")?.replace(/^Bearer\s+/i, "");
+      if (!auth) return json({ error: "Sign in as an admin to upload artwork." }, 401, cors);
+      try {
+        const claims = await verifyFirebaseIdToken(auth, env.FIREBASE_PROJECT_ID);
+        if (claims.email !== ADMIN_EMAIL || !claims.emailVerified) return json({ error: "Admin access required." }, 403, cors);
+      } catch {
+        return json({ error: "Your sign-in expired. Please sign in again." }, 401, cors);
+      }
+      const type = request.headers.get("Content-Type")?.split(";")[0] ?? "";
+      const len = Number(request.headers.get("Content-Length") ?? 0);
+      if (!type.startsWith("image/") || (len && len > 5 * 1024 * 1024)) return json({ error: "Upload a supported image under 5 MB." }, 400, cors);
+      const body = await request.arrayBuffer();
+      if (!body.byteLength || body.byteLength > 5 * 1024 * 1024) return json({ error: "Upload a supported image under 5 MB." }, 400, cors);
+      const ext = type === "image/png" ? "png" : type === "image/webp" ? "webp" : type === "image/gif" ? "gif" : "jpg";
+      const key = `announcements/${Date.now()}-${crypto.randomUUID()}.${ext}`;
+      await env.ANNOUNCEMENT_ASSETS.put(key, body, { httpMetadata: { contentType: type, cacheControl: "public, max-age=31536000, immutable" } });
+      return json({ url: `${env.ANNOUNCEMENT_ASSET_BASE.replace(/\/$/, "")}/${key}` }, 201, cors);
+    }
+
     if (url.pathname === "/api/chat/stream" && request.method === "POST") {
       if (!checkPassword(request, env)) {
         return json({ error: "Invalid or missing Scribble password." }, 401, cors);
@@ -128,7 +158,8 @@ export default {
 
       let apiKey = body.customProvider?.apiKey;
       if (body.provider !== "custom") {
-        apiKey = env[API_KEY_ENV[body.provider]!];
+        const configuredKey = env[API_KEY_ENV[body.provider]!];
+        apiKey = typeof configuredKey === "string" ? configuredKey : undefined;
         if (!apiKey) {
           return json(
             { error: `${body.provider} is not configured on this Worker (missing API key secret).` },
@@ -153,9 +184,9 @@ export default {
             const pageUrl = publicUrlIn(query);
             if (pageUrl && lastUserIdx !== undefined) {
               const toolId = crypto.randomUUID();
-              controller.enqueue(ndjsonLine({ toolCall: { id: toolId, name: "Read webpage", status: "running", input: { url: pageUrl } } }));
+              controller.enqueue(ndjsonLine({ toolCall: { id: toolId, name: "Fetch webpage", status: "running", input: { url: pageUrl } } }));
               try {
-                const page = await readWebPage(pageUrl);
+                const page = await readWebPage(env.XKIRO_API_KEY, pageUrl);
                 messages = messages.map((m, i) =>
                   i === lastUserIdx
                     ? { ...m, content: `${m.content}\n\n[Live webpage content from ${pageUrl} (${page.title}) — use this to answer accurately:\n${page.text}]` }
@@ -163,7 +194,7 @@ export default {
                 );
                 controller.enqueue(
                   ndjsonLine({
-                    toolCall: { id: toolId, name: "Read webpage", status: "done", input: { url: pageUrl }, output: page.title },
+                    toolCall: { id: toolId, name: "Fetch webpage", status: "done", input: { url: pageUrl }, output: page.title },
                   })
                 );
               } catch (err) {
@@ -171,7 +202,7 @@ export default {
                   ndjsonLine({
                     toolCall: {
                       id: toolId,
-                      name: "Read webpage",
+                      name: "Fetch webpage",
                       status: "error",
                       input: { url: pageUrl },
                       output: err instanceof Error ? err.message : "Website read failed.",
@@ -253,7 +284,7 @@ export default {
                       status: "done",
                       input: { query: searchQuery },
                       output: `${results.length} result${results.length === 1 ? "" : "s"}`,
-                      previews: results.slice(0, 3).map((r) => ({
+                      previews: results.map((r) => ({
                         title: r.title,
                         url: r.link,
                         snippet: r.snippet,

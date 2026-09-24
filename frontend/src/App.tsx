@@ -8,6 +8,7 @@ import { SettingsModal, type SettingsTab } from "./components/SettingsModal";
 import { PWAInstallPrompt } from "./components/PWAInstallPrompt";
 import { LocationConsentPrompt } from "./components/LocationConsentPrompt";
 import { ConsentGate } from "./components/ConsentGate";
+import { AnnouncementCenter, AnnouncementLaunch } from "./components/AnnouncementCenter";
 import { SharedChatView } from "./components/SharedChatView";
 import { NotFoundPage } from "./components/NotFoundPage";
 import { hasAcceptedTerms } from "./lib/storage";
@@ -79,6 +80,7 @@ export default function App() {
   const [settingsTab, setSettingsTab] = useState<SettingsTab | null>(null);
   const [pending, setPending] = useState<InitialPrompt | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [announcementsOpen, setAnnouncementsOpen] = useState(false);
   const [docsSlug, setDocsSlug] = useState<string | null>(() => parseDocsSlugFromLocation());
   const [adminRoute, setAdminRoute] = useState(() => isAdminLocation());
   const [usageRoute, setUsageRoute] = useState(() => isUsageLocation());
@@ -442,12 +444,13 @@ export default function App() {
     <div className={`flex h-dvh w-full overflow-hidden bg-base-950 ${settings.reduceMotion ? "motion-reduce-force" : ""}`}>
       <Sidebar
         onOpenSettings={(tab) => setSettingsTab(tab ?? "general")}
+        onOpenAnnouncements={() => setAnnouncementsOpen(true)}
         mobileOpen={mobileMenuOpen}
         onCloseMobile={() => setMobileMenuOpen(false)}
       />
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <div className="flex min-w-0 flex-wrap items-center gap-2 px-4 py-2.5">
+        <div className="app-topbar flex min-w-0 flex-wrap items-center gap-2 px-4 py-2.5">
           <button
             onClick={() => setMobileMenuOpen(true)}
             className="flex h-11 w-11 items-center justify-center rounded-xl text-slate-400 transition-colors hover:bg-base-700/60 hover:text-white md:hidden sm:h-auto sm:w-auto sm:rounded-lg sm:p-2"
@@ -538,6 +541,8 @@ export default function App() {
 
       <PWAInstallPrompt />
       <LocationConsentPrompt />
+      <AnnouncementLaunch />
+      {announcementsOpen && <AnnouncementCenter onClose={() => setAnnouncementsOpen(false)} />}
       {settingsTab && <SettingsModal initialTab={settingsTab} onClose={() => setSettingsTab(null)} />}
     </div>
   );

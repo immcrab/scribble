@@ -114,21 +114,59 @@ function SearchingPill({ toolCall }: { toolCall: ToolCallRecord }) {
   );
 }
 
+function websiteHostname(url: string) {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return url;
+  }
+}
+
+/** Search results are intentionally outside the activity disclosure. They are
+ * useful output, not implementation detail: each row opens the matching site. */
+function SearchResultList({ toolCalls }: { toolCalls: ToolCallRecord[] }) {
+  const searches = toolCalls.filter((t) => t.name === "Web search" && t.status === "done" && t.previews?.length);
+  if (!searches.length) return null;
+
+  return (
+    <div className="mb-2 overflow-hidden rounded-xl border border-base-700/60 bg-base-900/50">
+      {searches.map((search) => (
+        <div key={search.id}>
+          <div className="border-b border-base-700/60 px-3 py-2 text-xs font-medium text-slate-400">Web results</div>
+          <div className="p-1.5">
+            {search.previews!.map((preview) => (
+              <a
+                key={preview.url}
+                href={preview.url}
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center gap-2 rounded-lg px-2 py-2 text-sm text-slate-300 hover:bg-base-800 hover:text-white"
+                title={`Open ${preview.title}`}
+              >
+                {preview.faviconUrl ? (
+                  <img className="h-5 w-5 shrink-0 rounded-sm" src={preview.faviconUrl} alt="" />
+                ) : (
+                  <Globe2 size={17} className="shrink-0 text-slate-500" />
+                )}
+                <span className="min-w-0 flex-1 truncate">{preview.title || websiteHostname(preview.url)}</span>
+                <ExternalLink size={13} className="shrink-0 text-slate-600" />
+              </a>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function ToolActivity({ toolCalls }: { toolCalls: ToolCallRecord[] }) {
   const [open, setOpen] = useState(true);
   const liveSearch = toolCalls.find((t) => t.name === "Web search" && t.status === "running");
-  const listed = toolCalls.filter((t) => t !== liveSearch);
-  const hostname = (url: string) => {
-    try {
-      return new URL(url).hostname.replace(/^www\./, "");
-    } catch {
-      return url;
-    }
-  };
-
+  const listed = toolCalls.filter((t) => t !== liveSearch && !(t.name === "Web search" && t.status === "done" && t.previews?.length));
   return (
     <>
       {liveSearch && <SearchingPill toolCall={liveSearch} />}
+      <SearchResultList toolCalls={toolCalls} />
       {listed.length > 0 && (
         <div className="mb-2 overflow-hidden rounded-xl border border-base-700/60 bg-base-900/50">
           <button
@@ -163,29 +201,6 @@ function ToolActivity({ toolCalls }: { toolCalls: ToolCallRecord[] }) {
                         {isSearch && query ? <span className="ml-1 text-slate-400">{query}</span> : t.output && <span className="block truncate text-slate-500">{t.output}</span>}
                       </span>
                     </div>
-                    {isSearch && t.previews && t.previews.length > 0 && (
-                      <div className="ml-5 mt-2 space-y-1">
-                        {t.previews.slice(0, 5).map((preview) => (
-                          <a
-                            key={preview.url}
-                            href={preview.url}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="flex items-center gap-2 rounded-md px-1.5 py-1 text-slate-400 hover:bg-base-800 hover:text-slate-200"
-                            title={`Open ${preview.title}`}
-                          >
-                            {preview.faviconUrl ? (
-                              <img className="h-4 w-4 shrink-0 rounded-sm" src={preview.faviconUrl} alt="" />
-                            ) : (
-                              <Globe2 size={14} className="shrink-0 text-slate-500" />
-                            )}
-                            <span className="min-w-0 flex-1 truncate">{preview.title || hostname(preview.url)}</span>
-                            <span className="max-w-32 truncate text-[11px] text-slate-600">{hostname(preview.url)}</span>
-                            <ExternalLink size={11} className="shrink-0 text-slate-600" />
-                          </a>
-                        ))}
-                      </div>
-                    )}
                   </div>
                 );
               })}

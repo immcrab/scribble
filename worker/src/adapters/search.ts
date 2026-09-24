@@ -59,7 +59,7 @@ export function publicUrlIn(query: string): string | undefined {
  * model. This is deliberately small and dependency-free so it works on the
  * Worker free tier. It is not a browser: JavaScript-rendered/logged-in pages
  * can still fall back to a normal search result. */
-export async function readWebPage(url: string): Promise<{ title: string; text: string }> {
+async function readWebPageDirect(url: string): Promise<{ title: string; text: string }> {
   const response = await fetch(url, {
     headers: { "User-Agent": "ScribbleAI web reader", Accept: "text/html,application/xhtml+xml,text/plain" },
     redirect: "follow",
@@ -87,6 +87,47 @@ export async function readWebPage(url: string): Promise<{ title: string; text: s
     .slice(0, 12_000);
   if (!text) throw new Error("The website did not provide readable page text.");
   return { title: title.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim(), text };
+}
+
+/** Read a public page through xKiro's web-fetch API.  Unlike the lightweight
+ * fallback below, xKiro returns page markdown with navigation and boilerplate
+ * removed, which is a much better input for the chat model. */
+async function fetchXkiroWebPage(apiKey: string, url: string): Promise<{ title: string; text: string }> {
+  const res = await fetch("https://api.xkiro.com/v1/fetch", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({ model: "xkiro/web-fetch", urls: [url], max_content_tokens: 3_000 }),
+  });
+  if (!res.ok) throw new Error(`xKiro web fetch error ${res.status}: ${await res.text()}`);
+
+  const json = (await res.json()) as {
+    results?: Array<{ url?: string; title?: string | null; content?: string; error?: string | null }>;
+    error?: string | { message?: string };
+  };
+  if (json.error) throw new Error(typeof json.error === "string" ? json.error : json.error.message || "xKiro web fetch failed.");
+
+  const page = json.results?.[0];
+  if (!page || page.error) throw new Error(page?.error || "xKiro could not fetch that page.");
+  const text = page.content?.trim().slice(0, 12_000) || "";
+  if (!text) throw new Error("The website did not provide readable page text.");
+  return { title: page.title?.trim() || new URL(url).hostname, text };
+}
+
+/** Prefer xKiro's cleaned markdown fetch whenever its credential is available.
+ * The direct reader preserves URL support if xKiro is unconfigured or has a
+ * transient outage. */
+export async function readWebPage(apiKey: string | undefined, url: string): Promise<{ title: string; text: string }> {
+  if (apiKey) {
+    try {
+      return await fetchXkiroWebPage(apiKey, url);
+    } catch {
+      // A normal public page may still be useful even when xKiro cannot read it.
+    }
+  }
+  return readWebPageDirect(url);
 }
 
 /** Plain arithmetic (nothing but digits/whitespace/math symbols), or a message
@@ -228,7 +269,7 @@ async function searchXkiro(apiKey: string, query: string): Promise<SearchResult[
       "Content-Type": "application/json",
       Authorization: `Bearer ${apiKey}`,
     },
-    body: JSON.stringify({ model: "xkiro/web-search", query, max_results: 5 }),
+    body: JSON.stringify({ model: "xkiro/web-search", query, max_results: 10 }),
   });
   if (!res.ok) {
     throw new Error(`xKiro web search error ${res.status}: ${await res.text()}`);
@@ -241,7 +282,7 @@ async function searchXkiro(apiKey: string, query: string): Promise<SearchResult[
   if (json.error) throw new Error(typeof json.error === "string" ? json.error : json.error.message || "xKiro web search failed.");
 
   return (json.results ?? [])
-    .slice(0, 5)
+    .slice(0, 10)
     .map((r) => {
       const link = r.url || "";
       return {
@@ -286,7 +327,7 @@ async function searchBingRss(query: string): Promise<SearchResult[]> {
   };
 
   return Array.from(xml.matchAll(/<item>([\s\S]*?)<\/item>/gi))
-    .slice(0, 5)
+    .slice(0, 10)
     .map((match) => {
       const link = field(match[1], "link");
       return { title: field(match[1], "title"), link, snippet: field(match[1], "description"), faviconUrl: fallbackFavicon(link) };

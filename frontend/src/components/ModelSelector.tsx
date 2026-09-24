@@ -10,6 +10,7 @@ import { useAuthStore } from "../state/authStore";
 import { useChatStore } from "../state/chatStore";
 import { useCatalogStore } from "../lib/catalogSync";
 import { isPuterSignedIn, listPuterModels, type PuterModelInfo } from "../lib/puterClient";
+import { AUTO_MODEL, AUTO_MODEL_ID } from "../lib/autoModel";
 
 export function ModelIcon({ name, model, size = 15 }: { name?: string; model?: ModelDef; size?: number }) {
   if (model) return <ModelFavicon model={model} size={size} />;
@@ -290,6 +291,19 @@ export function ModelSelector({
               placeholder="Filter models…"
               className="w-full rounded-md border border-base-600/60 bg-base-900/60 px-2 py-1.5 text-sm text-slate-200 placeholder:text-slate-500 focus:border-accent-500/50 focus:outline-none"
             />
+          </div>
+          <div className="border-b border-base-700/40 p-1.5">
+            <ModelRow
+              model={AUTO_MODEL}
+              active={value?.modelId === AUTO_MODEL_ID}
+              locked={!user}
+              onSelect={() => {
+                if (!user) { signInWithGoogle(); return; }
+                onChange(AUTO_MODEL);
+                close();
+              }}
+            />
+            <p className="px-3.5 pb-1 text-[11px] text-slate-500">Signed in only · picks the best available model each message.</p>
           </div>
           {providers.map((provider) => {
             const models = grouped[provider].filter(matchModel);
