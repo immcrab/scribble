@@ -81,7 +81,9 @@ export async function editXkiroImage({
   form.append("prompt", prompt);
   form.append("model", model || DEFAULT_MODEL);
   if (size) form.append("size", size);
-  form.append("n", "1");
+  // Multipart fields arrive at xKiro as strings. Its edit endpoint currently
+  // validates `n` as a JSON integer instead of coercing that string, so omit
+  // the optional field and use the endpoint's single-image default.
 
   // No Content-Type header — fetch sets it with the correct multipart boundary.
   const submit = await fetch(XKIRO_EDIT_URL, {
