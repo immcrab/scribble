@@ -214,7 +214,9 @@ export function saveMemories(memories: MemoryEntry[]): void {
 // Optional build-time default so a freshly deployed site works without every
 // visitor manually pasting a Worker URL into Settings. Never used for
 // secrets — only the Worker's public endpoint, which isn't sensitive.
-const DEFAULT_WORKER_URL: string = import.meta.env.VITE_WORKER_URL ?? "https://scribble-worker.imcrabfr.workers.dev";
+// Production is served by the same Cloudflare Worker as the API. A separately
+// hosted build can still provide VITE_WORKER_URL at build time.
+const DEFAULT_WORKER_URL: string = import.meta.env.VITE_WORKER_URL || window.location.origin;
 
 export function loadSettings(): ScribbleSettings {
   const base = { workerUrl: DEFAULT_WORKER_URL, password: "", ...SETTINGS_DEFAULTS };

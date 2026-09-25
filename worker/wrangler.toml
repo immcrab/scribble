@@ -1,6 +1,25 @@
-name = "scribble-worker"
+name = "scribbleai"
 main = "src/index.ts"
 compatibility_date = "2024-11-01"
+
+# Scribble is a single Worker deployment: static assets serve the React app
+# while /api/* is handled by src/index.ts.  Hosting them together means the
+# browser can use the same origin for both the app and its API.
+[assets]
+directory = "../frontend/dist"
+binding = "ASSETS"
+run_worker_first = true
+not_found_handling = "single-page-application"
+
+# Cloudflare manages the DNS record and TLS certificate for these custom
+# domains in the active scribbleai.dev zone.
+[[routes]]
+pattern = "scribbleai.dev"
+custom_domain = true
+
+[[routes]]
+pattern = "www.scribbleai.dev"
+custom_domain = true
 
 # Comma-separated list of allowed origins for CORS, e.g. your GitHub Pages
 # domain. Set with: wrangler secret put ALLOWED_ORIGINS  (or as a plain var

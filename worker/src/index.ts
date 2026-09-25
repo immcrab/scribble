@@ -617,6 +617,9 @@ export default {
       }
     }
 
-    return json({ error: "Not found." }, 404, cors);
+    // Static assets are invoked after API handling. With run_worker_first this
+    // keeps /api/* dynamic while allowing the Worker to host the React app,
+    // deep links, and its static assets on the same custom domain.
+    return env.ASSETS.fetch(request);
   },
 };

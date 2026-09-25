@@ -1,4 +1,6 @@
 export interface Env {
+  /** Static Vite build served by this Worker for non-API requests. */
+  ASSETS: Fetcher;
   ALLOWED_ORIGINS: string;
   XKIRO_API_KEY?: string;
   GROQ_API_KEY?: string;
