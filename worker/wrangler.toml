@@ -26,6 +26,9 @@ custom_domain = true
 # below if you don't mind it being public — it's not sensitive).
 [vars]
 ALLOWED_ORIGINS = "http://localhost:5173,https://immcrab.github.io,https://scribbleai.dev"
+# Production hostnames returned by Turnstile Siteverify. For local development,
+# override this in .dev.vars with localhost and/or 127.0.0.1.
+TURNSTILE_HOSTNAMES = "scribbleai.dev,www.scribbleai.dev"
 # From address for the verification email (not sensitive). Domain must be
 # verified in Resend.
 VERIFY_EMAIL_FROM = "Scribble <scribble@owenis.me>"
@@ -55,3 +58,4 @@ bucket_name = "scribble-announcements"
 #   CF_AI_TOKEN         (Workers AI-scoped API token — powers /api/image/generate)
 #   FIREBASE_SERVICE_ACCOUNT  (full Firebase service account JSON — /api/auth/send-verification)
 #   RESEND_API_KEY            (Resend key re_... — sends the verification email)
+#   TURNSTILE_SECRET          (Cloudflare Turnstile secret — verification email bot protection)

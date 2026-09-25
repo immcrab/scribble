@@ -33,14 +33,20 @@ function emailActionSettings(): ActionCodeSettings {
 async function requestVerificationEmail(user: User): Promise<{ alreadyVerified?: boolean }> {
   const base = loadSettings().workerUrl.replace(/\/$/, "");
   const idToken = await user.getIdToken();
-  const res = await fetch(`${base}/api/auth/send-verification`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ idToken }),
-  });
-  const data = (await res.json().catch(() => ({}))) as { error?: string; alreadyVerified?: boolean };
-  if (!res.ok) throw new Error(data.error || `Verification request failed (${res.status}).`);
-  return data;
+  const turnstileToken = useAuthStore.getState().turnstileToken;
+  try {
+    const res = await fetch(`${base}/api/auth/send-verification`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ idToken, turnstileToken }),
+    });
+    const data = (await res.json().catch(() => ({}))) as { error?: string; alreadyVerified?: boolean };
+    if (!res.ok) throw new Error(data.error || `Verification request failed (${res.status}).`);
+    return data;
+  } finally {
+    useAuthStore.getState().setTurnstileToken(null);
+    window.dispatchEvent(new Event("scribble:turnstile-reset"));
+  }
 }
 
 /** Turns Firebase's `auth/...` error codes into short human sentences. */
@@ -82,6 +88,9 @@ interface AuthStore {
   emailVerified: boolean;
   /** Set after a successful email sign-up or a "resend"/"reset" action, for the UI to show a confirmation line. */
   notice: string | null;
+  /** Single-use Turnstile response for the next verification-email request. */
+  turnstileToken: string | null;
+  setTurnstileToken: (token: string | null) => void;
   clearAuthFeedback: () => void;
   /** Pulls a fresh copy of the current user from Firebase and refreshes
    * `emailVerified`. Resolves to the new verified state. */
@@ -106,6 +115,8 @@ export const useAuthStore = create<AuthStore>((set) => ({
   error: null,
   emailVerified: false,
   notice: null,
+  turnstileToken: null,
+  setTurnstileToken: (turnstileToken) => set({ turnstileToken }),
 
   clearAuthFeedback: () => set({ error: null, notice: null }),
 

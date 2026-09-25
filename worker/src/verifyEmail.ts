@@ -13,6 +13,7 @@ import type { Env } from "./types";
 import { isRateLimited, isEmailRateLimited } from "./ratelimit";
 import { generateEmailVerificationLink, parseServiceAccount } from "./firebase";
 import { verifyFirebaseIdToken } from "./firebaseVerifyToken";
+import { verifyEmailTurnstile } from "./turnstile";
 
 function json(body: unknown, status: number, headers: HeadersInit): Response {
   return new Response(JSON.stringify(body), {
@@ -112,9 +113,12 @@ export async function handleSendVerification(
     return json({ error: "Malformed JSON body." }, 400, cors);
   }
 
-  const idToken = (body as { idToken?: unknown }).idToken;
+  const { idToken, turnstileToken } = body as { idToken?: unknown; turnstileToken?: unknown };
   if (typeof idToken !== "string" || !idToken) {
     return json({ error: "Request must include a Firebase idToken." }, 400, cors);
+  }
+  if (!(await verifyEmailTurnstile(turnstileToken, request, env))) {
+    return json({ error: "Verification required. Please complete the Turnstile challenge and try again." }, 403, cors);
   }
 
   const sa = parseServiceAccount(env.FIREBASE_SERVICE_ACCOUNT);

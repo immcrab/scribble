@@ -18,6 +18,11 @@ export interface Env {
   FIREBASE_SERVICE_ACCOUNT?: string;
   /** Resend API key (re_...) — sends the verification email. */
   RESEND_API_KEY?: string;
+  /** Cloudflare Turnstile secret used to protect verification-email sends.
+   * Set with: wrangler secret put TURNSTILE_SECRET */
+  TURNSTILE_SECRET?: string;
+  /** Comma-separated production hostnames accepted from Turnstile Siteverify. */
+  TURNSTILE_HOSTNAMES?: string;
   /** From address for the verification email, e.g. "Scribble <scribble@owenis.me>".
    * Plain var (not secret) — see wrangler.toml [vars]. */
   VERIFY_EMAIL_FROM?: string;

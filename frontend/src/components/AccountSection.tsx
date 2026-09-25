@@ -2,6 +2,7 @@ import { useState } from "react";
 import { LogOut, Mail, Trash2, AlertTriangle, Loader2, Sparkles, MailCheck } from "lucide-react";
 import { GoogleLogo } from "./icons/GoogleLogo";
 import { useAuthStore } from "../state/authStore";
+import { Turnstile } from "./Turnstile";
 import { clearAllLocalData } from "../lib/storage";
 import { isPuterSignedIn, puterSignOut } from "../lib/puterClient";
 
@@ -16,7 +17,7 @@ const inputClass =
  * form, plus Google sign-in. Creating an account triggers Firebase's verification
  * email (see authStore.signUpWithEmail). */
 function SignInForms() {
-  const { signInWithGoogle, signInWithEmail, signUpWithEmail, sendPasswordReset, error, notice, clearAuthFeedback } =
+  const { signInWithGoogle, signInWithEmail, signUpWithEmail, sendPasswordReset, error, notice, clearAuthFeedback, turnstileToken, setTurnstileToken } =
     useAuthStore();
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
@@ -85,12 +86,14 @@ function SignInForms() {
           className={inputClass}
         />
 
+        {mode === "signup" && <Turnstile onToken={setTurnstileToken} />}
+
         {error && <p className="text-xs text-red-400">{error}</p>}
         {notice && <p className="text-xs text-emerald-400">{notice}</p>}
 
         <button
           type="submit"
-          disabled={busy}
+          disabled={busy || (mode === "signup" && !turnstileToken)}
           className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-accent-500/90 px-3 py-2 text-sm font-medium text-base-950 hover:bg-accent-500 disabled:opacity-50"
         >
           {busy && <Loader2 size={13} className="animate-spin" />}
@@ -129,7 +132,7 @@ function SignInForms() {
  * The store polls for verification in the background (authStore.watchEmailVerification),
  * so this clears itself once the link is clicked — no manual reload needed. */
 function VerifyEmailBanner() {
-  const { user, emailVerified, resendVerification, refreshUser, error, notice } = useAuthStore();
+  const { user, emailVerified, resendVerification, refreshUser, error, notice, turnstileToken, setTurnstileToken } = useAuthStore();
   const [busy, setBusy] = useState<"resend" | "check" | null>(null);
   if (!user || emailVerified) return null;
   const usesPassword = user.providerData.some((p) => p.providerId === "password");
@@ -146,6 +149,7 @@ function VerifyEmailBanner() {
       </p>
       {error && <p className="mt-1 text-xs text-red-400">{error}</p>}
       {notice && <p className="mt-1 text-xs text-emerald-400">{notice}</p>}
+      <Turnstile onToken={setTurnstileToken} />
       <div className="mt-2 flex flex-wrap gap-2">
         <button
           onClick={async () => {
@@ -153,7 +157,7 @@ function VerifyEmailBanner() {
             await resendVerification();
             setBusy(null);
           }}
-          disabled={busy !== null}
+          disabled={busy !== null || !turnstileToken}
           className="flex items-center gap-1.5 rounded-lg bg-amber-500/90 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-amber-500 disabled:opacity-50"
         >
           {busy === "resend" && <Loader2 size={12} className="animate-spin" />}
