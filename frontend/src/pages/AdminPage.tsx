@@ -13,10 +13,15 @@ import {
   Gift,
   Bell,
   ImagePlus,
+  Pencil,
+  Globe,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react";
 import { useAuthStore } from "../state/authStore";
 import { useChatStore } from "../state/chatStore";
-import { announcementImageUrlForSite, useCatalogStore, publishCatalog, DEFAULT_USAGE, DEFAULT_WATERMARK } from "../lib/catalogSync";
+import { connectionsOrDefault, useCatalogStore, publishCatalog, DEFAULT_USAGE, DEFAULT_WATERMARK } from "../lib/catalogSync";
+import { uploadAdminImage } from "../lib/adminUpload";
 import {
   PROVIDER_LABELS,
   catalogWithAdminAdditions,
@@ -38,7 +43,7 @@ import { modelSlug } from "../lib/modelSlug";
 import { ModelFavicon, ProviderFavicon } from "../components/ProviderIcon";
 import { ToggleSwitch } from "../components/ToggleSwitch";
 import { LogoMark } from "../components/Logo";
-import type { AdminCatalog, Announcement, ModelDef, Provider, UsageConfig, UsageRecord, WatermarkConfig } from "../types";
+import type { AdminCatalog, Announcement, Connection, ModelDef, Provider, UsageConfig, UsageRecord, WatermarkConfig } from "../types";
 
 /** Providers the admin can publish an official model against — the ones the Worker
  * already holds a key for, plus Puter (in-browser, no key). "custom" is per-browser only,
@@ -56,7 +61,7 @@ function formatContext(n: number): string {
   return String(n);
 }
 
-type PatchableCatalog = Partial<Pick<AdminCatalog, "added" | "hiddenKeys" | "usage" | "watermark" | "announcements">>;
+type PatchableCatalog = Partial<Pick<AdminCatalog, "added" | "hiddenKeys" | "usage" | "watermark" | "announcements" | "connections">>;
 
 function GateScreen({ onExit }: { onExit: () => void }) {
   const user = useAuthStore((s) => s.user);
@@ -837,44 +842,275 @@ function WatermarkTab({
   );
 }
 
+/* ──────────────── Shared image field (announcements + connections) ──────────────── */
+
+function ImageField({ value, onChange }: { value: string; onChange: (url: string) => void }) {
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const upload = async (file: File) => {
+    setUploading(true);
+    setError(null);
+    try {
+      onChange(await uploadAdminImage(file));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Upload failed.");
+    } finally {
+      setUploading(false);
+    }
+  };
+  return (
+    <div className="space-y-2">
+      <input value={value} onChange={(e) => onChange(e.target.value)} placeholder="Image URL (optional)" className={inputClass} />
+      <div className="flex flex-wrap items-center gap-2">
+        <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-base-600/60 px-3 py-2 text-xs text-slate-300 hover:border-accent-500/50">
+          <ImagePlus size={14} className="text-accent-400" />
+          {uploading ? "Uploading…" : value ? "Replace image" : "Upload image"}
+          <input
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              e.target.value = "";
+              if (file) void upload(file);
+            }}
+          />
+        </label>
+        {value && (
+          <button
+            type="button"
+            onClick={() => onChange("")}
+            className="rounded-lg border border-base-600/60 px-3 py-2 text-xs text-slate-400 hover:border-red-500/50 hover:text-red-300"
+          >
+            Remove image
+          </button>
+        )}
+      </div>
+      {error && <p className="text-xs text-red-300">{error}</p>}
+      {value && <img src={value} alt="Preview" className="max-h-48 w-full rounded-lg object-cover" />}
+    </div>
+  );
+}
+
 /* ──────────────────────── Announcements tab ──────────────────────── */
 
+const EMPTY_ANNOUNCEMENT_DRAFT = { title: "", body: "", imageUrl: "", ctaLabel: "", ctaUrl: "" };
+
 function AnnouncementsTab({ catalog, busy, run }: { catalog: AdminCatalog; busy: boolean; run: (patch: PatchableCatalog) => void }) {
-  const [draft, setDraft] = useState({ title: "", body: "", imageUrl: "", ctaLabel: "", ctaUrl: "" });
-  const [uploading, setUploading] = useState(false);
-  const [uploadError, setUploadError] = useState<string | null>(null);
-  const publish = () => {
-    if (!draft.title.trim() || !draft.body.trim()) return;
-    const item: Announcement = { id: crypto.randomUUID(), title: draft.title.trim(), body: draft.body.trim(), imageUrl: draft.imageUrl.trim() || undefined, ctaLabel: draft.ctaLabel.trim() || undefined, ctaUrl: draft.ctaUrl.trim() || undefined, publishedAt: Date.now() };
-    run({ announcements: [item, ...(catalog.announcements ?? [])].slice(0, 30) });
-    setDraft({ title: "", body: "", imageUrl: "", ctaLabel: "", ctaUrl: "" });
+  const [draft, setDraft] = useState(EMPTY_ANNOUNCEMENT_DRAFT);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const announcements = catalog.announcements ?? [];
+  const canSave = !!draft.title.trim() && !!draft.body.trim();
+
+  const reset = () => {
+    setDraft(EMPTY_ANNOUNCEMENT_DRAFT);
+    setEditingId(null);
   };
-  const upload = async (file: File) => {
-    if (!file.type.startsWith("image/") || file.size > 5 * 1024 * 1024) { setUploadError("Choose an image under 5 MB."); return; }
-    const user = useAuthStore.getState().user;
-    if (!user) return;
-    setUploading(true); setUploadError(null);
-    try {
-      const worker = useChatStore.getState().settings.workerUrl.replace(/\/$/, "");
-      const token = await user.getIdToken();
-      const res = await fetch(`${worker}/api/admin/announcement-image`, { method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": file.type }, body: file });
-      const data = await res.json().catch(() => ({})) as { url?: string; error?: string };
-      if (!res.ok || !data.url) throw new Error(data.error || "Upload failed.");
-      setDraft((d) => ({ ...d, imageUrl: announcementImageUrlForSite(data.url!) }));
-    } catch (e) { setUploadError(e instanceof Error ? e.message : "Upload failed."); } finally { setUploading(false); }
+  const startEdit = (item: Announcement) => {
+    setEditingId(item.id);
+    setDraft({
+      title: item.title,
+      body: item.body,
+      imageUrl: item.imageUrl ?? "",
+      ctaLabel: item.ctaLabel ?? "",
+      ctaUrl: item.ctaUrl ?? "",
+    });
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
-  return <>
-    <p className="mb-5 rounded-lg border border-base-700/60 bg-base-900/40 px-3 py-2 text-xs text-slate-400">Publish a product update once and it reaches everyone on their next load. Unseen announcements open as a polished launch card; all updates remain in the sidebar’s Announcements center.</p>
-    <section className="mb-8 rounded-xl border border-dashed border-base-600/60 p-4">
-      <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-white"><Bell size={15} className="text-accent-400" />New announcement</h2>
-      <div className="space-y-3"><input value={draft.title} onChange={(e) => setDraft((d) => ({ ...d, title: e.target.value }))} placeholder="Headline" className={inputClass} /><textarea value={draft.body} onChange={(e) => setDraft((d) => ({ ...d, body: e.target.value }))} placeholder="What changed? Keep it clear and useful." rows={4} className={`${inputClass} resize-none`} /><input value={draft.imageUrl} onChange={(e) => setDraft((d) => ({ ...d, imageUrl: e.target.value }))} placeholder="Image URL (optional)" className={inputClass} />
-      <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-base-600/60 px-3 py-2 text-xs text-slate-300 hover:border-accent-500/50"><ImagePlus size={14} className="text-accent-400" />{uploading ? "Uploading to R2…" : "Upload image to Cloudflare R2"}<input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && void upload(e.target.files[0])} /></label>{uploadError && <p className="text-xs text-red-300">{uploadError}</p>}
-      {draft.imageUrl && <img src={draft.imageUrl} alt="Preview" className="max-h-40 w-full rounded-lg object-cover" />}
-      <div className="grid gap-3 sm:grid-cols-2"><input value={draft.ctaLabel} onChange={(e) => setDraft((d) => ({ ...d, ctaLabel: e.target.value }))} placeholder="Button label (optional)" className={inputClass} /><input value={draft.ctaUrl} onChange={(e) => setDraft((d) => ({ ...d, ctaUrl: e.target.value }))} placeholder="https:// link (optional)" className={inputClass} /></div>
-      <button onClick={publish} disabled={busy || !draft.title.trim() || !draft.body.trim()} className="rounded-lg bg-accent-500 px-3 py-2 text-xs font-semibold text-base-950 hover:bg-accent-400 disabled:opacity-40">Publish announcement</button></div>
-    </section>
-    <section><h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Published</h2><div className="space-y-2">{(catalog.announcements ?? []).map((item) => <div key={item.id} className="flex items-center gap-3 rounded-lg border border-base-600/60 bg-base-900/60 p-3"><Bell size={14} className="text-accent-400" /><div className="min-w-0 flex-1"><p className="truncate text-sm text-slate-200">{item.title}</p><p className="text-xs text-slate-500">{new Date(item.publishedAt).toLocaleDateString()}</p></div><button onClick={() => run({ announcements: (catalog.announcements ?? []).filter((a) => a.id !== item.id) })} disabled={busy} className="rounded p-1 text-slate-500 hover:bg-red-500/10 hover:text-red-400"><Trash2 size={14} /></button></div>)}{!(catalog.announcements ?? []).length && <p className="text-sm text-slate-500">Nothing published yet.</p>}</div></section>
-  </>;
+  const save = () => {
+    if (!canSave) return;
+    const fields = {
+      title: draft.title.trim(),
+      body: draft.body.trim(),
+      imageUrl: draft.imageUrl.trim() || undefined,
+      ctaLabel: draft.ctaLabel.trim() || undefined,
+      ctaUrl: draft.ctaUrl.trim() || undefined,
+    };
+    if (editingId) {
+      // Editing keeps the original id and publish date, so people who already saw it don't get it again.
+      run({ announcements: announcements.map((a) => (a.id === editingId ? { ...a, ...fields } : a)) });
+    } else {
+      const item: Announcement = { id: crypto.randomUUID(), ...fields, publishedAt: Date.now() };
+      run({ announcements: [item, ...announcements].slice(0, 30) });
+    }
+    reset();
+  };
+  const set = (key: keyof typeof EMPTY_ANNOUNCEMENT_DRAFT) => (value: string) => setDraft((d) => ({ ...d, [key]: value }));
+
+  return (
+    <>
+      <p className="mb-5 rounded-lg border border-base-700/60 bg-base-900/40 px-3 py-2 text-xs text-slate-400">
+        Publish a product update once and it reaches everyone on their next load. Unseen announcements open as a polished launch card; all updates remain in the sidebar’s Announcements center.
+      </p>
+      <section className="mb-8 rounded-xl border border-dashed border-base-600/60 p-4">
+        <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-white">
+          {editingId ? <Pencil size={15} className="text-accent-400" /> : <Bell size={15} className="text-accent-400" />}
+          {editingId ? "Edit announcement" : "New announcement"}
+        </h2>
+        <div className="space-y-3">
+          <input value={draft.title} onChange={(e) => set("title")(e.target.value)} placeholder="Headline" className={inputClass} />
+          <textarea value={draft.body} onChange={(e) => set("body")(e.target.value)} placeholder="What changed? Keep it clear and useful." rows={4} className={`${inputClass} resize-none`} />
+          <ImageField value={draft.imageUrl} onChange={set("imageUrl")} />
+          <div className="grid gap-3 sm:grid-cols-2">
+            <input value={draft.ctaLabel} onChange={(e) => set("ctaLabel")(e.target.value)} placeholder="Button label (optional)" className={inputClass} />
+            <input value={draft.ctaUrl} onChange={(e) => set("ctaUrl")(e.target.value)} placeholder="https:// link (optional)" className={inputClass} />
+          </div>
+          <div className="flex gap-2">
+            <button onClick={save} disabled={busy || !canSave} className="rounded-lg bg-accent-500 px-3 py-2 text-xs font-semibold text-base-950 hover:bg-accent-400 disabled:opacity-40">
+              {editingId ? "Save changes" : "Publish announcement"}
+            </button>
+            {editingId && (
+              <button onClick={reset} className="rounded-lg border border-base-600/60 px-3 py-2 text-xs text-slate-300 hover:text-white">
+                Cancel
+              </button>
+            )}
+          </div>
+        </div>
+      </section>
+      <section>
+        <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Published</h2>
+        <div className="space-y-2">
+          {announcements.map((item) => (
+            <div key={item.id} className={`flex items-center gap-3 rounded-lg border bg-base-900/60 p-3 ${editingId === item.id ? "border-accent-500/60" : "border-base-600/60"}`}>
+              {item.imageUrl ? <img src={item.imageUrl} alt="" className="h-10 w-16 shrink-0 rounded object-cover" /> : <Bell size={14} className="text-accent-400" />}
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm text-slate-200">{item.title}</p>
+                <p className="text-xs text-slate-500">{new Date(item.publishedAt).toLocaleDateString()}</p>
+              </div>
+              <button onClick={() => startEdit(item)} disabled={busy} title="Edit" className="rounded p-1 text-slate-500 hover:bg-base-700 hover:text-white">
+                <Pencil size={14} />
+              </button>
+              <button
+                onClick={() => {
+                  if (editingId === item.id) reset();
+                  run({ announcements: announcements.filter((a) => a.id !== item.id) });
+                }}
+                disabled={busy}
+                title="Delete"
+                className="rounded p-1 text-slate-500 hover:bg-red-500/10 hover:text-red-400"
+              >
+                <Trash2 size={14} />
+              </button>
+            </div>
+          ))}
+          {!announcements.length && <p className="text-sm text-slate-500">Nothing published yet.</p>}
+        </div>
+      </section>
+    </>
+  );
+}
+
+/* ──────────────────────── Connections tab ──────────────────────── */
+
+const EMPTY_CONNECTION_DRAFT = { name: "", url: "", description: "", imageUrl: "" };
+
+function ConnectionsTab({ catalog, busy, run }: { catalog: AdminCatalog; busy: boolean; run: (patch: PatchableCatalog) => void }) {
+  const [draft, setDraft] = useState(EMPTY_CONNECTION_DRAFT);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const connections = connectionsOrDefault(catalog);
+  const urlOk = /^https?:\/\/\S+$/.test(draft.url.trim());
+  const canSave = !!draft.name.trim() && urlOk;
+
+  const reset = () => {
+    setDraft(EMPTY_CONNECTION_DRAFT);
+    setEditingId(null);
+  };
+  const startEdit = (c: Connection) => {
+    setEditingId(c.id);
+    setDraft({ name: c.name, url: c.url, description: c.description ?? "", imageUrl: c.imageUrl ?? "" });
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+  const save = () => {
+    if (!canSave) return;
+    const fields = {
+      name: draft.name.trim(),
+      url: draft.url.trim(),
+      description: draft.description.trim() || undefined,
+      imageUrl: draft.imageUrl.trim() || undefined,
+    };
+    if (editingId) {
+      run({ connections: connections.map((c) => (c.id === editingId ? { ...c, ...fields } : c)) });
+    } else {
+      run({ connections: [...connections, { id: crypto.randomUUID(), ...fields }].slice(0, 30) });
+    }
+    reset();
+  };
+  const move = (index: number, delta: number) => {
+    const next = [...connections];
+    const target = index + delta;
+    if (target < 0 || target >= next.length) return;
+    [next[index], next[target]] = [next[target], next[index]];
+    run({ connections: next });
+  };
+  const set = (key: keyof typeof EMPTY_CONNECTION_DRAFT) => (value: string) => setDraft((d) => ({ ...d, [key]: value }));
+
+  return (
+    <>
+      <p className="mb-5 rounded-lg border border-base-700/60 bg-base-900/40 px-3 py-2 text-xs text-slate-400">
+        The sites listed on the public Connections page. Each shows as a large card with its image and an Open button.
+      </p>
+      <section className="mb-8 rounded-xl border border-dashed border-base-600/60 p-4">
+        <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-white">
+          {editingId ? <Pencil size={15} className="text-accent-400" /> : <Globe size={15} className="text-accent-400" />}
+          {editingId ? "Edit connection" : "New connection"}
+        </h2>
+        <div className="space-y-3">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <input value={draft.name} onChange={(e) => set("name")(e.target.value)} placeholder="Name" className={inputClass} />
+            <input value={draft.url} onChange={(e) => set("url")(e.target.value)} placeholder="https://example.com" className={inputClass} />
+          </div>
+          {draft.url.trim() && !urlOk && <p className="text-xs text-red-300">The link must start with http:// or https://</p>}
+          <textarea value={draft.description} onChange={(e) => set("description")(e.target.value)} placeholder="Short description (optional)" rows={3} className={`${inputClass} resize-none`} />
+          <ImageField value={draft.imageUrl} onChange={set("imageUrl")} />
+          <div className="flex gap-2">
+            <button onClick={save} disabled={busy || !canSave} className="rounded-lg bg-accent-500 px-3 py-2 text-xs font-semibold text-base-950 hover:bg-accent-400 disabled:opacity-40">
+              {editingId ? "Save changes" : "Add connection"}
+            </button>
+            {editingId && (
+              <button onClick={reset} className="rounded-lg border border-base-600/60 px-3 py-2 text-xs text-slate-300 hover:text-white">
+                Cancel
+              </button>
+            )}
+          </div>
+        </div>
+      </section>
+      <section>
+        <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Listed</h2>
+        <div className="space-y-2">
+          {connections.map((c, i) => (
+            <div key={c.id} className={`flex items-center gap-3 rounded-lg border bg-base-900/60 p-3 ${editingId === c.id ? "border-accent-500/60" : "border-base-600/60"}`}>
+              {c.imageUrl ? <img src={c.imageUrl} alt="" className="h-10 w-16 shrink-0 rounded object-cover" /> : <Globe size={14} className="text-accent-400" />}
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm text-slate-200">{c.name}</p>
+                <p className="truncate text-xs text-slate-500">{c.url}</p>
+              </div>
+              <button onClick={() => move(i, -1)} disabled={busy || i === 0} title="Move up" className="rounded p-1 text-slate-500 hover:bg-base-700 hover:text-white disabled:opacity-30">
+                <ArrowUp size={14} />
+              </button>
+              <button onClick={() => move(i, 1)} disabled={busy || i === connections.length - 1} title="Move down" className="rounded p-1 text-slate-500 hover:bg-base-700 hover:text-white disabled:opacity-30">
+                <ArrowDown size={14} />
+              </button>
+              <button onClick={() => startEdit(c)} disabled={busy} title="Edit" className="rounded p-1 text-slate-500 hover:bg-base-700 hover:text-white">
+                <Pencil size={14} />
+              </button>
+              <button
+                onClick={() => {
+                  if (editingId === c.id) reset();
+                  run({ connections: connections.filter((x) => x.id !== c.id) });
+                }}
+                disabled={busy}
+                title="Delete"
+                className="rounded p-1 text-slate-500 hover:bg-red-500/10 hover:text-red-400"
+              >
+                <Trash2 size={14} />
+              </button>
+            </div>
+          ))}
+          {!connections.length && <p className="text-sm text-slate-500">No connections listed.</p>}
+        </div>
+      </section>
+    </>
+  );
 }
 
 /* ─────────────────────────── Shell ─────────────────────────── */
@@ -885,6 +1121,7 @@ const TABS = [
   { id: "limits", label: "Limits" },
   { id: "watermark", label: "Watermark" },
   { id: "announcements", label: "Announcements" },
+  { id: "connections", label: "Connections" },
 ] as const;
 type TabId = (typeof TABS)[number]["id"];
 
@@ -906,6 +1143,7 @@ export function AdminPage({ onExit }: { onExit: () => void }) {
         usage: catalog.usage ?? DEFAULT_USAGE,
         watermark: catalog.watermark ?? DEFAULT_WATERMARK,
         announcements: catalog.announcements ?? [],
+        connections: catalog.connections,
         ...patch,
       });
     } catch (e) {
@@ -968,6 +1206,7 @@ export function AdminPage({ onExit }: { onExit: () => void }) {
         {tab === "users" && <UsersTab catalog={catalog} busy={busy} run={run} />}
         {tab === "watermark" && <WatermarkTab catalog={catalog} busy={busy} run={run} />}
         {tab === "announcements" && <AnnouncementsTab catalog={catalog} busy={busy} run={run} />}
+        {tab === "connections" && <ConnectionsTab catalog={catalog} busy={busy} run={run} />}
       </div>
     </div>
   );

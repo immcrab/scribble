@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { onValue, ref, set as dbSet } from "firebase/database";
 import { getRtdb } from "./firebase";
 import { setAdminCatalog } from "../config/models";
-import type { AdminCatalog, Announcement, ModelDef, UsageConfig, WatermarkConfig } from "../types";
+import type { AdminCatalog, Announcement, Connection, ModelDef, UsageConfig, WatermarkConfig } from "../types";
 
 /**
  * The shared, admin-curated model catalog overlay. One global RTDB node,
@@ -79,6 +79,17 @@ export function announcementImageUrlForSite(raw: string): string {
   }
 }
 
+/** Shown at /connections until the admin edits the list (catalog.connections is then authoritative). */
+export const DEFAULT_CONNECTIONS: Connection[] = [
+  { id: "lofin-dev", name: "Lofin", url: "https://lofin.dev", description: "The main Lofin app." },
+  { id: "textnexus-me", name: "TextNexus", url: "https://textnexus.me", description: "Lofin running on TextNexus." },
+];
+
+/** The list /connections renders — the admin's edits, or the defaults if never edited. */
+export function connectionsOrDefault(c: AdminCatalog): Connection[] {
+  return c.connections ?? DEFAULT_CONNECTIONS;
+}
+
 export const EMPTY_CATALOG: AdminCatalog = {
   added: [],
   hiddenKeys: [],
@@ -119,6 +130,21 @@ function sanitizeAnnouncements(raw: unknown): Announcement[] {
     .slice(0, 30);
 }
 
+function sanitizeConnections(raw: unknown): Connection[] | undefined {
+  if (!Array.isArray(raw)) return undefined;
+  return raw
+    .filter((item): item is Record<string, unknown> => !!item && typeof item === "object")
+    .map((item) => ({
+      id: typeof item.id === "string" ? item.id.slice(0, 80) : "",
+      name: typeof item.name === "string" ? item.name.slice(0, 60).trim() : "",
+      url: typeof item.url === "string" && /^https?:\/\//.test(item.url) ? item.url.slice(0, 500) : "",
+      description: typeof item.description === "string" ? item.description.slice(0, 300).trim() || undefined : undefined,
+      imageUrl: typeof item.imageUrl === "string" && /^https:\/\//.test(item.imageUrl) ? announcementImageUrlForSite(item.imageUrl) : undefined,
+    }))
+    .filter((item) => item.id && item.name && item.url)
+    .slice(0, 30);
+}
+
 function sanitizeUsage(raw: unknown): UsageConfig {
   const u = (raw ?? {}) as Partial<UsageConfig>;
   const credits = typeof u.dailyCredits === "number" && u.dailyCredits >= 0 ? Math.floor(u.dailyCredits) : DEFAULT_USAGE.dailyCredits;
@@ -153,6 +179,7 @@ function sanitize(raw: unknown): AdminCatalog {
     usage: sanitizeUsage(c.usage),
     watermark: sanitizeWatermark(c.watermark),
     announcements: sanitizeAnnouncements(c.announcements),
+    connections: sanitizeConnections(c.connections),
     updatedAt: typeof c.updatedAt === "number" ? c.updatedAt : 0,
   };
 }

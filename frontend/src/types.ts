@@ -53,6 +53,9 @@ export interface AdminCatalog {
   /** Global product updates, newest first. They are shown once per browser and remain
    * available from the Announcements center. */
   announcements?: Announcement[];
+  /** Sites Lofin operates on, shown at /connections and edited from `/admin` → Connections.
+   * `undefined` means "never edited" — the page falls back to `DEFAULT_CONNECTIONS`. */
+  connections?: Connection[];
   /** Date.now() of the last admin edit — last-write-wins if two admin tabs race. */
   updatedAt: number;
 }
@@ -187,6 +190,14 @@ export interface Announcement {
   ctaLabel?: string;
   ctaUrl?: string;
   publishedAt: number;
+}
+
+export interface Connection {
+  id: string;
+  name: string;
+  url: string;
+  description?: string;
+  imageUrl?: string;
 }
 
 export interface ChatMessage {
