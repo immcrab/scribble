@@ -10,9 +10,7 @@ export function NotFoundPage({ onHome }: { onHome: () => void }) {
   return (
     <div className="flex h-dvh w-full items-center justify-center bg-base-950 p-4">
       <div className="w-full max-w-sm text-center">
-        <div className="mx-auto mb-7 flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-accent-500 to-accent-700 shadow-glow">
-          <LogoMark size={20} className="text-base-950" />
-        </div>
+        <LogoMark size={44} className="mx-auto mb-7 block" />
         <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-slate-500">404</p>
         <h1 className="mb-3 font-serif text-2xl font-light text-white">Nothing lofind here yet</h1>
         <p className="mb-7 text-sm leading-relaxed text-slate-400">

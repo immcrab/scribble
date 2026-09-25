@@ -283,9 +283,7 @@ export function Sidebar({
                 title="New chat"
                 className="flex items-center gap-2 rounded-lg px-1 py-0.5 animate-fade-in hover:opacity-80"
               >
-                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-accent-500 to-accent-700 shadow-glow">
-                  <LogoMark size={15} className="text-base-950" />
-                </div>
+                <LogoMark size={28} />
                 <span className="font-serif text-lg font-semibold tracking-tight text-white">Lofin</span>
               </button>
             )}

@@ -163,9 +163,7 @@ function DocsHeader({ slug, onNavigate, onExit }: { slug: string; onNavigate: (s
     <header className="flex flex-col gap-2 border-b border-base-700/60 px-4 py-3 sm:px-6">
       <div className="flex items-center justify-between gap-3">
         <button onClick={() => onNavigate("")} className="flex items-center gap-2 text-sm text-slate-300 hover:text-white">
-          <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-gradient-to-br from-accent-500 to-accent-700">
-            <LogoMark size={13} className="text-base-950" />
-          </div>
+          <LogoMark size={24} />
           <span className="font-serif text-base font-semibold tracking-tight text-white">Lofin Docs</span>
         </button>
         <button

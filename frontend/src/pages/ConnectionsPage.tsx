@@ -25,9 +25,7 @@ export function ConnectionsPage({ onExit }: { onExit: () => void }) {
         >
           <ArrowLeft size={17} />
         </button>
-        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-accent-500 to-accent-700">
-          <LogoMark size={15} className="text-base-950" />
-        </div>
+        <LogoMark size={28} />
         <div className="min-w-0">
           <h1 className="text-sm font-semibold text-white">Connections</h1>
           <p className="truncate text-xs text-slate-500">Where Lofin is currently operating</p>

@@ -15,9 +15,7 @@ export function ConsentGate({ onAccept }: { onAccept: () => void }) {
   return (
     <div className="flex h-dvh w-full items-center justify-center bg-base-950 p-4">
       <div className="w-full max-w-sm rounded-2xl border border-base-600/60 bg-base-850 p-6 text-center shadow-panel animate-fade-in-up">
-        <div className="mx-auto mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-accent-500 to-accent-700 shadow-glow">
-          <LogoMark size={18} className="text-base-950" />
-        </div>
+        <LogoMark size={40} className="mx-auto mb-4 block" />
         <h1 className="mb-2 font-serif text-xl font-semibold text-white">Welcome to Lofin</h1>
         <p className="mb-5 text-sm leading-relaxed text-slate-400">
           Lofin is an independently run AI playground. By continuing, you agree to the{" "}

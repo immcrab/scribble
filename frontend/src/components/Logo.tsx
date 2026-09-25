@@ -1,10 +1,22 @@
-export function LogoMark({ size = 15, className = "" }: { size?: number; className?: string }) {
+export function LogoMark({ size = 24, className = "" }: { size?: number; className?: string }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 32 32" fill="none" className={className} aria-hidden="true">
-      <path d="M7.3 22.8c1.8 2.2 4.5 3.6 7.7 3.6 5.5 0 9.7-4.2 9.7-9.7 0-3.1-1.4-5.9-3.6-7.7" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
-      <path d="M10.8 9.2c-2.2 1.8-3.6 4.5-3.6 7.7 0 1.4.3 2.7.8 3.9" stroke="currentColor" strokeWidth="3" strokeLinecap="round" opacity=".5" />
-      <path d="M17.2 5.7c.55 3.42 1.7 5.04 5.12 5.6-3.42.55-5.04 1.7-5.6 5.12-.55-3.42-1.7-5.04-5.12-5.6 3.42-.55 5.04-1.7 5.6-5.12Z" fill="currentColor" />
-      <circle cx="22.9" cy="22.2" r="2.1" fill="currentColor" />
+    <svg
+      width={(size * 461) / 516}
+      height={size}
+      viewBox="431 363 461 516"
+      fill="none"
+      className={className}
+      aria-hidden="true"
+    >
+      <path
+        d="M431 413A50 50 0 0 1 510 368L600 430A60 60 0 0 1 642 490V773A105.5 105.5 0 0 1 431 773Z"
+        fill="#f8ede1"
+      />
+      <path
+        d="M640 723H815A77.5 77.5 0 0 1 815 878H545Q500 878 475 850L548 774Q585 723 640 723Z"
+        fill="#918579"
+        fillOpacity=".81"
+      />
     </svg>
   );
 }
