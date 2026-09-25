@@ -153,7 +153,7 @@
 
 /*
  * UI font — `data-font` on <html> (lib/appearance.ts) picks the stack via
- * --app-font, which `body` (and everything under it, including .prose-scribble
+ * --app-font, which `body` (and everything under it, including .prose-lofin
  * and form controls) inherits. Code blocks keep their own monospace stack.
  */
 :root {
@@ -211,11 +211,11 @@ body {
 :root[data-bold="true"] body {
   font-weight: 500;
 }
-:root[data-bold="true"] .prose-scribble {
+:root[data-bold="true"] .prose-lofin {
   font-weight: 500;
 }
-:root[data-bold="true"] .prose-scribble strong,
-:root[data-bold="true"] .prose-scribble b {
+:root[data-bold="true"] .prose-lofin strong,
+:root[data-bold="true"] .prose-lofin b {
   font-weight: 700;
 }
 
@@ -245,30 +245,30 @@ body {
   backdrop-filter: blur(14px);
 }
 
-.prose-scribble {
+.prose-lofin {
   color: rgb(var(--slate-200));
   font-size: 0.95rem;
   line-height: 1.65;
   overflow-wrap: anywhere;
 }
-:root[data-text-size="small"] .prose-scribble {
+:root[data-text-size="small"] .prose-lofin {
   font-size: 0.85rem;
 }
-:root[data-text-size="large"] .prose-scribble {
+:root[data-text-size="large"] .prose-lofin {
   font-size: 1.05rem;
 }
-.prose-scribble p {
+.prose-lofin p {
   margin: 0.5em 0;
 }
-.prose-scribble ul,
-.prose-scribble ol {
+.prose-lofin ul,
+.prose-lofin ol {
   margin: 0.5em 0;
   padding-left: 1.4em;
 }
-.prose-scribble li {
+.prose-lofin li {
   margin: 0.2em 0;
 }
-.prose-scribble pre {
+.prose-lofin pre {
   background: rgb(var(--code-bg));
   border: 1px solid rgb(var(--base-700));
   border-radius: 0 0 10px 10px;
@@ -277,43 +277,43 @@ body {
   overflow-x: auto;
   margin: 0;
 }
-.prose-scribble code {
+.prose-lofin code {
   font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
   font-size: 0.85em;
 }
-.prose-scribble :not(pre) > code {
+.prose-lofin :not(pre) > code {
   background: rgb(var(--code-chip-bg));
   border: 1px solid rgb(var(--base-700));
   border-radius: 5px;
   padding: 0.1em 0.4em;
   color: rgb(var(--accent-500));
 }
-.prose-scribble h1,
-.prose-scribble h2,
-.prose-scribble h3 {
+.prose-lofin h1,
+.prose-lofin h2,
+.prose-lofin h3 {
   font-weight: 600;
   margin: 0.8em 0 0.3em;
   color: rgb(var(--slate-100));
 }
-.prose-scribble a {
+.prose-lofin a {
   color: rgb(var(--accent-500));
   text-decoration: underline;
   text-underline-offset: 2px;
 }
-.prose-scribble blockquote {
+.prose-lofin blockquote {
   border-left: 2px solid rgb(var(--base-600));
   padding-left: 0.9em;
   color: rgb(var(--slate-400));
   margin: 0.6em 0;
 }
-.prose-scribble table {
+.prose-lofin table {
   border-collapse: collapse;
   width: 100%;
   margin: 0.6em 0;
   font-size: 0.85em;
 }
-.prose-scribble th,
-.prose-scribble td {
+.prose-lofin th,
+.prose-lofin td {
   border: 1px solid rgb(var(--base-700));
   padding: 0.4em 0.7em;
   text-align: left;
@@ -322,12 +322,12 @@ body {
 /* KaTeX (rendered where <Markdown math /> is used — see pages/TutorPage.tsx). A long
    display equation is one unbreakable line, so it scrolls inside its own box rather
    than widening the whole message column. */
-.prose-scribble .katex-display {
+.prose-lofin .katex-display {
   overflow-x: auto;
   overflow-y: hidden;
   padding: 0.15em 0 0.35em;
 }
-.prose-scribble .katex {
+.prose-lofin .katex {
   font-size: 1.05em;
 }
 
@@ -643,7 +643,7 @@ select {
 }
 
 /* Search cards show xKiro's result thumbnails in the chat itself. They are a
-   lightweight visual preview of a destination, not a claim that Scribble has
+   lightweight visual preview of a destination, not a claim that Lofin has
    loaded or inspected the page. */
 .website-preview-card {
   display: grid;

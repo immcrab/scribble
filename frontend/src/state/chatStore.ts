@@ -12,7 +12,7 @@ import {
   saveProjects,
   titleFromPrompt,
 } from "../lib/storage";
-import type { ScribbleSettings } from "../lib/storage";
+import type { LofinSettings } from "../lib/storage";
 import {
   startCloudSync,
   stopCloudSync,
@@ -129,7 +129,7 @@ interface ChatStore {
   projects: Project[];
   activeProjectId: string | null;
   sidebarOpen: boolean;
-  settings: ScribbleSettings;
+  settings: LofinSettings;
   memories: MemoryEntry[];
   abortControllers: Map<string, AbortController>;
 
@@ -159,7 +159,7 @@ interface ChatStore {
   setVote: (chatId: string, vote: Vote) => void;
 
   toggleSidebar: () => void;
-  updateSettings: (patch: Partial<ScribbleSettings>) => void;
+  updateSettings: (patch: Partial<LofinSettings>) => void;
 
   addMemory: (content: string) => void;
   deleteMemory: (id: string) => void;

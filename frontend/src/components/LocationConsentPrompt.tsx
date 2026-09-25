@@ -32,7 +32,7 @@ export function LocationConsentPrompt() {
           <h3 className="text-sm font-semibold text-white">Share your approximate location?</h3>
         </div>
         <p className="mb-4 text-sm text-slate-300">
-          Scribble can estimate your city from your IP address to give locally-relevant answers — not exact GPS, and
+          Lofin can estimate your city from your IP address to give locally-relevant answers — not exact GPS, and
           nothing more precise than city-level. You can change this anytime in Settings.
         </p>
         <div className="flex justify-end gap-2">

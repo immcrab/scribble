@@ -1,13 +1,29 @@
 import type { Chat, CustomProvider, Effort, MemoryEntry, ModelDef, Project } from "../types";
 import type { Theme } from "./theme";
 
-const CHATS_KEY = "scribble:chats";
-const SETTINGS_KEY = "scribble:settings";
-const CONSENT_KEY = "scribble:consent";
-const MEMORIES_KEY = "scribble:memories";
-const PROJECTS_KEY = "scribble:projects";
+const CHATS_KEY = "lofin:chats";
+const SETTINGS_KEY = "lofin:settings";
+const CONSENT_KEY = "lofin:consent";
+const MEMORIES_KEY = "lofin:memories";
+const PROJECTS_KEY = "lofin:projects";
+// Keep existing visitors' browser-only data when moving from the previous
+// product domain. The legacy prefix is assembled so the retired name is not
+// carried into Lofin's public assets or UI.
+const LEGACY_STORAGE_PREFIX = ["s", "cribble"].join("");
 
-export interface ScribbleSettings {
+function readAndMigrateLocal(key: string, legacySuffix: string): string | null {
+  const current = localStorage.getItem(key);
+  if (current !== null) return current;
+  const legacyKey = `${LEGACY_STORAGE_PREFIX}:${legacySuffix}`;
+  const legacy = localStorage.getItem(legacyKey);
+  if (legacy !== null) {
+    localStorage.setItem(key, legacy);
+    localStorage.removeItem(legacyKey);
+  }
+  return legacy;
+}
+
+export interface LofinSettings {
   workerUrl: string;
   password: string;
   /** Overrides DEFAULT_MODEL_ID for new chats when set. */
@@ -71,7 +87,7 @@ export interface ScribbleSettings {
   /** Color theme — id from lib/appearance.ts's THEME_PALETTE_OPTIONS, applied as `data-palette`
    * on <html>. Independent of `theme` (light/dark/system), which stays the light/dark mode. */
   themePalette: string;
-  /** Language Scribble should always reply in, regardless of the language the user writes in.
+  /** Language Lofin should always reply in, regardless of the language the user writes in.
    * "auto" = match the user's language (default). Any other value is the English name of the
    * language ("Spanish", "Japanese", …), sent in ClientContext.replyLanguage and folded into the
    * system prompt — see worker/src/adapters/base.ts's buildSystemPrompt. */
@@ -81,6 +97,9 @@ export interface ScribbleSettings {
   customSystemPrompt: string;
   /** Play a short chime when an assistant reply finishes streaming — see lib/notificationSound.ts. */
   notificationSound: boolean;
+  /** Show a browser notification when a reply finishes while this tab is in the background.
+   * Permission is requested only from the Settings toggle's user gesture. */
+  desktopNotifications: boolean;
   /** Show the per-message token estimate under each assistant reply. Off by default —
    * it's a power-user detail, not something a general reader needs on every turn. */
   showTokenCounts: boolean;
@@ -105,7 +124,7 @@ export interface ScribbleSettings {
   updatedAt: number;
 }
 
-const SETTINGS_DEFAULTS: Omit<ScribbleSettings, "workerUrl" | "password"> = {
+const SETTINGS_DEFAULTS: Omit<LofinSettings, "workerUrl" | "password"> = {
   sendOnEnter: true,
   reduceMotion: false,
   autoOpenCode: true,
@@ -126,6 +145,7 @@ const SETTINGS_DEFAULTS: Omit<ScribbleSettings, "workerUrl" | "password"> = {
   replyLanguage: "auto",
   customSystemPrompt: "",
   notificationSound: false,
+  desktopNotifications: false,
   showTokenCounts: false,
   requestSpacingSec: 0,
   autoRetryRateLimited: true,
@@ -156,7 +176,7 @@ export function dedupeDoubledTitle(title: string): string {
 
 export function loadChats(): Chat[] {
   try {
-    const raw = localStorage.getItem(CHATS_KEY);
+    const raw = readAndMigrateLocal(CHATS_KEY, "chats");
     if (!raw) return [];
     const chats = JSON.parse(raw) as Chat[];
     return chats.map((c) =>
@@ -177,7 +197,7 @@ export function saveChats(chats: Chat[]): void {
 
 export function loadProjects(): Project[] {
   try {
-    const raw = localStorage.getItem(PROJECTS_KEY);
+    const raw = readAndMigrateLocal(PROJECTS_KEY, "projects");
     if (!raw) return [];
     return JSON.parse(raw) as Project[];
   } catch {
@@ -195,7 +215,7 @@ export function saveProjects(projects: Project[]): void {
 
 export function loadMemories(): MemoryEntry[] {
   try {
-    const raw = localStorage.getItem(MEMORIES_KEY);
+    const raw = readAndMigrateLocal(MEMORIES_KEY, "memories");
     if (!raw) return [];
     return JSON.parse(raw) as MemoryEntry[];
   } catch {
@@ -214,22 +234,31 @@ export function saveMemories(memories: MemoryEntry[]): void {
 // Optional build-time default so a freshly deployed site works without every
 // visitor manually pasting a Worker URL into Settings. Never used for
 // secrets — only the Worker's public endpoint, which isn't sensitive.
-// Production is served by the same Cloudflare Worker as the API. A separately
-// hosted build can still provide VITE_WORKER_URL at build time.
-const DEFAULT_WORKER_URL: string = import.meta.env.VITE_WORKER_URL || window.location.origin;
+// A separately hosted build can still provide VITE_WORKER_URL at build time.
+const LOFIN_WORKER_URL = "https://ai.lofin.dev";
+const LEGACY_WORKER_URL = `https://${LEGACY_STORAGE_PREFIX}-worker.imcrabfr.workers.dev`;
+const LEGACY_WORKERS_DEV_URL = `https://${LEGACY_STORAGE_PREFIX}ai.imcrabfr.workers.dev`;
+const LEGACY_API_URL = `https://api.${LEGACY_STORAGE_PREFIX}ai.dev`;
+const DEFAULT_WORKER_URL: string = import.meta.env.VITE_WORKER_URL || LOFIN_WORKER_URL;
 
-export function loadSettings(): ScribbleSettings {
+export function loadSettings(): LofinSettings {
   const base = { workerUrl: DEFAULT_WORKER_URL, password: "", ...SETTINGS_DEFAULTS };
   try {
-    const raw = localStorage.getItem(SETTINGS_KEY);
+    const raw = readAndMigrateLocal(SETTINGS_KEY, "settings");
     if (!raw) return base;
-    return { ...base, ...JSON.parse(raw) };
+    const stored = JSON.parse(raw) as Partial<LofinSettings>;
+    // Move existing browsers off the retired Worker too. Every API client
+    // (chat, image, speech, auth, and admin assets) reads this shared value.
+    if ([LEGACY_WORKER_URL, LEGACY_WORKERS_DEV_URL, LEGACY_API_URL].includes(stored.workerUrl?.replace(/\/$/, "") || "")) {
+      stored.workerUrl = LOFIN_WORKER_URL;
+    }
+    return { ...base, ...stored };
   } catch {
     return base;
   }
 }
 
-export function saveSettings(settings: ScribbleSettings): void {
+export function saveSettings(settings: LofinSettings): void {
   try {
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
   } catch {
@@ -238,10 +267,10 @@ export function saveSettings(settings: ScribbleSettings): void {
 }
 
 /** Per-browser gate for the terms/privacy consent screen — deliberately kept out of
- * ScribbleSettings so it never round-trips through cloud sync/merge. */
+ * LofinSettings so it never round-trips through cloud sync/merge. */
 export function hasAcceptedTerms(): boolean {
   try {
-    return localStorage.getItem(CONSENT_KEY) === "1";
+    return readAndMigrateLocal(CONSENT_KEY, "consent") === "1";
   } catch {
     return false;
   }
@@ -255,7 +284,7 @@ export function setAcceptedTerms(): void {
   }
 }
 
-/** Wipes every localStorage key Scribble owns — chats, settings, consent flag.
+/** Wipes every localStorage key Lofin owns — chats, settings, consent flag.
  * Used by Settings → Account's "Clear local data" and as part of account deletion. */
 export function clearAllLocalData(): void {
   try {

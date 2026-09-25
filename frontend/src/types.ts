@@ -65,7 +65,7 @@ export interface AdminCatalog {
 export interface WatermarkConfig {
   /** When false, generated images are shown untouched. Default true. */
   enabled: boolean;
-  /** Label text stamped in the bottom-right corner. Default "ScribbleAI". */
+  /** Label text stamped in the bottom-right corner. Default "lofin". */
   text: string;
   /** Fill opacity, 0–1. Default 0.55. */
   opacity: number;

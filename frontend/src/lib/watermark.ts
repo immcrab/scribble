@@ -10,7 +10,7 @@ export async function watermarkImage(
   dataUrl: string,
   opts: { text?: string; opacity?: number; scale?: number } = {},
 ): Promise<string> {
-  const text = (opts.text ?? "ScribbleAI").trim() || "ScribbleAI";
+  const text = (opts.text ?? "lofin").trim() || "lofin";
   const opacity = clamp(opts.opacity ?? 0.55, 0, 1);
   const scale = clamp(opts.scale ?? 0.028, 0.005, 0.15);
 

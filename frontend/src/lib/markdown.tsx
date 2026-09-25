@@ -21,7 +21,7 @@ const PLAIN_REHYPE = [rehypeHighlight];
  */
 export function Markdown({ content, math = false }: { content: string; math?: boolean }) {
   return (
-    <div className="prose-scribble">
+    <div className="prose-lofin">
       <ReactMarkdown
         remarkPlugins={math ? MATH_REMARK : PLAIN_REMARK}
         rehypePlugins={math ? MATH_REHYPE : PLAIN_REHYPE}

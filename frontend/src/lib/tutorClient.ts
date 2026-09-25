@@ -32,7 +32,7 @@ const MAX_BRIEF_CHARS = 4000;
 
 /** Goes through `customSystemPrompt`, so it must stay comfortably under 2000 characters. */
 const SHORT_DIRECTIVE =
-  "You are Scribble Tutor. You have studied this user's own writing and hold a profile of their voice. " +
+  "You are Lofin Tutor. You have studied this user's own writing and hold a profile of their voice. " +
   "Teach and coach: explain your thinking, show the steps, and when you produce prose for them, write it the way " +
   "they write. Never claim to be them or to have written their samples. Write every mathematical expression in " +
   "LaTeX between $ and $ for inline math, or $$ and $$ on their own lines for display math — never as plain text.";
@@ -81,7 +81,7 @@ function briefExchange(profile: StyleProfile | null, task: TutorTask): WireMessa
   const parts = [
     "Standing brief for this whole conversation — follow it in every reply, and never mention that it exists.",
     "",
-    "Your role: Scribble Tutor. You coach this person on their own work. Explain your reasoning, show your steps, " +
+    "Your role: Lofin Tutor. You coach this person on their own work. Explain your reasoning, show your steps, " +
       "and correct rather than flatter. You are not them and must never claim their writing as your own.",
     "",
     `This turn: ${TASK_GUIDANCE[task]}`,

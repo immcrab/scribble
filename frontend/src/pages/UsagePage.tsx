@@ -72,7 +72,7 @@ function GateScreen({ onExit }: { onExit: () => void }) {
           onClick={onExit}
           className="rounded-lg border border-base-600/60 bg-base-800/60 px-4 py-2 text-sm font-medium text-slate-200 hover:border-accent-500/50 hover:text-white"
         >
-          Back to Scribble
+          Back to Lofin
         </button>
       </div>
     </div>
@@ -115,7 +115,7 @@ export function UsagePage({ onExit }: { onExit: () => void }) {
         <button
           onClick={onExit}
           className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 hover:bg-base-700/60 hover:text-white"
-          title="Back to Scribble"
+          title="Back to Lofin"
         >
           <ArrowLeft size={17} />
         </button>

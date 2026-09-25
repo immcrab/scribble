@@ -67,17 +67,17 @@ const FAQ_ITEMS: { question: string; answer: string }[] = [
   {
     question: "Is my chat data used to train anything?",
     answer:
-      "Scribble doesn't train models. Messages are sent straight to the provider you picked, under that provider's own terms — see the model's page for which one that is.",
+      "Lofin doesn't train models. Messages are sent straight to the provider you picked, under that provider's own terms — see the model's page for which one that is.",
   },
   {
     question: "Why does context length vary so much between models?",
     answer:
-      "It's set by whoever built the model, not by Scribble. Longer context means the model can hold more of a conversation or document in memory at once, but it also tends to cost more and run slower.",
+      "It's set by whoever built the model, not by Lofin. Longer context means the model can hold more of a conversation or document in memory at once, but it also tends to cost more and run slower.",
   },
   {
     question: "Can I add a model that isn't listed here?",
     answer:
-      "Yes — any OpenAI-compatible endpoint can be added from Settings → Custom Models. It'll show up in the model picker but won't get a docs page here since Scribble has no way to verify what it actually does.",
+      "Yes — any OpenAI-compatible endpoint can be added from Settings → Custom Models. It'll show up in the model picker but won't get a docs page here since Lofin has no way to verify what it actually does.",
   },
 ];
 
@@ -148,7 +148,7 @@ function CapabilityBadge({ capability }: { capability: ModelCapability }) {
 
 const DOCS_NAV = [
   { slug: "", label: "Home" },
-  { slug: "using", label: "Using Scribble" },
+  { slug: "using", label: "Using Lofin" },
   { slug: "models", label: "Models" },
   { slug: "providers", label: "Providers" },
   { slug: "top-models", label: "Top models" },
@@ -166,7 +166,7 @@ function DocsHeader({ slug, onNavigate, onExit }: { slug: string; onNavigate: (s
           <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-gradient-to-br from-accent-500 to-accent-700">
             <LogoMark size={13} className="text-base-950" />
           </div>
-          <span className="font-serif text-base font-semibold tracking-tight text-white">Scribble Docs</span>
+          <span className="font-serif text-base font-semibold tracking-tight text-white">Lofin Docs</span>
         </button>
         <button
           onClick={onExit}
@@ -267,7 +267,7 @@ function WorkerGuidePage({ onOpen }: { onOpen: (slug: string) => void }) {
         <h1 className="font-serif text-2xl font-semibold text-white sm:text-3xl">Deploy your own Worker</h1>
       </div>
       <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-400">
-        Scribble's frontend is static — it never talks to a model provider directly. Every chat request goes through a
+        Lofin's frontend is static — it never talks to a model provider directly. Every chat request goes through a
         small Cloudflare Worker (<code className="rounded bg-base-800 px-1 py-0.5 text-xs text-slate-300">worker/</code>{" "}
         in the repo) that holds your API keys and normalizes each provider into the same streaming format. Deploying
         your own Worker means your keys stay yours, and you control which providers are enabled.
@@ -288,7 +288,7 @@ function WorkerGuidePage({ onOpen }: { onOpen: (slug: string) => void }) {
             An API key from at least one provider (xKiro, Mistral, Gemini, or OpenRouter)
           </li>
           <li className="flex items-start gap-2">
-            <ChevronRight size={14} className="mt-0.5 shrink-0 text-slate-600" />A clone of the Scribble repo
+            <ChevronRight size={14} className="mt-0.5 shrink-0 text-slate-600" />A clone of the Lofin repo
           </li>
         </ul>
       </section>
@@ -340,10 +340,10 @@ function WorkerGuidePage({ onOpen }: { onOpen: (slug: string) => void }) {
         <GuideStep n={5} title="(Optional) Lock it down with a password">
           <p>
             Without this, anyone who has your Worker's URL can use it — and burn your API budget. Set{" "}
-            <code className="rounded bg-base-800 px-1 py-0.5 text-xs text-slate-300">SCRIBBLE_PASSWORD</code> to require
+            <code className="rounded bg-base-800 px-1 py-0.5 text-xs text-slate-300">LOFIN_PASSWORD</code> to require
             a password from the frontend's Settings panel before the Worker will respond.
           </p>
-          <CodeBlock>npx wrangler secret put SCRIBBLE_PASSWORD</CodeBlock>
+          <CodeBlock>npx wrangler secret put LOFIN_PASSWORD</CodeBlock>
         </GuideStep>
 
         <GuideStep n={6} title="(Optional) Enable image generation">
@@ -378,7 +378,7 @@ function WorkerGuidePage({ onOpen }: { onOpen: (slug: string) => void }) {
           <CodeBlock>npm run deploy</CodeBlock>
         </GuideStep>
 
-        <GuideStep n={8} title="Point Scribble at it">
+        <GuideStep n={8} title="Point Lofin at it">
           <p>
             Back in the app, open <strong className="text-slate-300">Settings → Worker URL</strong> and paste the URL
             from the previous step. If you set a password in step 5, enter it in{" "}
@@ -407,10 +407,10 @@ function WorkerGuidePage({ onOpen }: { onOpen: (slug: string) => void }) {
             </p>
           </div>
           <div>
-            <p className="font-medium text-slate-200">"Invalid or missing Scribble password"</p>
+            <p className="font-medium text-slate-200">"Invalid or missing Lofin password"</p>
             <p className="mt-0.5 text-slate-400">
-              The Worker has <code className="rounded bg-base-800 px-1 py-0.5 text-xs">SCRIBBLE_PASSWORD</code> set, and
-              Scribble's Settings either has no password or the wrong one.
+              The Worker has <code className="rounded bg-base-800 px-1 py-0.5 text-xs">LOFIN_PASSWORD</code> set, and
+              Lofin's Settings either has no password or the wrong one.
             </p>
           </div>
         </div>
@@ -465,9 +465,9 @@ function HomePage({ onOpen }: { onOpen: (slug: string) => void }) {
   const providerCount = new Set(getAllModels().map((m) => m.provider)).size;
   return (
     <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6 sm:py-14">
-      <h1 className="font-serif text-3xl font-semibold text-white sm:text-4xl">Scribble Docs</h1>
+      <h1 className="font-serif text-3xl font-semibold text-white sm:text-4xl">Lofin Docs</h1>
       <p className="mt-3 max-w-xl text-sm leading-relaxed text-slate-400">
-        Scribble is a free, open chat frontend that talks to your choice of model provider through a Cloudflare Worker
+        Lofin is a free, open chat frontend that talks to your choice of model provider through a Cloudflare Worker
         you control — {modelCount} free models across {providerCount} providers. These docs cover what's
         available and how to run your own Worker behind it.
       </p>
@@ -477,7 +477,7 @@ function HomePage({ onOpen }: { onOpen: (slug: string) => void }) {
           onClick={() => onOpen("using")}
           icon={<Compass size={18} />}
           eyebrow="Start here"
-          title="Using Scribble"
+          title="Using Lofin"
           description="The modes, signing in, projects, memory, web search, and keyboard shortcuts — everything you need to actually use the app."
           cta="Read the guide"
         />
@@ -486,7 +486,7 @@ function HomePage({ onOpen }: { onOpen: (slug: string) => void }) {
           icon={<BookOpen size={18} />}
           eyebrow="Reference"
           title="Model catalog"
-          description={`Every one of the ${modelCount} models Scribble supports — capabilities, context length, and whether it needs sign-in.`}
+          description={`Every one of the ${modelCount} models Lofin supports — capabilities, context length, and whether it needs sign-in.`}
           cta="Browse models"
         />
         <HomeCard
@@ -494,7 +494,7 @@ function HomePage({ onOpen }: { onOpen: (slug: string) => void }) {
           icon={<Layers size={18} />}
           eyebrow="Reference"
           title="Providers"
-          description={`The ${providerCount} providers behind those models — what each one is and how Scribble talks to it.`}
+          description={`The ${providerCount} providers behind those models — what each one is and how Lofin talks to it.`}
           cta="Browse providers"
         />
         <HomeCard
@@ -502,7 +502,7 @@ function HomePage({ onOpen }: { onOpen: (slug: string) => void }) {
           icon={<Trophy size={18} />}
           eyebrow="Live data"
           title="Top models"
-          description="Which model is finishing the most replies this month, tallied anonymously across every Scribble user."
+          description="Which model is finishing the most replies this month, tallied anonymously across every Lofin user."
           cta="See the leaderboard"
         />
         <HomeCard
@@ -541,12 +541,12 @@ const SHORTCUTS: { keys: string; action: string }[] = [
   { keys: "Esc", action: "Close a dialog or dropdown" },
 ];
 
-function UsingScribblePage({ onOpen }: { onOpen: (slug: string) => void }) {
+function UsingLofinPage({ onOpen }: { onOpen: (slug: string) => void }) {
   return (
     <div className="mx-auto max-w-2xl px-4 py-10 sm:px-6 sm:py-14">
-      <h1 className="font-serif text-3xl font-semibold text-white sm:text-4xl">Using Scribble</h1>
+      <h1 className="font-serif text-3xl font-semibold text-white sm:text-4xl">Using Lofin</h1>
       <p className="mt-3 text-sm leading-relaxed text-slate-400">
-        Scribble is a chat playground for comparing AI models. You can start typing right away — this
+        Lofin is a chat playground for comparing AI models. You can start typing right away — this
         page covers everything around that.
       </p>
 
@@ -603,7 +603,7 @@ function UsingScribblePage({ onOpen }: { onOpen: (slug: string) => void }) {
           prompt to every chat inside it at once.
         </UsingRow>
         <UsingRow icon={<Brain size={16} />} title="Memory">
-          Off by default. Turn it on in Settings → Memory and Scribble will remember short facts you ask it
+          Off by default. Turn it on in Settings → Memory and Lofin will remember short facts you ask it
           to keep ("remember that…") and recall them in later chats. You can view and delete every stored
           memory there.
         </UsingRow>
@@ -662,7 +662,7 @@ function DocsIndex({ onOpen }: { onOpen: (slug: string) => void }) {
     <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
       <h1 className="font-serif text-2xl font-semibold text-white sm:text-3xl">Model catalog</h1>
       <p className="mt-2 max-w-2xl text-sm text-slate-400">
-        All {modelCount} models available in Scribble, what each is good at, and its capabilities — vision,
+        All {modelCount} models available in Lofin, what each is good at, and its capabilities — vision,
         code, reasoning, and more.
       </p>
       <p className="mt-1 text-xs text-slate-600">Catalog last updated {CATALOG_LAST_UPDATED}</p>
@@ -695,13 +695,13 @@ function DocsIndex({ onOpen }: { onOpen: (slug: string) => void }) {
   );
 }
 
-/** What each provider actually is, in Scribble's own terms — grounded in how
+/** What each provider actually is, in Lofin's own terms — grounded in how
  * lib/workerClient.ts, lib/puterClient.ts, and worker/src/index.ts treat it, not
  * marketing copy. Every entry in the Provider union (types.ts) needs one here. */
 const PROVIDERS_META: Record<Provider, { description: string; link?: { href: string; label: string } }> = {
   xkiro: {
     description:
-      "Scribble's own provider tier. It's home to the app's default model — the only one that works with no sign-in and no Worker configuration.",
+      "Lofin's own provider tier. It's home to the app's default model — the only one that works with no sign-in and no Worker configuration.",
   },
   mistral: {
     description: "Mistral AI's own hosted models, called directly through Mistral's API.",
@@ -713,7 +713,7 @@ const PROVIDERS_META: Record<Provider, { description: string; link?: { href: str
   },
   openrouter: {
     description:
-      "A gateway that proxies many upstream model providers behind one API — how Scribble reaches models it has no direct integration for.",
+      "A gateway that proxies many upstream model providers behind one API — how Lofin reaches models it has no direct integration for.",
     link: { href: "https://openrouter.ai", label: "openrouter.ai" },
   },
   zai: {
@@ -723,12 +723,12 @@ const PROVIDERS_META: Record<Provider, { description: string; link?: { href: str
   },
   puter: {
     description:
-      "Puter.js, an in-browser AI SDK. Requests go straight from your browser to Puter with its own sign-in and billing — they never touch Scribble's Worker or its provider keys.",
+      "Puter.js, an in-browser AI SDK. Requests go straight from your browser to Puter with its own sign-in and billing — they never touch Lofin's Worker or its provider keys.",
     link: { href: "https://js.puter.com", label: "js.puter.com" },
   },
   custom: {
     description:
-      "Any OpenAI-compatible endpoint you add yourself from Settings → Custom Models. Not covered by these docs since Scribble has no way to verify what a custom endpoint actually runs.",
+      "Any OpenAI-compatible endpoint you add yourself from Settings → Custom Models. Not covered by these docs since Lofin has no way to verify what a custom endpoint actually runs.",
   },
 };
 
@@ -795,7 +795,7 @@ function ProvidersPage({ onOpen }: { onOpen: (slug: string) => void }) {
         <h1 className="font-serif text-2xl font-semibold text-white sm:text-3xl">Providers</h1>
       </div>
       <p className="mt-2 max-w-2xl text-sm text-slate-400">
-        Every model in Scribble belongs to one of these providers — what actually runs the model, and how Scribble
+        Every model in Lofin belongs to one of these providers — what actually runs the model, and how Lofin
         talks to it under the hood.
       </p>
 
@@ -862,7 +862,7 @@ function TopModelsPage({ onOpen }: { onOpen: (slug: string) => void }) {
         <h1 className="font-serif text-2xl font-semibold text-white sm:text-3xl">Top models</h1>
       </div>
       <p className="mt-2 max-w-2xl text-sm text-slate-400">
-        Which model is finishing the most replies across every Scribble user this month — tallied anonymously, with no
+        Which model is finishing the most replies across every Lofin user this month — tallied anonymously, with no
         account or chat content attached to a single count. Custom endpoints aren't included since they're per-user.
       </p>
       <p className="mt-1 text-xs text-slate-600">{formatMonthLabel(month)}</p>
@@ -871,7 +871,7 @@ function TopModelsPage({ onOpen }: { onOpen: (slug: string) => void }) {
 
       {state === "unavailable" && (
         <p className="mt-10 text-center text-sm text-slate-500">
-          Couldn't reach the leaderboard right now — it needs a connection to Scribble's usage database. Try again in a
+          Couldn't reach the leaderboard right now — it needs a connection to Lofin's usage database. Try again in a
           moment.
         </p>
       )}
@@ -1027,14 +1027,14 @@ export function DocsPage({ slug, onExit }: { slug: string; onExit: () => void })
 
   useEffect(() => {
     const RESERVED_TITLES: Record<string, string> = {
-      "": "Scribble Docs",
-      using: "Using Scribble — Scribble Docs",
-      models: "Model catalog — Scribble Docs",
-      providers: "Providers — Scribble Docs",
-      "top-models": "Top models — Scribble Docs",
-      worker: "Deploy your own Worker — Scribble Docs",
+      "": "Lofin Docs",
+      using: "Using Lofin — Lofin Docs",
+      models: "Model catalog — Lofin Docs",
+      providers: "Providers — Lofin Docs",
+      "top-models": "Top models — Lofin Docs",
+      worker: "Deploy your own Worker — Lofin Docs",
     };
-    document.title = model ? `${model.displayName} — Scribble Docs` : (RESERVED_TITLES[slug] ?? "Scribble Docs");
+    document.title = model ? `${model.displayName} — Lofin Docs` : (RESERVED_TITLES[slug] ?? "Lofin Docs");
   }, [model, slug]);
 
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -1061,7 +1061,7 @@ export function DocsPage({ slug, onExit }: { slug: string; onExit: () => void })
       <div className="mx-auto flex w-full max-w-[900px] flex-1 flex-col gap-6 px-4 py-6 lg:px-8">
         <div className="min-w-0 flex-1">
           {slug === "" && <HomePage onOpen={navigate} />}
-          {slug === "using" && <UsingScribblePage onOpen={navigate} />}
+          {slug === "using" && <UsingLofinPage onOpen={navigate} />}
           {slug === "models" && <DocsIndex onOpen={navigate} />}
           {slug === "providers" && <ProvidersPage onOpen={navigate} />}
           {slug === "top-models" && <TopModelsPage onOpen={navigate} />}

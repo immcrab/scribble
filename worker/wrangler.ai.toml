@@ -1,0 +1,24 @@
+# Scoped deployment configuration for the credentialed legacy Worker.
+# It intentionally owns only the dedicated AI/proxy hostname, leaving the
+# website's existing root-domain routing untouched.
+name = "lofin"
+main = "src/index.ts"
+compatibility_date = "2024-11-01"
+
+[assets]
+directory = "../frontend/dist"
+binding = "ASSETS"
+run_worker_first = true
+not_found_handling = "single-page-application"
+
+[[routes]]
+pattern = "ai.lofin.dev"
+custom_domain = true
+
+[vars]
+ALLOWED_ORIGINS = "http://localhost:5173,https://lofin.dev,https://www.lofin.dev"
+FIREBASE_PROJECT_ID = "rypotic-playground"
+
+[[r2_buckets]]
+binding = "ANNOUNCEMENT_ASSETS"
+bucket_name = "scribble-announcements"

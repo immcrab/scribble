@@ -1,8 +1,8 @@
-name = "scribbleai"
+name = "lofin"
 main = "src/index.ts"
 compatibility_date = "2024-11-01"
 
-# Scribble is a single Worker deployment: static assets serve the React app
+# Lofin is a single Worker deployment: static assets serve the React app
 # while /api/* is handled by src/index.ts.  Hosting them together means the
 # browser can use the same origin for both the app and its API.
 [assets]
@@ -12,40 +12,33 @@ run_worker_first = true
 not_found_handling = "single-page-application"
 
 # Cloudflare manages the DNS record and TLS certificate for these custom
-# domains in the active scribbleai.dev zone.
+# domains in the active lofin.dev zone. Cloudflare provisions the DNS records
+# and HTTPS certificates for these Worker Custom Domains on deployment.
 [[routes]]
-pattern = "scribbleai.dev"
+pattern = "lofin.dev"
 custom_domain = true
 
 [[routes]]
-pattern = "www.scribbleai.dev"
+pattern = "www.lofin.dev"
+custom_domain = true
+
+[[routes]]
+pattern = "ai.lofin.dev"
 custom_domain = true
 
 # Comma-separated list of allowed origins for CORS, e.g. your GitHub Pages
 # domain. Set with: wrangler secret put ALLOWED_ORIGINS  (or as a plain var
 # below if you don't mind it being public — it's not sensitive).
 [vars]
-ALLOWED_ORIGINS = "http://localhost:5173,https://immcrab.github.io,https://scribbleai.dev"
-# Production hostnames returned by Turnstile Siteverify. For local development,
-# override this in .dev.vars with localhost and/or 127.0.0.1.
-TURNSTILE_HOSTNAMES = "scribbleai.dev,www.scribbleai.dev"
-# From address for the verification email (not sensitive). Domain must be
-# verified in Resend.
-VERIFY_EMAIL_FROM = "Scribble <scribble@owenis.me>"
-# Rewrites the verification link to land on our own branded action page
-# (pages/AuthActionPage.tsx) instead of Firebase's default handler — the
-# console's custom-action-URL field is locked on this project.
-VERIFY_ACTION_URL = "https://scribbleai.dev/auth/action"
+ALLOWED_ORIGINS = "http://localhost:5173,https://lofin.dev,https://www.lofin.dev"
 # Announcement artwork storage. Images are served through this Worker, so no
 # separate public R2 domain is needed.
 FIREBASE_PROJECT_ID = "rypotic-playground"
 [[r2_buckets]]
 binding = "ANNOUNCEMENT_ASSETS"
+# Existing storage resource retained so previously published announcement art
+# remains available; public URLs are served from the Lofin Worker.
 bucket_name = "scribble-announcements"
-# Optional: where the verification link sends the user after the code is
-# consumed. Leave unset to use Firebase's default post-verification page.
-# VERIFY_CONTINUE_URL = "https://scribbleai.dev/signin"
-
 # Secrets (never commit real values — set these with `wrangler secret put NAME`):
 #   XKIRO_API_KEY       (chat provider + richer web search + GPT Image backend + text-to-speech)
 #   GROQ_API_KEY        (not a selectable provider — only powers chat-title generation)
@@ -53,9 +46,6 @@ bucket_name = "scribble-announcements"
 #   GEMINI_API_KEY
 #   OPENROUTER_API_KEY
 #   ZAI_API_KEY         (Z.ai / Zhipu AI — the GLM model family)
-#   SCRIBBLE_PASSWORD   (optional — omit to leave Scribble open/unauthenticated)
+#   LOFIN_PASSWORD      (optional — omit to leave Lofin open/unauthenticated)
 #   CF_ACCOUNT_ID       (Cloudflare account id — powers /api/image/generate)
 #   CF_AI_TOKEN         (Workers AI-scoped API token — powers /api/image/generate)
-#   FIREBASE_SERVICE_ACCOUNT  (full Firebase service account JSON — /api/auth/send-verification)
-#   RESEND_API_KEY            (Resend key re_... — sends the verification email)
-#   TURNSTILE_SECRET          (Cloudflare Turnstile secret — verification email bot protection)

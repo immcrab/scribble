@@ -175,7 +175,7 @@ function geminiSSEStream(upstream: Response): ReadableStream<Uint8Array> {
  * from the OpenAI-style providers: roles are "user"/"model" (not
  * "assistant"), and system prompts are a separate `systemInstruction` field.
  *
- * We inject Scribble's own system prompt (SYSTEM_PROMPT + ambient client context) as the
+ * We inject Lofin's own system prompt (SYSTEM_PROMPT + ambient client context) as the
  * systemInstruction so the model is guided by explicit, controlled instructions.
  */
 export async function geminiStreamChat({ apiKey, model, messages, visionCapable, effort, clientContext }: AdapterParams): Promise<ReadableStream<Uint8Array>> {

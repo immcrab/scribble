@@ -64,7 +64,7 @@ export async function listVoices({
   password?: string;
 }): Promise<Voice[]> {
   const res = await fetch(`${base(workerUrl)}/api/speech/voices`, {
-    headers: { ...(password ? { "X-Scribble-Password": password } : {}) },
+    headers: { ...(password ? { "X-Lofin-Password": password } : {}) },
   });
   if (!res.ok) {
     const body = await res.json().catch(() => null);
@@ -113,7 +113,7 @@ export async function generateSpeech({
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      ...(password ? { "X-Scribble-Password": password } : {}),
+      ...(password ? { "X-Lofin-Password": password } : {}),
     },
     body: JSON.stringify({
       input,

@@ -23,7 +23,6 @@ import {
   readWebPage,
 } from "./adapters/search";
 import { extractMemory, shouldRecallMemory } from "./adapters/memory";
-import { handleSendVerification } from "./verifyEmail";
 import { ndjsonLine } from "./adapters/base";
 import { verifyFirebaseIdToken } from "./firebaseVerifyToken";
 
@@ -104,10 +103,6 @@ export default {
       return json({ ok: true }, 200, cors);
     }
 
-    if (url.pathname === "/api/auth/send-verification" && request.method === "POST") {
-      return handleSendVerification(request, env, cors);
-    }
-
     // Product artwork belongs in R2, not in the shared RTDB JSON catalog. The catalog only
     // stores the public URL returned here. This endpoint is deliberately admin-only even if
     // someone discovers the worker URL, and it stays unavailable until the R2 binding/domain
@@ -148,7 +143,7 @@ export default {
 
     if (url.pathname === "/api/chat/stream" && request.method === "POST") {
       if (!checkPassword(request, env)) {
-        return json({ error: "Invalid or missing Scribble password." }, 401, cors);
+        return json({ error: "Invalid or missing Lofin password." }, 401, cors);
       }
 
       const clientKey = request.headers.get("CF-Connecting-IP") ?? "unknown";
@@ -418,7 +413,7 @@ export default {
 
     if (url.pathname === "/api/image/generate" && request.method === "POST") {
       if (!checkPassword(request, env)) {
-        return json({ error: "Invalid or missing Scribble password." }, 401, cors);
+        return json({ error: "Invalid or missing Lofin password." }, 401, cors);
       }
 
       const clientKey = request.headers.get("CF-Connecting-IP") ?? "unknown";
@@ -474,7 +469,7 @@ export default {
 
     if (url.pathname === "/api/image/edit" && request.method === "POST") {
       if (!checkPassword(request, env)) {
-        return json({ error: "Invalid or missing Scribble password." }, 401, cors);
+        return json({ error: "Invalid or missing Lofin password." }, 401, cors);
       }
 
       const clientKey = request.headers.get("CF-Connecting-IP") ?? "unknown";
@@ -523,7 +518,7 @@ export default {
 
     if (url.pathname === "/api/speech/voices" && request.method === "GET") {
       if (!checkPassword(request, env)) {
-        return json({ error: "Invalid or missing Scribble password." }, 401, cors);
+        return json({ error: "Invalid or missing Lofin password." }, 401, cors);
       }
       try {
         const voices = await listXkiroVoices(url.searchParams.toString());
@@ -539,7 +534,7 @@ export default {
 
     if (url.pathname === "/api/speech/generate" && request.method === "POST") {
       if (!checkPassword(request, env)) {
-        return json({ error: "Invalid or missing Scribble password." }, 401, cors);
+        return json({ error: "Invalid or missing Lofin password." }, 401, cors);
       }
 
       const clientKey = request.headers.get("CF-Connecting-IP") ?? "unknown";
@@ -584,7 +579,7 @@ export default {
 
     if (url.pathname === "/api/chat/title" && request.method === "POST") {
       if (!checkPassword(request, env)) {
-        return json({ error: "Invalid or missing Scribble password." }, 401, cors);
+        return json({ error: "Invalid or missing Lofin password." }, 401, cors);
       }
 
       const clientKey = request.headers.get("CF-Connecting-IP") ?? "unknown";

@@ -1,6 +1,6 @@
 /**
  * Minimal path-based router: each chat lives at "<base>/c/{id}" (e.g.
- * "/scribble/c/f3a1..."). No router library — the app only ever needs to
+ * "/lofin/c/f3a1..."). No router library — the app only ever needs to
  * read/write this one route shape, so plain History API is enough. Deep
  * links work on GitHub Pages via the index.html/404.html redirect pair.
  */
@@ -40,7 +40,6 @@ export function isKnownAppLocation(): boolean {
   if (parseChatIdFromLocation() !== null) return true;
   if (parseProjectIdFromLocation() !== null) return true;
   if (parseDocsSlugFromLocation() !== null) return true;
-  if (isAuthActionLocation()) return true;
   if (isAdminLocation()) return true;
   if (isUsageLocation()) return true;
   if (isTutorLocation()) return true;
@@ -83,15 +82,6 @@ export function isAdminLocation(): boolean {
 export function adminPath(): string {
   const base = import.meta.env.BASE_URL.replace(/\/$/, "");
   return `${base}/admin`;
-}
-
-/** "<base>/auth/action" — where Firebase's verification / password-reset / email-
- * recovery links land once a custom action URL is set in the Firebase console.
- * Handled by pages/AuthActionPage.tsx. */
-export function isAuthActionLocation(): boolean {
-  const base = import.meta.env.BASE_URL.replace(/\/$/, "");
-  const path = window.location.pathname;
-  return path === `${base}/auth/action` || path === `${base}/auth/action/`;
 }
 
 export function chatPath(id: string): string {

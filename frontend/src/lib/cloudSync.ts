@@ -1,6 +1,6 @@
 import { get as dbGet, onValue, ref, set as dbSet } from "firebase/database";
 import { getRtdb } from "./firebase";
-import { saveChats, saveSettings, saveMemories, saveProjects, type ScribbleSettings } from "./storage";
+import { saveChats, saveSettings, saveMemories, saveProjects, type LofinSettings } from "./storage";
 import type { Chat, MemoryEntry, Project } from "../types";
 
 /**
@@ -29,7 +29,7 @@ export function mergeChats(local: Chat[], remote: Chat[]): Chat[] {
   return Array.from(byId.values()).sort((a, b) => b.updatedAt - a.updatedAt);
 }
 
-export function mergeSettings(local: ScribbleSettings, remote: ScribbleSettings | null): ScribbleSettings {
+export function mergeSettings(local: LofinSettings, remote: LofinSettings | null): LofinSettings {
   if (!remote) return local;
   const winner = remote.updatedAt > local.updatedAt ? remote : local;
   return { ...winner, password: local.password, customProviders: local.customProviders, customModels: local.customModels };
@@ -81,8 +81,8 @@ let projectsPushTimer: ReturnType<typeof setTimeout> | null = null;
  */
 export async function startCloudSync(
   uid: string,
-  getState: () => { chats: Chat[]; settings: ScribbleSettings; memories: MemoryEntry[]; projects: Project[] },
-  setState: (patch: { chats?: Chat[]; settings?: ScribbleSettings; memories?: MemoryEntry[]; projects?: Project[] }) => void
+  getState: () => { chats: Chat[]; settings: LofinSettings; memories: MemoryEntry[]; projects: Project[] },
+  setState: (patch: { chats?: Chat[]; settings?: LofinSettings; memories?: MemoryEntry[]; projects?: Project[] }) => void
 ): Promise<void> {
   activeUid = uid;
 
@@ -103,7 +103,7 @@ export async function startCloudSync(
     if (activeUid !== uid) return; // signed out again before this resolved
 
     const remoteChats: Chat[] = chatsSnap.exists() ? JSON.parse(chatsSnap.val()) : [];
-    const remoteSettings: ScribbleSettings | null = settingsSnap.exists() ? JSON.parse(settingsSnap.val()) : null;
+    const remoteSettings: LofinSettings | null = settingsSnap.exists() ? JSON.parse(settingsSnap.val()) : null;
     const remoteMemories: MemoryEntry[] = memoriesSnap.exists() ? JSON.parse(memoriesSnap.val()) : [];
     const remoteProjects: Project[] = projectsSnap.exists() ? JSON.parse(projectsSnap.val()) : [];
 
@@ -161,7 +161,7 @@ export async function startCloudSync(
         const json = snap.val() as string;
         if (json === lastSettingsJson) return;
         try {
-          const remoteSettings: ScribbleSettings = JSON.parse(json);
+          const remoteSettings: LofinSettings = JSON.parse(json);
           const merged = mergeSettings(getState().settings, remoteSettings);
           lastSettingsJson = JSON.stringify(merged);
           saveSettings(merged);
@@ -258,7 +258,7 @@ export function pushChatsToCloud(chats: Chat[]): void {
   }, 2000);
 }
 
-export function pushSettingsToCloud(settings: ScribbleSettings): void {
+export function pushSettingsToCloud(settings: LofinSettings): void {
   if (!activeUid) return;
   const db = getRtdb();
   if (!db) return;

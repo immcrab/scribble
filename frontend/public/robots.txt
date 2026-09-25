@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://scribbleai.dev/sitemap.xml
+Sitemap: https://lofin.dev/sitemap.xml

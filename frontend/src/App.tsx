@@ -23,7 +23,6 @@ import {
   parseDocsSlugFromLocation,
   isRootLocation,
   isKnownAppLocation,
-  isAuthActionLocation,
   isAdminLocation,
   isUsageLocation,
   isTutorLocation,
@@ -32,7 +31,6 @@ import { DocsPage } from "./pages/DocsPage";
 import { AdminPage } from "./pages/AdminPage";
 import { UsagePage } from "./pages/UsagePage";
 import { TutorPage } from "./pages/TutorPage";
-import { AuthActionPage } from "./pages/AuthActionPage";
 import { fetchPublicChat } from "./lib/cloudSync";
 import { ProjectView } from "./components/ProjectView";
 import { DirectMode } from "./modes/DirectMode";
@@ -85,9 +83,6 @@ export default function App() {
   const [adminRoute, setAdminRoute] = useState(() => isAdminLocation());
   const [usageRoute, setUsageRoute] = useState(() => isUsageLocation());
   const [tutorRoute, setTutorRoute] = useState(() => isTutorLocation());
-  // Firebase email-action landing ("/auth/action"). A one-shot page — no popstate
-  // wiring needed; its only exit is a full-page link back into the app.
-  const [authAction] = useState(() => isAuthActionLocation());
   const [accepted, setAccepted] = useState(hasAcceptedTerms);
   // Bare "/" (no chat id, no docs slug) always lands on a blank compose screen — never
   // whichever chat happened to be active last. createChat() reuses an already-empty
@@ -159,19 +154,19 @@ export default function App() {
   useEffect(() => {
     if (docsSlug !== null) return; // DocsPage owns its own title while mounted
     if (adminRoute) {
-      document.title = "Model catalog admin — Scribble";
+      document.title = "Model catalog admin — Lofin";
     } else if (usageRoute) {
-      document.title = "Usage — Scribble";
+      document.title = "Usage — Lofin";
     } else if (tutorRoute) {
-      document.title = "Tutor — Scribble";
+      document.title = "Tutor — Lofin";
     } else if (notFound) {
-      document.title = "Page not found — Scribble";
+      document.title = "Page not found — Lofin";
     } else if (shareState.status === "shared") {
-      document.title = `${shareState.chat.title || "Shared chat"} — Scribble`;
+      document.title = `${shareState.chat.title || "Shared chat"} — Lofin`;
     } else if (!freshCompose && activeChat?.title) {
-      document.title = `${activeChat.title} — Scribble`;
+      document.title = `${activeChat.title} — Lofin`;
     } else {
-      document.title = "Scribble — Multi-Model AI Chat";
+      document.title = "Lofin — Multi-Model AI Chat";
     }
   }, [docsSlug, adminRoute, usageRoute, tutorRoute, notFound, shareState, activeChat?.title, freshCompose]);
 
@@ -378,10 +373,6 @@ export default function App() {
     return () => window.removeEventListener("keydown", onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  if (authAction) {
-    return <AuthActionPage />;
-  }
 
   if (docsSlug !== null) {
     return (

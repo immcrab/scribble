@@ -17,8 +17,8 @@ function timingSafeEqual(a: string, b: string): boolean {
 
 /** Basic access gate, not a real security boundary — see README. */
 export function checkPassword(request: Request, env: Env): boolean {
-  if (!env.SCRIBBLE_PASSWORD) return true;
-  const supplied = request.headers.get("X-Scribble-Password");
+  if (!env.LOFIN_PASSWORD) return true;
+  const supplied = request.headers.get("X-Lofin-Password");
   if (supplied === null) return false;
-  return timingSafeEqual(supplied, env.SCRIBBLE_PASSWORD);
+  return timingSafeEqual(supplied, env.LOFIN_PASSWORD);
 }

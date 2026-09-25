@@ -3,12 +3,12 @@ import type { ModelDef } from "../types";
 
 /** A persisted selector value, never sent to a provider. The request resolver below
  * turns it into a real available model at send time. */
-export const AUTO_MODEL_ID = "__scribble_auto__";
+export const AUTO_MODEL_ID = "__lofin_auto__";
 export const AUTO_MODEL: ModelDef = {
   provider: "xkiro", modelId: AUTO_MODEL_ID, displayName: "Auto — best for this request",
   icon: "Sparkles", contextLength: 128000, capabilities: ["text", "vision", "code", "reasoning"],
   free: true, supportsStreaming: true, supportsVision: true,
-  description: "Scribble picks an available model based on the request.",
+  description: "Lofin picks an available model based on the request.",
 };
 
 /** Small transparent router: favors vision for images, reasoning for analysis, code for

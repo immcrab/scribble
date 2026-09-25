@@ -30,7 +30,7 @@ export async function generateImage({
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      ...(password ? { "X-Scribble-Password": password } : {}),
+      ...(password ? { "X-Lofin-Password": password } : {}),
     },
     body: JSON.stringify({ prompt, ...(provider ? { provider } : {}), ...(model ? { model } : {}), ...(size ? { size } : {}) }),
     signal,
@@ -78,7 +78,7 @@ export async function editImage({
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      ...(password ? { "X-Scribble-Password": password } : {}),
+      ...(password ? { "X-Lofin-Password": password } : {}),
     },
     body: JSON.stringify({ prompt, image, ...(model ? { model } : {}), ...(size ? { size } : {}) }),
     signal,

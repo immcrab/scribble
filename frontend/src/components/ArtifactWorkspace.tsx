@@ -140,7 +140,7 @@ export function ArtifactWorkspace({
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${pane.label || "scribble-artifact"}.zip`;
+    a.download = `${pane.label || "lofin-artifact"}.zip`;
     document.body.appendChild(a);
     a.click();
     a.remove();

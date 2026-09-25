@@ -101,7 +101,7 @@ export async function* streamChat(params: StreamChatParams): AsyncGenerator<Stre
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      ...(password ? { "X-Scribble-Password": password } : {}),
+      ...(password ? { "X-Lofin-Password": password } : {}),
     },
     body: JSON.stringify({
       provider: model.provider,
@@ -185,7 +185,7 @@ export async function generateChatTitle(workerUrl: string, password: string | un
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        ...(password ? { "X-Scribble-Password": password } : {}),
+        ...(password ? { "X-Lofin-Password": password } : {}),
       },
       body: JSON.stringify({ prompt }),
     });

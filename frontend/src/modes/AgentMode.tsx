@@ -218,7 +218,7 @@ export function AgentMode({
           <>
             {chat.messages.length === 0 ? (
               <div className="flex-1">
-                <EmptyState mode="agent" heading="What would you like Scribble to do?" onPick={(p) => send(p, [])} />
+                <EmptyState mode="agent" heading="What would you like Lofin to do?" onPick={(p) => send(p, [])} />
                 <div className="mx-auto -mt-8 flex max-w-md items-start gap-2 rounded-xl border border-base-700/50 bg-base-900/40 px-3.5 py-2.5 text-xs text-slate-500">
                   <Lightbulb size={13} className="mt-0.5 shrink-0 text-accent-400" />
                   Agent Mode is built for multi-step tasks. Replies search the web automatically

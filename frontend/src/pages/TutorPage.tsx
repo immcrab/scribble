@@ -753,7 +753,7 @@ export function TutorPage({ onExit }: { onExit: () => void }) {
         <button
           onClick={onExit}
           className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 hover:bg-base-700/60 hover:text-white"
-          title="Back to Scribble"
+          title="Back to Lofin"
         >
           <ArrowLeft size={17} />
         </button>

@@ -3,8 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <title>Privacy Policy — Scribble</title>
-    <meta name="description" content="How Scribble handles your data." />
+    <title>Privacy Policy — Lofin</title>
+    <meta name="description" content="How Lofin handles your data." />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 
     <!-- Google tag (gtag.js) -->
@@ -124,14 +124,14 @@
           <rect width="32" height="32" rx="9" fill="#252523" />
           <path d="M16 6c1 6 3 9 10 10-7 1-9 4-10 10-1-6-3-9-10-10 7-1 9-4 10-10Z" fill="#f5f0eb" />
         </svg>
-        <a href="/">Scribble</a>
+        <a href="/">Lofin</a>
       </header>
 
       <h1>Privacy Policy</h1>
       <p class="updated">Last updated: August 2026</p>
 
       <p>
-        Scribble is a small, independently run AI playground. This page explains what data the app
+        Lofin is a small, independently run AI playground. This page explains what data the app
         touches, where it goes, and what choices you have. It's written in plain language rather than
         formal legalese — if you need something more formal for a commercial deployment, have a lawyer
         review it.
@@ -142,7 +142,7 @@
         <li>
           <strong>Chats and attachments.</strong> By default, everything you type — messages, uploaded
           images/files, and app settings — is saved only in your browser's local storage on your device.
-          Nothing is sent to a Scribble-operated database unless you sign in (below).
+          Nothing is sent to a Lofin-operated database unless you sign in (below).
         </li>
         <li>
           <strong>Signing in with Google.</strong> If you sign in, your chats and preferences (not your
@@ -152,20 +152,20 @@
         </li>
         <li>
           <strong>Account info.</strong> Signing in uses Google's own OAuth flow via Firebase
-          Authentication. Scribble only receives the basic profile info Google provides (name, email,
+          Authentication. Lofin only receives the basic profile info Google provides (name, email,
           avatar) — no password is ever seen by this app.
         </li>
       </ul>
 
       <h2>What happens when you send a message</h2>
       <p>
-        Your message (and any attachment) is sent to Scribble's own Cloudflare Worker, which forwards it
+        Your message (and any attachment) is sent to Lofin's own Cloudflare Worker, which forwards it
         to whichever AI model provider you selected and streams the reply back. Depending on the model,
         that provider is <strong>xKiro, Mistral, Google Gemini, or OpenRouter</strong> for chat,
         <strong>Cloudflare Workers AI or xKiro</strong> for image generation and editing, and
         <strong>xKiro</strong> for text to speech. (A "Puter.js" model, if you pick one, is the exception —
         those requests go straight from your browser to Puter under its own sign-in and never touch
-        Scribble's Worker.) The Worker doesn't write your conversations to a log or database of its own;
+        Lofin's Worker.) The Worker doesn't write your conversations to a log or database of its own;
         it's a pass-through, and once a response finishes streaming it holds nothing.
       </p>
       <p>
@@ -191,7 +191,7 @@
 
       <h2>Approximate location</h2>
       <p>
-        If you allow it (Scribble asks once, and you can change it anytime in Settings), each chat request
+        If you allow it (Lofin asks once, and you can change it anytime in Settings), each chat request
         includes a rough city-level location. It's estimated from your IP address via
         <strong>ipapi.co</strong> — never the browser's GPS, and never anything more precise than
         city / region / country. Your local date, time, and timezone are always sent, since reading the
@@ -200,7 +200,7 @@
 
       <h2>Memory</h2>
       <p>
-        Memory is off by default. If you turn it on, Scribble will save short facts you ask it to remember
+        Memory is off by default. If you turn it on, Lofin will save short facts you ask it to remember
         (or that it judges worth keeping) and send them back as context in later chats. Those facts are
         stored with your account in the same Firebase database as your synced chats, and are cleared when
         you delete a memory, turn memory off, or delete your account.
@@ -208,20 +208,20 @@
 
       <h2>Analytics</h2>
       <p>
-        Scribble uses <strong>Google Analytics</strong> to see aggregate, non-identifying usage — page
+        Lofin uses <strong>Google Analytics</strong> to see aggregate, non-identifying usage — page
         views, which modes get used, roughly where visitors are. It loads when a page opens and may set
-        cookies or read local identifiers in your browser. Scribble never sends your chat content,
+        cookies or read local identifiers in your browser. Lofin never sends your chat content,
         messages, or account email to Google, and there are no ads or advertising trackers on the site.
-        You can block the analytics script with a content blocker — Scribble still works with it blocked.
+        You can block the analytics script with a content blocker — Lofin still works with it blocked.
       </p>
 
-      <h2>What Scribble doesn't do</h2>
+      <h2>What Lofin doesn't do</h2>
       <ul>
         <li>No advertising, and no ad trackers.</li>
         <li>No selling or renting of your data to anyone.</li>
         <li>No sending of your chat content, messages, or email to analytics systems.</li>
         <li>No payment processing — the app is free to use.</li>
-        <li>No server-side chat history kept by Scribble's own backend.</li>
+        <li>No server-side chat history kept by Lofin's own backend.</li>
       </ul>
 
       <h2>Your choices</h2>
@@ -232,11 +232,11 @@
         <li>Block the analytics script with a browser extension — the app still works.</li>
         <li>Sign out to stop cross-device sync; sign back in later to resume it.</li>
         <li>Delete your account entirely from Settings → Account, which also removes your synced data.</li>
-        <li>Use Scribble without ever signing in — your chats then stay only in this browser.</li>
+        <li>Use Lofin without ever signing in — your chats then stay only in this browser.</li>
       </ul>
 
       <h2>Children</h2>
-      <p>Scribble isn't directed at children under 13 and isn't designed to collect data from them.</p>
+      <p>Lofin isn't directed at children under 13 and isn't designed to collect data from them.</p>
 
       <h2>Changes</h2>
       <p>
@@ -246,13 +246,13 @@
 
       <h2>Contact</h2>
       <p>
-        Questions about this policy: <a href="mailto:support@scribbleai.dev">support@scribbleai.dev</a>.
+        Questions about this policy: <a href="mailto:support@lofin.dev">support@lofin.dev</a>.
       </p>
 
       <p class="note">
         This is a template written for a small independent project, not formal legal advice. It describes
         the app's actual behavior as of the date above, based on its source code — if you self-host or
-        fork Scribble, review and adjust it to match your own deployment before relying on it.
+        fork Lofin, review and adjust it to match your own deployment before relying on it.
       </p>
     </div>
   </body>

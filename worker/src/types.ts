@@ -9,31 +9,10 @@ export interface Env {
   OPENROUTER_API_KEY?: string;
   /** Z.ai (Zhipu AI) key for the GLM family — see adapters/zai.ts. */
   ZAI_API_KEY?: string;
-  SCRIBBLE_PASSWORD?: string;
+  LOFIN_PASSWORD?: string;
   /** Cloudflare account id + Workers AI token, for /api/image/generate. */
   CF_ACCOUNT_ID?: string;
   CF_AI_TOKEN?: string;
-  /** Full Firebase service account JSON (one line), for /api/auth/send-verification.
-   * Set with: wrangler secret put FIREBASE_SERVICE_ACCOUNT */
-  FIREBASE_SERVICE_ACCOUNT?: string;
-  /** Resend API key (re_...) — sends the verification email. */
-  RESEND_API_KEY?: string;
-  /** Cloudflare Turnstile secret used to protect verification-email sends.
-   * Set with: wrangler secret put TURNSTILE_SECRET */
-  TURNSTILE_SECRET?: string;
-  /** Comma-separated production hostnames accepted from Turnstile Siteverify. */
-  TURNSTILE_HOSTNAMES?: string;
-  /** From address for the verification email, e.g. "Scribble <scribble@owenis.me>".
-   * Plain var (not secret) — see wrangler.toml [vars]. */
-  VERIFY_EMAIL_FROM?: string;
-  /** Optional: URL the verification link bounces back to after the code is
-   * consumed (ActionCodeSettings.continueUrl). Plain var. */
-  VERIFY_CONTINUE_URL?: string;
-  /** Optional: rewrite the verification link to land on our own action page
-   * (e.g. "https://scribbleai.dev/auth/action") instead of Firebase's default
-   * handler — the console's custom-action-URL setting is locked on this
-   * project. Plain var. */
-  VERIFY_ACTION_URL?: string;
   /** R2 bucket for admin announcement artwork, served through the Worker. */
   ANNOUNCEMENT_ASSETS?: R2Bucket;
   FIREBASE_PROJECT_ID?: string;

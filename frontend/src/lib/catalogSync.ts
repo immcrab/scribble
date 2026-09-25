@@ -31,7 +31,7 @@ import type { AdminCatalog, Announcement, ModelDef, UsageConfig, WatermarkConfig
  * (The admin write on `usage/$uid` is only used by the "Reset usage" button on the Users tab.)
  */
 
-const CATALOG_KEY = "scribble:catalog";
+const CATALOG_KEY = "lofin:catalog";
 const CATALOG_PATH = "catalog/v1";
 
 /** The out-of-the-box usage limit: 1,000,000 credits/token-equivalents per UTC day, every
@@ -44,13 +44,40 @@ export const DEFAULT_USAGE: UsageConfig = {
   bonus: {},
 };
 
-/** The out-of-the-box watermark: on, "ScribbleAI", 55% opacity, ~2.8% of image width. */
+/** The out-of-the-box watermark: on, "Lofin", 55% opacity, ~2.8% of image width. */
 export const DEFAULT_WATERMARK: WatermarkConfig = {
   enabled: true,
-  text: "ScribbleAI",
+  text: "Lofin",
   opacity: 0.55,
   scale: 0.028,
 };
+
+const LEGACY_BRAND = ["s", "cribble"].join("");
+const ANNOUNCEMENT_ASSET_ORIGINS = new Set([
+  `https://${LEGACY_BRAND}-worker.imcrabfr.workers.dev`,
+  `https://${LEGACY_BRAND}ai.imcrabfr.workers.dev`,
+  `https://api.${LEGACY_BRAND}ai.dev`,
+  "https://ai.lofin.dev",
+]);
+const ANNOUNCEMENT_ASSET_ORIGIN = "https://lofin.dev";
+
+/**
+ * Announcement artwork lives in the shared R2 bucket, not in a Worker. Route
+ * known legacy Worker asset URLs through the production site Worker so old
+ * catalog entries keep working after a Worker migration.
+ */
+export function announcementImageUrlForSite(raw: string): string {
+  try {
+    const url = new URL(raw);
+    if (ANNOUNCEMENT_ASSET_ORIGINS.has(url.origin) && url.pathname.startsWith("/api/announcement-image/announcements/")) {
+      url.protocol = "https:";
+      url.host = "lofin.dev";
+    }
+    return url.toString();
+  } catch {
+    return raw;
+  }
+}
 
 export const EMPTY_CATALOG: AdminCatalog = {
   added: [],
@@ -82,7 +109,7 @@ function sanitizeAnnouncements(raw: unknown): Announcement[] {
       id: typeof item.id === "string" ? item.id.slice(0, 80) : "",
       title: typeof item.title === "string" ? item.title.slice(0, 120).trim() : "",
       body: typeof item.body === "string" ? item.body.slice(0, 3000).trim() : "",
-      imageUrl: typeof item.imageUrl === "string" && /^https:\/\//.test(item.imageUrl) ? item.imageUrl : undefined,
+      imageUrl: typeof item.imageUrl === "string" && /^https:\/\//.test(item.imageUrl) ? announcementImageUrlForSite(item.imageUrl) : undefined,
       ctaLabel: typeof item.ctaLabel === "string" ? item.ctaLabel.slice(0, 40).trim() || undefined : undefined,
       ctaUrl: typeof item.ctaUrl === "string" && /^https?:\/\//.test(item.ctaUrl) ? item.ctaUrl : undefined,
       publishedAt: typeof item.publishedAt === "number" ? item.publishedAt : 0,

@@ -18,9 +18,9 @@ export function ConsentGate({ onAccept }: { onAccept: () => void }) {
         <div className="mx-auto mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-accent-500 to-accent-700 shadow-glow">
           <LogoMark size={18} className="text-base-950" />
         </div>
-        <h1 className="mb-2 font-serif text-xl font-semibold text-white">Welcome to Scribble</h1>
+        <h1 className="mb-2 font-serif text-xl font-semibold text-white">Welcome to Lofin</h1>
         <p className="mb-5 text-sm leading-relaxed text-slate-400">
-          Scribble is an independently run AI playground. By continuing, you agree to the{" "}
+          Lofin is an independently run AI playground. By continuing, you agree to the{" "}
           <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-accent-400 underline underline-offset-2 hover:text-accent-500">
             Terms of Service
           </a>{" "}

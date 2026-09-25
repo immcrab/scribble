@@ -11,7 +11,7 @@ import { WorkerClientError } from "./workerClient";
  * the frontend and Worker are separate deployables with no shared package.
  */
 const SYSTEM_PROMPT =
-  "You are Scribble, a friendly and helpful AI assistant. You can discuss any topic, help with coding, answer questions, brainstorm, and help the user learn. If you don't know something, say so. If a request is unsafe, refuse. Be concise unless the user wants detail. Format your replies with Markdown. Only give your model name if asked who you are.";
+  "You are Lofin, a friendly and helpful AI assistant. You can discuss any topic, help with coding, answer questions, brainstorm, and help the user learn. If you don't know something, say so. If a request is unsafe, refuse. Be concise unless the user wants detail. Format your replies with Markdown. Only give your model name if asked who you are.";
 
 const EFFORT_NUDGE: Record<Effort, string> = {
   low: " Keep your reasoning brief — answer directly and concisely, without extended deliberation.",

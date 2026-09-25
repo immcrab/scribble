@@ -37,11 +37,11 @@ export function ExportChat({
     }
   };
 
-  const baseName = (chatTitle || "scribble-chat").replace(/[^a-z0-9]/gi, "_").toLowerCase() || "chat";
+  const baseName = (chatTitle || "lofin-chat").replace(/[^a-z0-9]/gi, "_").toLowerCase() || "chat";
 
   const toMarkdown = (): string => {
     const lines: string[] = [];
-    lines.push(`# ${chatTitle || "Scribble AI Chat"}`);
+    lines.push(`# ${chatTitle || "Lofin.Dev Chat"}`);
     lines.push("");
     for (const m of messages) {
       const role = m.role.charAt(0).toUpperCase() + m.role.slice(1);
@@ -57,7 +57,7 @@ export function ExportChat({
   const toJson = (): string =>
     JSON.stringify(
       {
-        title: chatTitle || "Scribble AI Chat",
+        title: chatTitle || "Lofin.Dev Chat",
         exportedAt: new Date().toISOString(),
         messages: messages.map((m) => ({
           role: m.role,

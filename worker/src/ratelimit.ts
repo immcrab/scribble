@@ -21,25 +21,3 @@ export function isRateLimited(key: string): boolean {
   bucket.count += 1;
   return bucket.count > MAX_REQUESTS_PER_WINDOW;
 }
-
-/**
- * Per-email cooldown for /api/auth/send-verification — the mailbomb guard.
- * Same best-effort caveat as above (per-isolate, not global). 3 sends per hour
- * per address; Firebase's own Identity Toolkit quota is the backstop.
- */
-const EMAIL_WINDOW_MS = 3_600_000;
-const MAX_EMAILS_PER_WINDOW = 3;
-const emailBuckets = new Map<string, { count: number; resetAt: number }>();
-
-export function isEmailRateLimited(email: string): boolean {
-  const now = Date.now();
-  const bucket = emailBuckets.get(email);
-
-  if (!bucket || now > bucket.resetAt) {
-    emailBuckets.set(email, { count: 1, resetAt: now + EMAIL_WINDOW_MS });
-    return false;
-  }
-
-  bucket.count += 1;
-  return bucket.count > MAX_EMAILS_PER_WINDOW;
-}

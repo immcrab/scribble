@@ -1,4 +1,4 @@
-import type { ScribbleSettings } from "./storage";
+import type { LofinSettings } from "./storage";
 
 /**
  * Font / color-palette / bold appearance options and the single function that
@@ -86,7 +86,7 @@ const PALETTE_IDS = new Set(THEME_PALETTE_OPTIONS.map((p) => p.id));
 
 /** Sets `data-font`, `data-bold` and `data-palette` on <html>. Falls back to the
  * defaults for anything missing/unknown (e.g. settings synced from an older client). */
-export function applyAppearance(settings: Pick<ScribbleSettings, "fontFamily" | "boldText" | "themePalette">): void {
+export function applyAppearance(settings: Pick<LofinSettings, "fontFamily" | "boldText" | "themePalette">): void {
   const root = document.documentElement;
   root.dataset.font = FONT_IDS.has(settings.fontFamily) ? settings.fontFamily : "inter";
   root.dataset.palette = PALETTE_IDS.has(settings.themePalette) ? settings.themePalette : "mono";

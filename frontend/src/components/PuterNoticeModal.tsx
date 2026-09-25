@@ -2,7 +2,7 @@ import { TriangleAlert } from "lucide-react";
 
 /** Shown before a Puter.js model is used for the first time in this browser
  * session — Puter.js has its own auth and its own billing, separate from
- * Scribble, so the user needs to know before they're dropped into its
+ * Lofin, so the user needs to know before they're dropped into its
  * sign-in popup. Skipped entirely once `isPuterSignedIn()` is true. */
 export function PuterNoticeModal({
   modelName,
@@ -27,7 +27,7 @@ export function PuterNoticeModal({
           <h3 className="text-sm font-semibold text-white">Puter.js sign-in required</h3>
         </div>
         <p className="mb-4 text-sm text-slate-300">
-          <span className="font-medium text-slate-200">{modelName}</span> runs through Puter.js, not Scribble. You'll
+          <span className="font-medium text-slate-200">{modelName}</span> runs through Puter.js, not Lofin. You'll
           be asked to sign in with a free Puter account, and it uses your own Puter credits (1,000 free per month) —
           not ours.
         </p>

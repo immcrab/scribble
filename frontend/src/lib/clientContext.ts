@@ -1,5 +1,5 @@
 import type { ClientContext } from "../types";
-import type { ScribbleSettings } from "./storage";
+import type { LofinSettings } from "./storage";
 import { useLocationPrompt } from "./locationPrompt";
 
 /** How long a resolved IP-geolocation lookup stays valid before the next chat turn re-queries
@@ -73,7 +73,7 @@ async function getLocation(): Promise<string | undefined> {
  * asked again on every message, only when it'd actually help.
  */
 export async function getClientContext(
-  locationConsent: ScribbleSettings["locationConsent"],
+  locationConsent: LofinSettings["locationConsent"],
   lastUserMessage?: string,
   customSystemPrompt?: string,
   memories?: string[],

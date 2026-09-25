@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { useAuthStore } from "../state/authStore";
 import { useChatStore } from "../state/chatStore";
-import { useCatalogStore, publishCatalog, DEFAULT_USAGE, DEFAULT_WATERMARK } from "../lib/catalogSync";
+import { announcementImageUrlForSite, useCatalogStore, publishCatalog, DEFAULT_USAGE, DEFAULT_WATERMARK } from "../lib/catalogSync";
 import {
   PROVIDER_LABELS,
   catalogWithAdminAdditions,
@@ -43,7 +43,7 @@ import type { AdminCatalog, Announcement, ModelDef, Provider, UsageConfig, Usage
 /** Providers the admin can publish an official model against — the ones the Worker
  * already holds a key for, plus Puter (in-browser, no key). "custom" is per-browser only,
  * so it's not offered here. */
-const PUBLISHABLE_PROVIDERS: Provider[] = ["xkiro", "mistral", "gemini", "openrouter", "zai", "puter"];
+const PUBLISHABLE_PROVIDERS: Provider[] = ["xkiro", "gemini", "openrouter", "zai", "puter"];
 
 const DEFAULT_CONTEXT_LENGTH = 128000;
 
@@ -83,7 +83,7 @@ function GateScreen({ onExit }: { onExit: () => void }) {
           onClick={onExit}
           className="rounded-lg border border-base-600/60 bg-base-800/60 px-4 py-2 text-sm font-medium text-slate-200 hover:border-accent-500/50 hover:text-white"
         >
-          Back to Scribble
+          Back to Lofin
         </button>
       </div>
     </div>
@@ -741,7 +741,7 @@ function WatermarkTab({
                 value={draft.text}
                 maxLength={40}
                 onChange={(e) => setDraft((d) => ({ ...d, text: e.target.value }))}
-                placeholder="ScribbleAI"
+                placeholder="lofin"
                 className={inputClass}
               />
             </div>
@@ -860,7 +860,7 @@ function AnnouncementsTab({ catalog, busy, run }: { catalog: AdminCatalog; busy:
       const res = await fetch(`${worker}/api/admin/announcement-image`, { method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": file.type }, body: file });
       const data = await res.json().catch(() => ({})) as { url?: string; error?: string };
       if (!res.ok || !data.url) throw new Error(data.error || "Upload failed.");
-      setDraft((d) => ({ ...d, imageUrl: data.url! }));
+      setDraft((d) => ({ ...d, imageUrl: announcementImageUrlForSite(data.url!) }));
     } catch (e) { setUploadError(e instanceof Error ? e.message : "Upload failed."); } finally { setUploading(false); }
   };
   return <>
@@ -929,7 +929,7 @@ export function AdminPage({ onExit }: { onExit: () => void }) {
           <button
             onClick={onExit}
             className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 hover:bg-base-700/60 hover:text-white"
-            title="Back to Scribble"
+            title="Back to Lofin"
           >
             <ArrowLeft size={17} />
           </button>
@@ -937,7 +937,7 @@ export function AdminPage({ onExit }: { onExit: () => void }) {
             <LogoMark size={15} className="text-base-950" />
           </div>
           <div className="min-w-0">
-            <h1 className="text-sm font-semibold text-white">Scribble admin</h1>
+            <h1 className="text-sm font-semibold text-white">Lofin admin</h1>
             <p className="truncate text-xs text-slate-500">signed in as {user!.email}</p>
           </div>
           {busy && <Loader2 size={15} className="ml-auto animate-spin text-slate-400" />}

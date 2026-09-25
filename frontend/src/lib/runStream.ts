@@ -8,6 +8,7 @@ import { recordCreditUsage, usageGate } from "./usage";
 import { estimateTokenCount } from "./tokenCount";
 import { getClientContext } from "./clientContext";
 import { playNotificationSound } from "./notificationSound";
+import { notifyReplyFinished } from "./desktopNotifications";
 import { acquireRequestSlot } from "./requestQueue";
 
 /** An upstream failure worth riding out rather than surfacing: rate limits, per-minute or
@@ -20,7 +21,7 @@ const RATE_LIMIT_RE =
   /(429|500|502|503|504|529)|rate[\s-]?limit|too many requests|quota|usage[\s-]?limit|limit (reached|exceeded)|exceeded your|out of (credit|token)|exhaust|capacity|overload|congest|throttl|temporarily unavailable|server error|internal error|timed?[\s-]?out|timeout|network|failed to fetch|load failed|connection|socket hang|stream error|empty response|try again|busy|unavailable/i;
 
 /** Failures no amount of retrying can fix — a bad key, an unknown model, a sign-in
- * requirement, or Scribble's own daily credit gate. Checked first so those surface
+ * requirement, or Lofin's own daily credit gate. Checked first so those surface
  * immediately instead of spinning in the retry loop. */
 const NON_RETRYABLE_RE =
   /(400|401|403|404)|invalid[\s_-]?api[\s_-]?key|api key|unauthori[sz]|authenticat|not found|no such model|unknown model|invalid model|unsupported|daily credit limit|sign in to use|limited to the free default/i;
@@ -280,7 +281,10 @@ export async function runAssistantStream(params: {
           return;
         }
 
-        if (store.settings.notificationSound) playNotificationSound();
+        // Read fresh preferences: a user can change these while a long reply is streaming.
+        const notificationSettings = useChatStore.getState().settings;
+        if (notificationSettings.notificationSound) playNotificationSound();
+        if (notificationSettings.desktopNotifications) notifyReplyFinished();
         return;
       } catch (err) {
         if (controller.signal.aborted) {

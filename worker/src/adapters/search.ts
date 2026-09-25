@@ -61,7 +61,7 @@ export function publicUrlIn(query: string): string | undefined {
  * can still fall back to a normal search result. */
 async function readWebPageDirect(url: string): Promise<{ title: string; text: string }> {
   const response = await fetch(url, {
-    headers: { "User-Agent": "ScribbleAI web reader", Accept: "text/html,application/xhtml+xml,text/plain" },
+    headers: { "User-Agent": "lofin web reader", Accept: "text/html,application/xhtml+xml,text/plain" },
     redirect: "follow",
   });
   if (!response.ok) throw new Error(`Website returned ${response.status}.`);

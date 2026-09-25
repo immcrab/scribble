@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Download, X } from "lucide-react";
 
-const STORAGE_KEY = "scribble:pwa-dismissed";
+const STORAGE_KEY = "lofin:pwa-dismissed";
 
 /**
  * Shows an "Add to Home Screen" prompt on mobile/touch devices when the
@@ -80,7 +80,7 @@ export function PWAInstallPrompt() {
           <Download size={20} />
         </div>
         <div className="min-w-0 flex-1">
-          <div className="text-sm font-medium text-slate-100">Install ScribbleAI</div>
+          <div className="text-sm font-medium text-slate-100">Install Lofin</div>
           <div className="text-xs text-slate-500">Add to your home screen for the full experience.</div>
         </div>
         <button

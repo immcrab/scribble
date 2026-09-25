@@ -285,7 +285,7 @@ export function Sidebar({
                 <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-accent-500 to-accent-700 shadow-glow">
                   <LogoMark size={15} className="text-base-950" />
                 </div>
-                <span className="font-serif text-lg font-semibold tracking-tight text-white">Scribble</span>
+                <span className="font-serif text-lg font-semibold tracking-tight text-white">Lofin</span>
               </button>
             )}
             <button

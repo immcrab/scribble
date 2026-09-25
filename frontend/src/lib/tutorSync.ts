@@ -178,7 +178,7 @@ function normalize(raw: unknown): TutorBlob {
  * removed once the data has actually landed in the cloud (see `clearLegacyLocal`),
  * so a user who never signs in doesn't lose it either.
  */
-const LEGACY_KEY = "scribble:tutor:v1";
+const LEGACY_KEY = "lofin:tutor:v1";
 
 export function readLegacyLocal(): TutorBlob | null {
   try {

@@ -88,6 +88,21 @@ export const MODEL_DOCS: Record<string, string> = {
   "deepseek/deepseek-v3.2": "DeepSeek V3.2 — reasoning model, 128K context.",
   "deepseek/deepseek-chat-v3.1": "DeepSeek V3.1 chat/reasoning model.",
   "stealth/ox-alpha-free": "An unbranded/\"stealth\" model available free via xKiro — capabilities unconfirmed, try it and see.",
+  "cohere/command-a-plus": "Cohere's flagship Command A+ — native reasoning, tool calling, and image understanding for enterprise agentic workflows, with a 436K context window.",
+  "cohere/north-mini-code": "Cohere's North Mini Code — a 30B sparse mixture-of-experts model (3B active) focused on agentic coding, 256K context.",
+  "cohere/command-a-reasoning": "Cohere's Command A Reasoning — a reasoning-first model for agentic workflows and tool use, with 288K context.",
+  "cohere/command-a-vision": "Cohere's Command A Vision — image-capable model for charts, diagrams, OCR, and document Q&A, with 128K context.",
+  "cohere/command-a": "Cohere's open-weights 111B Command A — a general, multilingual model for agentic and coding work, with 288K context.",
+  "cohere/command-a-translate": "Cohere's Command A Translate — machine translation optimized for 23 languages, with an 8K context window.",
+  "cohere/north-small-translate": "Cohere's North Small Translate — a 218B-total, 25B-active mixture-of-experts translation model covering 50+ languages, 32K context.",
+  "cohere/command-r-plus-08-2024": "Cohere's August 2024 Command R+ revision — higher-throughput, lower-latency general model with 128K context.",
+  "cohere/command-r-08-2024": "Cohere's August 2024 Command R revision — improved multilingual RAG and tool-use model with 128K context.",
+  "cohere/command-r7b-12-2024": "Cohere's December 2024 Command R7B — compact, fast Command R family model with a 132K context window.",
+  "cohere/aya-expanse-32b": "Cohere's Aya Expanse 32B — multilingual model serving 23 languages, with 128K context.",
+  "cohere/aya-vision-32b": "Cohere's Aya Vision 32B — multimodal language and image understanding across 23 languages, with 16K context.",
+  "cohere/tiny-aya-global": "Cohere's Tiny Aya Global — a 3.35B instruction-tuned multilingual model supporting 70 languages, with 8K context.",
+  "cohere/tiny-aya-earth": "Cohere's Tiny Aya Earth — a 3.35B multilingual model specialized for West Asian and African languages, with 8K context.",
+  "cohere/tiny-aya-fire": "Cohere's Tiny Aya Fire — a 3.35B multilingual model specialized for South Asian languages, with 8K context.",
 };
 
 /** Falls back to a capability-derived one-liner when a model has no hand-written entry above. */

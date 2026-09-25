@@ -36,8 +36,9 @@ import { AccountSection } from "./AccountSection";
 import { EffortSelector } from "./EffortSelector";
 import { PuterNoticeModal } from "./PuterNoticeModal";
 import { isPuterSignedIn } from "../lib/puterClient";
+import { requestDesktopNotificationPermission } from "../lib/desktopNotifications";
 import type { ModelDef } from "../types";
-import type { ScribbleSettings } from "../lib/storage";
+import type { LofinSettings } from "../lib/storage";
 
 function SectionLabel({ children }: { children: string }) {
   return <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">{children}</h3>;
@@ -60,13 +61,13 @@ const THEME_OPTIONS: { id: Theme; label: string; icon: typeof Sun }[] = [
   { id: "system", label: "System", icon: Monitor },
 ];
 
-const TEXT_SIZE_OPTIONS: { id: ScribbleSettings["textSize"]; label: string }[] = [
+const TEXT_SIZE_OPTIONS: { id: LofinSettings["textSize"]; label: string }[] = [
   { id: "small", label: "Small" },
   { id: "medium", label: "Medium" },
   { id: "large", label: "Large" },
 ];
 
-const DENSITY_OPTIONS: { id: ScribbleSettings["density"]; label: string }[] = [
+const DENSITY_OPTIONS: { id: LofinSettings["density"]; label: string }[] = [
   { id: "comfortable", label: "Comfortable" },
   { id: "compact", label: "Compact" },
 ];
@@ -258,7 +259,7 @@ function AppearanceSection() {
           )}
         </Dropdown>
         <p className="mt-2 text-xs text-slate-500">
-          Scribble always answers in this language, whatever language you write in. Auto matches you.
+          Lofin always answers in this language, whatever language you write in. Auto matches you.
         </p>
       </div>
 
@@ -300,7 +301,7 @@ function MemorySection() {
       <ToggleSwitch
         label="Enable memory"
         description={
-          'Lets Scribble remember facts across chats — either when you ask it to ("remember that...") or when it decides on its own something\'s worth keeping — and recall them in later conversations. Off by default.'
+          'Lets Lofin remember facts across chats — either when you ask it to ("remember that...") or when it decides on its own something\'s worth keeping — and recall them in later conversations. Off by default.'
         }
         checked={settings.memoryEnabled}
         onChange={(v) => updateSettings({ memoryEnabled: v })}
@@ -330,7 +331,7 @@ function MemorySection() {
 
         {memories.length === 0 ? (
           <p className="rounded-lg border border-dashed border-base-700/60 px-3 py-4 text-center text-xs text-slate-500">
-            No memories yet — ask Scribble to remember something, or it'll pick up durable facts on its own.
+            No memories yet — ask Lofin to remember something, or it'll pick up durable facts on its own.
           </p>
         ) : (
           <div className="space-y-1.5">
@@ -503,7 +504,7 @@ export function SettingsModal({ onClose, initialTab }: { onClose: () => void; in
                   />
                   <ToggleSwitch
                     label="Web search"
-                    description="Scribble searches current topics automatically; asking it to browse or use a website always triggers a live search"
+                    description="Lofin searches current topics automatically; asking it to browse or use a website always triggers a live search"
                     checked={settings.autoWebSearch}
                     onChange={(v) => updateSettings({ autoWebSearch: v })}
                   />
@@ -521,7 +522,7 @@ export function SettingsModal({ onClose, initialTab }: { onClose: () => void; in
                   />
                   <ToggleSwitch
                     label="Share approximate location"
-                    description="Lets Scribble give locally-relevant answers, using a city-level estimate from your IP address — never exact GPS. Off by default"
+                    description="Lets Lofin give locally-relevant answers, using a city-level estimate from your IP address — never exact GPS. Off by default"
                     checked={settings.locationConsent === "granted"}
                     onChange={(v) => updateSettings({ locationConsent: v ? "granted" : "denied" })}
                   />
@@ -530,6 +531,19 @@ export function SettingsModal({ onClose, initialTab }: { onClose: () => void; in
                     description="Play a short chime when a reply finishes"
                     checked={settings.notificationSound}
                     onChange={(v) => updateSettings({ notificationSound: v })}
+                  />
+                  <ToggleSwitch
+                    label="Browser notifications"
+                    description="Notify you when a reply finishes while Lofin is in the background"
+                    checked={settings.desktopNotifications}
+                    onChange={async (enabled) => {
+                      if (!enabled) {
+                        updateSettings({ desktopNotifications: false });
+                        return;
+                      }
+                      const granted = await requestDesktopNotificationPermission();
+                      updateSettings({ desktopNotifications: granted });
+                    }}
                   />
                   <ToggleSwitch
                     label="Show token counts"
@@ -558,7 +572,7 @@ export function SettingsModal({ onClose, initialTab }: { onClose: () => void; in
                   className="w-full resize-y rounded-lg border border-base-600/60 bg-base-900 px-3 py-2 text-sm text-white outline-none focus:border-accent-500"
                 />
                 <p className="mt-1 text-xs text-slate-500">
-                  Added to every request, on top of Scribble's own instructions.
+                  Added to every request, on top of Lofin's own instructions.
                 </p>
               </div>
 
@@ -575,11 +589,11 @@ export function SettingsModal({ onClose, initialTab }: { onClose: () => void; in
                       value={workerUrl}
                       onChange={(e) => setWorkerUrl(e.target.value)}
                       onBlur={() => updateSettings({ workerUrl: workerUrl.trim() })}
-                      placeholder="https://scribble-worker.your-subdomain.workers.dev"
+                      placeholder="https://lofin.your-subdomain.workers.dev"
                       className="w-full rounded-lg border border-base-600/60 bg-base-900 px-3 py-2 text-sm text-white outline-none focus:border-accent-500"
                     />
                     <p className="mt-1 text-xs text-slate-500">
-                      The Cloudflare Worker that proxies chat requests. Pre-filled for scribbleai.dev — only change this if
+                      The Cloudflare Worker that proxies chat requests. Pre-filled for lofin.dev — only change this if
                       you're running your own.
                     </p>
                   </div>
@@ -591,7 +605,7 @@ export function SettingsModal({ onClose, initialTab }: { onClose: () => void; in
                       type="password"
                       onChange={(e) => setPassword(e.target.value)}
                       onBlur={() => updateSettings({ password })}
-                      placeholder="Only if the Worker has SCRIBBLE_PASSWORD set"
+                      placeholder="Only if the Worker has LOFIN_PASSWORD set"
                       className="w-full rounded-lg border border-base-600/60 bg-base-900 px-3 py-2 text-sm text-white outline-none focus:border-accent-500"
                     />
                   </div>

@@ -1,4 +1,4 @@
-# Scribble
+# Lofin
 
 A polished AI playground in the spirit of Arena.ai — six modes (Battle, Agent,
 Side by Side, Direct, Image, Text to Speech), a writing Tutor that learns your
@@ -15,7 +15,7 @@ GitHub Pages (frontend) → Cloudflare Worker (proxy) → xKiro / Mistral / Gemi
 ## Project structure
 
 ```
-scribble/
+lofin/
 ├─ frontend/            Vite + React + TS static site
 │  ├─ src/config/        model registry — models.ts is the one file to edit
 │  │                      when a provider's catalog changes
@@ -99,7 +99,7 @@ npx wrangler secret put OPENROUTER_API_KEY
 npx wrangler secret put ZAI_API_KEY          # Z.ai / Zhipu AI — the GLM model family
 
 # optional — gates the Worker behind a shared password (see below)
-npx wrangler secret put SCRIBBLE_PASSWORD
+npx wrangler secret put LOFIN_PASSWORD
 ```
 
 You only need to set the keys for providers you actually want to serve —
@@ -114,12 +114,12 @@ Also edit `worker/wrangler.toml` → `ALLOWED_ORIGINS` to include your deployed
 GitHub Pages origin (comma-separated, no paths — e.g.
 `https://your-username.github.io`). This is the Worker's CORS allowlist.
 
-### About `SCRIBBLE_PASSWORD`
+### About `LOFIN_PASSWORD`
 
 This is a basic access gate, not a real auth system: if set, the Worker
-rejects any request missing a matching `X-Scribble-Password` header. It stops
+rejects any request missing a matching `X-Lofin-Password` header. It stops
 casual/opportunistic use of your Worker URL, not a determined attacker. Enter
-the same password in Scribble's Settings modal to unlock it client-side.
+the same password in Lofin's Settings modal to unlock it client-side.
 
 ## 5. Deploy the Worker
 
@@ -128,15 +128,19 @@ cd worker
 npx wrangler deploy
 ```
 
-Copy the resulting `https://scribble-worker.<subdomain>.workers.dev` URL —
+Copy the resulting `https://lofin.<subdomain>.workers.dev` URL —
 you'll paste it into the frontend's Settings modal after deploying, or bake
 it in at build time via `VITE_WORKER_URL` (see below).
+
+For the production lofin deployment, the custom API endpoint is
+`https://ai.lofin.dev`; it is the default in Advanced Settings and is
+served by the same `lofin` Worker.
 
 ## 6. Deploy the frontend to GitHub Pages
 
 ```bash
 cd frontend
-VITE_WORKER_URL=https://scribble-worker.<subdomain>.workers.dev npm run build   # outputs to frontend/dist
+VITE_WORKER_URL=https://lofin.<subdomain>.workers.dev npm run build   # outputs to frontend/dist
 ```
 
 Setting `VITE_WORKER_URL` at build time bakes in a default Worker endpoint so
@@ -164,7 +168,7 @@ Worker's URL (and password, if you set one). Settings are stored in
   copy keyed by chat id backs the `/c/{id}` share links.
 - **Gating** (sign-in required beyond the free default model, daily credit
   limits) is enforced client-side — an honour-system speed bump, not a security
-  boundary. The Worker itself only checks the optional `SCRIBBLE_PASSWORD` and
+  boundary. The Worker itself only checks the optional `LOFIN_PASSWORD` and
   the rate limiter; anyone with the Worker URL can call it directly.
 - **Rate limiting** on the Worker is a simple in-memory per-IP counter. It's a
   practical speed bump, not a distributed guarantee — Workers isolates aren't
