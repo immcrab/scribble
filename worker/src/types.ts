@@ -13,6 +13,11 @@ export interface Env {
   /** Cloudflare account id + Workers AI token, for /api/image/generate. */
   CF_ACCOUNT_ID?: string;
   CF_AI_TOKEN?: string;
+  /** Cloudflare Turnstile secret used to verify the sign-in challenge.
+   * Set with: wrangler secret put TURNSTILE_SECRET */
+  TURNSTILE_SECRET?: string;
+  /** Comma-separated hostnames accepted from Turnstile Siteverify. Plain var. */
+  TURNSTILE_HOSTNAMES?: string;
   /** R2 bucket for admin announcement artwork, served through the Worker. */
   ANNOUNCEMENT_ASSETS?: R2Bucket;
   FIREBASE_PROJECT_ID?: string;

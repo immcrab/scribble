@@ -1,6 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
+import { SignInGate } from "./components/SignInGate";
 import "./styles/index.css";
 import { applyTheme, watchSystemTheme } from "./lib/theme";
 import { applyAppearance } from "./lib/appearance";
@@ -18,5 +19,6 @@ initCatalogSync();
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <App />
+    <SignInGate />
   </React.StrictMode>
 );

@@ -31,6 +31,9 @@ custom_domain = true
 # below if you don't mind it being public — it's not sensitive).
 [vars]
 ALLOWED_ORIGINS = "http://localhost:5173,https://lofin.dev,https://www.lofin.dev"
+# Hostnames returned by Turnstile Siteverify. For local development, override
+# this in .dev.vars with localhost and/or 127.0.0.1.
+TURNSTILE_HOSTNAMES = "lofin.dev,www.lofin.dev,ai.lofin.dev"
 # Announcement artwork storage. Images are served through this Worker, so no
 # separate public R2 domain is needed.
 FIREBASE_PROJECT_ID = "rypotic-playground"
@@ -49,3 +52,4 @@ bucket_name = "scribble-announcements"
 #   LOFIN_PASSWORD      (optional — omit to leave Lofin open/unauthenticated)
 #   CF_ACCOUNT_ID       (Cloudflare account id — powers /api/image/generate)
 #   CF_AI_TOKEN         (Workers AI-scoped API token — powers /api/image/generate)
+#   TURNSTILE_SECRET    (Cloudflare Turnstile secret — sign-in bot protection)

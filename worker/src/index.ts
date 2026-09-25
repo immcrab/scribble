@@ -25,6 +25,7 @@ import {
 import { extractMemory, shouldRecallMemory } from "./adapters/memory";
 import { ndjsonLine } from "./adapters/base";
 import { verifyFirebaseIdToken } from "./firebaseVerifyToken";
+import { verifySignInTurnstile } from "./turnstile";
 
 const ADMIN_EMAIL = "imcrabfr@gmail.com";
 
@@ -100,6 +101,16 @@ export default {
     }
 
     if (url.pathname === "/api/health") {
+      return json({ ok: true }, 200, cors);
+    }
+
+    // Sign-in bot check: the browser posts the Turnstile token here before it opens the
+    // Google popup. The secret never leaves the Worker.
+    if (url.pathname === "/api/turnstile/verify" && request.method === "POST") {
+      const body = (await request.json().catch(() => null)) as { token?: unknown } | null;
+      if (!(await verifySignInTurnstile(body?.token, request, env))) {
+        return json({ error: "Verification failed. Please try again." }, 403, cors);
+      }
       return json({ ok: true }, 200, cors);
     }
 
