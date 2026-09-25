@@ -43,7 +43,20 @@ export function isKnownAppLocation(): boolean {
   if (isAdminLocation()) return true;
   if (isUsageLocation()) return true;
   if (isTutorLocation()) return true;
+  if (isConnectionsLocation()) return true;
   return false;
+}
+
+/** "<base>/connections" — where Lofin is currently operating (see pages/ConnectionsPage.tsx). */
+export function isConnectionsLocation(): boolean {
+  const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+  const path = window.location.pathname;
+  return path === `${base}/connections` || path === `${base}/connections/`;
+}
+
+export function connectionsPath(): string {
+  const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+  return `${base}/connections`;
 }
 
 /** "<base>/tutor" — the writing tutor that learns the user's own voice (see pages/TutorPage.tsx). */

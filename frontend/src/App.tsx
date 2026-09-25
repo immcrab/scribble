@@ -26,11 +26,13 @@ import {
   isAdminLocation,
   isUsageLocation,
   isTutorLocation,
+  isConnectionsLocation,
 } from "./lib/router";
 import { DocsPage } from "./pages/DocsPage";
 import { AdminPage } from "./pages/AdminPage";
 import { UsagePage } from "./pages/UsagePage";
 import { TutorPage } from "./pages/TutorPage";
+import { ConnectionsPage } from "./pages/ConnectionsPage";
 import { fetchPublicChat } from "./lib/cloudSync";
 import { ProjectView } from "./components/ProjectView";
 import { DirectMode } from "./modes/DirectMode";
@@ -83,6 +85,7 @@ export default function App() {
   const [adminRoute, setAdminRoute] = useState(() => isAdminLocation());
   const [usageRoute, setUsageRoute] = useState(() => isUsageLocation());
   const [tutorRoute, setTutorRoute] = useState(() => isTutorLocation());
+  const [connectionsRoute, setConnectionsRoute] = useState(() => isConnectionsLocation());
   const [accepted, setAccepted] = useState(hasAcceptedTerms);
   // Bare "/" (no chat id, no docs slug) always lands on a blank compose screen — never
   // whichever chat happened to be active last. createChat() reuses an already-empty
@@ -159,6 +162,8 @@ export default function App() {
       document.title = "Usage — Lofin";
     } else if (tutorRoute) {
       document.title = "Tutor — Lofin";
+    } else if (connectionsRoute) {
+      document.title = "Connections — Lofin";
     } else if (notFound) {
       document.title = "Page not found — Lofin";
     } else if (shareState.status === "shared") {
@@ -168,7 +173,7 @@ export default function App() {
     } else {
       document.title = "Lofin — Multi-Model AI Chat";
     }
-  }, [docsSlug, adminRoute, usageRoute, tutorRoute, notFound, shareState, activeChat?.title, freshCompose]);
+  }, [docsSlug, adminRoute, usageRoute, tutorRoute, connectionsRoute, notFound, shareState, activeChat?.title, freshCompose]);
 
   // Kick off the fetch for a shared chat this browser doesn't have locally
   // (deferred out of useState's initializer, which must stay side-effect-free).
@@ -269,22 +274,29 @@ export default function App() {
     return () => window.removeEventListener("popstate", listener);
   }, []);
 
+  // "/connections" — same standalone-page treatment as "/admin" and "/usage".
+  useEffect(() => {
+    const listener = () => setConnectionsRoute(isConnectionsLocation());
+    window.addEventListener("popstate", listener);
+    return () => window.removeEventListener("popstate", listener);
+  }, []);
+
   // Keep the address bar pointed at whichever chat is active — this is what gives every
   // chat its own "/c/{id}" URL. Suspended while viewing someone else's shared chat, docs,
   // the fresh "/" compose screen (that only gets a URL once a message is sent), or the
   // 404 page (the URL there must stay exactly what the visitor typed/followed, not get
   // silently swapped for whatever chat happens to still be active underneath).
   useEffect(() => {
-    if (shareState.status !== "idle" || !activeChatId || docsSlug !== null || freshCompose || notFound || activeProjectId || adminRoute || usageRoute || tutorRoute) return;
+    if (shareState.status !== "idle" || !activeChatId || docsSlug !== null || freshCompose || notFound || activeProjectId || adminRoute || usageRoute || tutorRoute || connectionsRoute) return;
     syncUrlToChat(activeChatId);
-  }, [activeChatId, shareState.status, docsSlug, freshCompose, notFound, activeProjectId, adminRoute, usageRoute, tutorRoute]);
+  }, [activeChatId, shareState.status, docsSlug, freshCompose, notFound, activeProjectId, adminRoute, usageRoute, tutorRoute, connectionsRoute]);
 
   // A project's own "/p/{id}" URL — takes precedence over the per-chat URL above
   // while a project is open (its chats don't get their own address bar entry).
   useEffect(() => {
-    if (shareState.status !== "idle" || docsSlug !== null || notFound || adminRoute || usageRoute || tutorRoute || !activeProjectId) return;
+    if (shareState.status !== "idle" || docsSlug !== null || notFound || adminRoute || usageRoute || tutorRoute || connectionsRoute || !activeProjectId) return;
     syncUrlToProject(activeProjectId);
-  }, [activeProjectId, shareState.status, docsSlug, notFound, adminRoute, usageRoute, tutorRoute]);
+  }, [activeProjectId, shareState.status, docsSlug, notFound, adminRoute, usageRoute, tutorRoute, connectionsRoute]);
 
   // Picking a chat from the sidebar (or starting a new one) while viewing a shared/unresolved
   // chat should always drop back into the normal app — those actions only ever fire from
@@ -403,6 +415,17 @@ export default function App() {
         onExit={() => {
           window.history.pushState(null, "", import.meta.env.BASE_URL);
           setUsageRoute(false);
+        }}
+      />
+    );
+  }
+
+  if (connectionsRoute) {
+    return (
+      <ConnectionsPage
+        onExit={() => {
+          window.history.pushState(null, "", import.meta.env.BASE_URL);
+          setConnectionsRoute(false);
         }}
       />
     );

@@ -17,6 +17,7 @@ import {
   ShieldCheck,
   Gauge,
   GraduationCap,
+  Globe,
   FolderKanban,
   FolderPlus,
   FolderInput,
@@ -30,7 +31,7 @@ import { Dropdown } from "./Dropdown";
 import { ModelFavicon } from "./ProviderIcon";
 import { findModel } from "../config/models";
 import { useUsageStore, creditStatus } from "../lib/usage";
-import { docsPath, adminPath, usagePath, tutorPath } from "../lib/router";
+import { docsPath, adminPath, usagePath, tutorPath, connectionsPath } from "../lib/router";
 import { isAdmin } from "../lib/admin";
 import type { SettingsTab } from "./SettingsModal";
 import type { Chat, Mode } from "../types";
@@ -654,6 +655,18 @@ export function Sidebar({
             >
               <BookOpen size={16} />
               {(sidebarOpen || mobileOpen) && "Docs"}
+            </button>
+            <button
+              onClick={closeOnMobileSelect(() => {
+                window.history.pushState(null, "", connectionsPath());
+                window.dispatchEvent(new PopStateEvent("popstate"));
+              })}
+              className={`flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-slate-400 transition-colors hover:bg-base-800/70 hover:text-white ${
+                !sidebarOpen && !mobileOpen && "md:justify-center"
+              }`}
+            >
+              <Globe size={16} />
+              {(sidebarOpen || mobileOpen) && "Connections"}
             </button>
             {user && (
               <button
