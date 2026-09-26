@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   PenLine,
   MessageSquare,
@@ -23,6 +23,7 @@ import {
   FolderPlus,
   FolderInput,
   Bell,
+  Menu,
 } from "lucide-react";
 import { LogoMark } from "./Logo";
 import { useChatStore } from "../state/chatStore";
@@ -93,6 +94,71 @@ function MoveToProjectMenu({ chatId }: { chatId: string }) {
         </div>
       )}
     </Dropdown>
+  );
+}
+
+type MoreItem = { label: string; icon: ReactNode; onSelect: () => void };
+
+/** Footer "More" button (three lines) that pops a menu of the secondary pages upward. */
+function MoreMenu({ items, collapsed }: { items: MoreItem[]; collapsed: boolean }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onPointerDown = (e: PointerEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  return (
+    <div ref={ref} className="relative">
+      {open && (
+        <div
+          role="menu"
+          className={`absolute bottom-full left-0 z-50 mb-2 origin-bottom-left animate-pop-up rounded-xl border border-base-600/70 bg-base-850 p-1.5 shadow-panel ${
+            collapsed ? "w-52" : "w-full"
+          }`}
+        >
+          {items.map((it, i) => (
+            <button
+              key={it.label}
+              role="menuitem"
+              onClick={() => {
+                setOpen(false);
+                it.onSelect();
+              }}
+              style={{ animationDelay: `${i * 30}ms` }}
+              className="flex w-full animate-fade-in-up items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm text-slate-300 transition-colors [animation-fill-mode:backwards] hover:bg-base-700/70 hover:text-white"
+            >
+              <span className="text-slate-400">{it.icon}</span>
+              {it.label}
+            </button>
+          ))}
+        </div>
+      )}
+      <button
+        onClick={() => setOpen((o) => !o)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        title="More"
+        className={`flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm transition-colors hover:bg-base-800/70 hover:text-white ${
+          open ? "bg-base-800/70 text-white" : "text-slate-400"
+        } ${collapsed && "md:justify-center"}`}
+      >
+        <Menu size={16} />
+        {!collapsed && "More"}
+      </button>
+    </div>
   );
 }
 
@@ -210,6 +276,11 @@ export function Sidebar({
     fn();
     onCloseMobile();
   };
+  const goTo = (path: string) => {
+    window.history.pushState(null, "", path);
+    window.dispatchEvent(new PopStateEvent("popstate"));
+    onCloseMobile();
+  };
 
   const activeChat = chats.find((c) => c.id === activeChatId);
 
@@ -272,7 +343,7 @@ export function Sidebar({
         />
       )}
       <div
-        className={`fixed inset-y-0 left-0 z-40 h-full w-72 shrink-0 border-r border-base-700/60 glass-panel transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] md:relative md:z-auto md:translate-x-0 md:transition-[width] ${
+        className={`fixed inset-y-0 left-0 z-40 h-full w-72 shrink-0 border-r border-base-700/60 glass-panel transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] md:relative md:z-20 md:translate-x-0 md:transition-[width] ${
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         } ${sidebarOpen ? "md:w-72" : "md:w-[60px]"}`}
       >
@@ -631,84 +702,21 @@ export function Sidebar({
                 })}
               />
             )}
-            <button
-              onClick={closeOnMobileSelect(() => {
-                window.history.pushState(null, "", tutorPath());
-                window.dispatchEvent(new PopStateEvent("popstate"));
-              })}
-              className={`flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-slate-400 transition-colors hover:bg-base-800/70 hover:text-white ${
-                !sidebarOpen && !mobileOpen && "md:justify-center"
-              }`}
-            >
-              <GraduationCap size={16} />
-              {(sidebarOpen || mobileOpen) && "Tutor"}
-            </button>
-            <button
-              onClick={closeOnMobileSelect(() => {
-                window.history.pushState(null, "", docsPath());
-                window.dispatchEvent(new PopStateEvent("popstate"));
-              })}
-              className={`flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-slate-400 transition-colors hover:bg-base-800/70 hover:text-white ${
-                !sidebarOpen && !mobileOpen && "md:justify-center"
-              }`}
-            >
-              <BookOpen size={16} />
-              {(sidebarOpen || mobileOpen) && "Docs"}
-            </button>
-            <button
-              onClick={closeOnMobileSelect(() => {
-                window.history.pushState(null, "", connectionsPath());
-                window.dispatchEvent(new PopStateEvent("popstate"));
-              })}
-              className={`flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-slate-400 transition-colors hover:bg-base-800/70 hover:text-white ${
-                !sidebarOpen && !mobileOpen && "md:justify-center"
-              }`}
-            >
-              <Globe size={16} />
-              {(sidebarOpen || mobileOpen) && "Connections"}
-            </button>
-            {user && (
-              <button
-                onClick={closeOnMobileSelect(() => {
-                  window.history.pushState(null, "", libraryPath());
-                  window.dispatchEvent(new PopStateEvent("popstate"));
-                })}
-                className={`flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-slate-400 transition-colors hover:bg-base-800/70 hover:text-white ${
-                  !sidebarOpen && !mobileOpen && "md:justify-center"
-                }`}
-              >
-                <Images size={16} />
-                {(sidebarOpen || mobileOpen) && "Library"}
-              </button>
-            )}
-            {user && (
-              <button
-                onClick={closeOnMobileSelect(() => {
-                  window.history.pushState(null, "", usagePath());
-                  window.dispatchEvent(new PopStateEvent("popstate"));
-                })}
-                className={`flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-slate-400 transition-colors hover:bg-base-800/70 hover:text-white ${
-                  !sidebarOpen && !mobileOpen && "md:justify-center"
-                }`}
-              >
-                <Gauge size={16} />
-                {(sidebarOpen || mobileOpen) && "Usage"}
-              </button>
-            )}
-            {isAdmin(user) && (
-              <button
-                onClick={closeOnMobileSelect(() => {
-                  window.history.pushState(null, "", adminPath());
-                  window.dispatchEvent(new PopStateEvent("popstate"));
-                })}
-                className={`flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-slate-400 transition-colors hover:bg-base-800/70 hover:text-white ${
-                  !sidebarOpen && !mobileOpen && "md:justify-center"
-                }`}
-              >
-                <ShieldCheck size={16} />
-                {(sidebarOpen || mobileOpen) && "Model admin"}
-              </button>
-            )}
+            <MoreMenu
+              collapsed={!sidebarOpen && !mobileOpen}
+              items={[
+                { label: "Tutor", icon: <GraduationCap size={16} />, onSelect: () => goTo(tutorPath()) },
+                { label: "Docs", icon: <BookOpen size={16} />, onSelect: () => goTo(docsPath()) },
+                { label: "Connections", icon: <Globe size={16} />, onSelect: () => goTo(connectionsPath()) },
+                ...(user ? [
+                  { label: "Library", icon: <Images size={16} />, onSelect: () => goTo(libraryPath()) },
+                  { label: "Usage", icon: <Gauge size={16} />, onSelect: () => goTo(usagePath()) },
+                ] : []),
+                ...(isAdmin(user) ? [
+                  { label: "Model admin", icon: <ShieldCheck size={16} />, onSelect: () => goTo(adminPath()) },
+                ] : []),
+              ]}
+            />
             <a
               href="https://www.youtube.com/channel/UC4C7A2I8hpmPwn4tvi4-JPQ?sub_confirmation=1"
               target="_blank"

@@ -53,6 +53,11 @@ export default {
           "0%": { opacity: 0 },
           "100%": { opacity: 1 },
         },
+        // Popup menu grow-in with a slight overshoot, anchored to its bottom-left corner.
+        "pop-up": {
+          "0%": { opacity: 0, transform: "translateY(10px) scale(0.9)" },
+          "100%": { opacity: 1, transform: "translateY(0) scale(1)" },
+        },
         // Soft, breathing cursor — gentler than a hard on/off blink so a live
         // stream feels calm rather than frantic.
         "cursor-breathe": {
@@ -97,6 +102,7 @@ export default {
       animation: {
         "fade-in-up": "fade-in-up 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
         "fade-in": "fade-in 0.2s ease-out",
+        "pop-up": "pop-up 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)",
         "cursor-breathe": "cursor-breathe 1.2s ease-in-out infinite",
         "pulse-dot": "pulse-dot 1.4s ease-in-out 0ms infinite",
         "pulse-dot-a": "pulse-dot 1.4s ease-in-out 0ms infinite",
