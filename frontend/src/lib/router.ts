@@ -44,7 +44,20 @@ export function isKnownAppLocation(): boolean {
   if (isUsageLocation()) return true;
   if (isTutorLocation()) return true;
   if (isConnectionsLocation()) return true;
+  if (isLibraryLocation()) return true;
   return false;
+}
+
+/** "<base>/library" — the user's saved generated images (see pages/LibraryPage.tsx). */
+export function isLibraryLocation(): boolean {
+  const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+  const path = window.location.pathname;
+  return path === `${base}/library` || path === `${base}/library/`;
+}
+
+export function libraryPath(): string {
+  const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+  return `${base}/library`;
 }
 
 /** "<base>/connections" — where Lofin is currently operating (see pages/ConnectionsPage.tsx). */

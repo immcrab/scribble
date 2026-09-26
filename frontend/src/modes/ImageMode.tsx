@@ -13,6 +13,7 @@ import { IMAGE_STYLES, findImageStyle, applyImageStyle } from "../config/imageSt
 import { recordImageUsage, mediaUsageGate } from "../lib/usage";
 import { auth } from "../lib/firebase";
 import { isLocalDev } from "../lib/devMode";
+import { saveToLibrary } from "../lib/libraryClient";
 import { useAutoScroll } from "../lib/useAutoScroll";
 import { uid } from "../lib/id";
 import type { Attachment, ChatMessage as ChatMessageType } from "../types";
@@ -162,6 +163,15 @@ export function ImageMode({
       const wm = watermarkConfig();
       const dataUrl = wm.enabled ? await watermarkImage(rawUrl, wm) : rawUrl;
       recordImageUsage(editingSource ? EDIT_IMAGE_MODEL.billing : imageModel.billing);
+      // Best-effort: keep a private copy in the user's Library (Cloudflare R2) without
+      // blocking or failing the generation if storage is unavailable.
+      if (auth.currentUser) {
+        saveToLibrary({
+          dataUrl,
+          prompt: trimmed,
+          model: editingSource ? EDIT_IMAGE_MODEL.displayName : imageModel.displayName,
+        }).catch(() => {});
+      }
       updateMessage(chat.id, assistantMsg.id, {
         streaming: false,
         attachments: [{ id: uid(), name: "generated.png", type: "image/png", dataUrl, size: dataUrl.length }],

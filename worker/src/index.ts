@@ -26,6 +26,7 @@ import { extractMemory, shouldRecallMemory } from "./adapters/memory";
 import { ndjsonLine } from "./adapters/base";
 import { verifyFirebaseIdToken } from "./firebaseVerifyToken";
 import { verifyTurnstileToken } from "./turnstile";
+import { handleLibrary, isLibraryPath } from "./library";
 
 const ADMIN_EMAIL = "imcrabfr@gmail.com";
 
@@ -150,6 +151,11 @@ export default {
       const object = await env.ANNOUNCEMENT_ASSETS.get(key);
       if (!object) return json({ error: "Image not found." }, 404, cors);
       return new Response(object.body, { headers: { ...cors, "Content-Type": object.httpMetadata?.contentType ?? "application/octet-stream", "Cache-Control": object.httpMetadata?.cacheControl ?? "public, max-age=31536000, immutable" } });
+    }
+
+    // Per-user saved images (R2, private, Firebase-token gated) — see library.ts.
+    if (isLibraryPath(url.pathname)) {
+      return handleLibrary(request, env, url, cors, json);
     }
 
     if (url.pathname === "/api/chat/stream" && request.method === "POST") {

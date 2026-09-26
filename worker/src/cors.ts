@@ -11,7 +11,7 @@ export function corsHeaders(request: Request, env: Env): HeadersInit {
   const origin = resolveOrigin(request, env);
   return {
     "Access-Control-Allow-Origin": origin ?? "null",
-    "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+    "Access-Control-Allow-Methods": "POST, GET, DELETE, OPTIONS",
     // Announcement uploads authenticate with a Firebase bearer token. If this header
     // is absent the browser rejects the request during preflight as “Failed to fetch”,
     // before the Worker can return a useful error.
