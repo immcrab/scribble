@@ -37,7 +37,7 @@ function loadTurnstile(): Promise<TurnstileApi> {
 
 export const TURNSTILE_RESET_EVENT = "lofin:turnstile-reset";
 
-export function Turnstile({ onToken }: { onToken: (token: string | null) => void }) {
+export function Turnstile({ action, onToken }: { action: string; onToken: (token: string | null) => void }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const widgetIdRef = useRef<string | null>(null);
 
@@ -50,7 +50,7 @@ export function Turnstile({ onToken }: { onToken: (token: string | null) => void
         api = loaded;
         widgetIdRef.current = loaded.render(containerRef.current, {
           sitekey: SITE_KEY,
-          action: "sign_in",
+          action,
           callback: (token: string) => onToken(token),
           "expired-callback": () => onToken(null),
           "error-callback": () => onToken(null),
@@ -68,7 +68,7 @@ export function Turnstile({ onToken }: { onToken: (token: string | null) => void
       window.removeEventListener(TURNSTILE_RESET_EVENT, reset);
       if (api && widgetIdRef.current) api.remove(widgetIdRef.current);
     };
-  }, [onToken]);
+  }, [action, onToken]);
 
   return <div ref={containerRef} className="flex justify-center py-1" />;
 }

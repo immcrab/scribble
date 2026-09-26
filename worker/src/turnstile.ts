@@ -1,10 +1,10 @@
 import type { Env } from "./types";
 
 const VERIFY_URL = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
-const SIGN_IN_ACTION = "sign_in";
+const ALLOWED_ACTIONS = new Set(["site_gate", "sign_in"]);
 
-/** Verifies a single-use Turnstile token issued to the sign-in widget. */
-export async function verifySignInTurnstile(token: unknown, request: Request, env: Env): Promise<boolean> {
+/** Verifies a single-use Turnstile token issued to the site-gate widget. */
+export async function verifyTurnstileToken(token: unknown, request: Request, env: Env): Promise<boolean> {
   const expectedHostnames = new Set(
     (env.TURNSTILE_HOSTNAMES ?? "")
       .split(",")
@@ -36,7 +36,8 @@ export async function verifySignInTurnstile(token: unknown, request: Request, en
     const result = (await response.json()) as { success?: boolean; action?: string; hostname?: string };
     return (
       result.success === true &&
-      result.action === SIGN_IN_ACTION &&
+      typeof result.action === "string" &&
+      ALLOWED_ACTIONS.has(result.action) &&
       typeof result.hostname === "string" &&
       expectedHostnames.has(result.hostname)
     );
