@@ -1,6 +1,7 @@
 import { initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
 import { getDatabase, type Database } from "firebase/database";
+import { getFirestore, type Firestore } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBydJIC0fsocxmei-HBI6IH0ZlF-pwOcqg",
@@ -34,4 +35,19 @@ export function getRtdb(): Database | null {
     }
   }
   return rtdbInstance;
+}
+
+// Firestore backs saved chats and public share links. Keep this lazy for the
+// same reason as RTDB: a visitor who never signs in should not open a Firebase
+// connection just by loading the app.
+let firestoreInstance: Firestore | null | undefined;
+export function getFirestoreDb(): Firestore | null {
+  if (firestoreInstance === undefined) {
+    try {
+      firestoreInstance = getFirestore(firebaseApp);
+    } catch {
+      firestoreInstance = null;
+    }
+  }
+  return firestoreInstance;
 }

@@ -1,13 +1,13 @@
 import { get as dbGet, onValue, ref, set as dbSet } from "firebase/database";
-import { getRtdb } from "./firebase";
+import { deleteDoc, doc, getDoc, onSnapshot, setDoc } from "firebase/firestore";
+import { getFirestoreDb, getRtdb } from "./firebase";
 import { saveChats, saveSettings, saveMemories, saveProjects, type LofinSettings } from "./storage";
 import type { Chat, MemoryEntry, Project } from "../types";
 
 /**
  * Cross-device continuity: the same JSON already used for localStorage
- * (see storage.ts) round-trips through Realtime Database under
- * users/{uid}/chatsJson and users/{uid}/settingsJson as plain strings —
- * no separate RTDB data model to keep in sync with the local one.
+ * (see storage.ts) round-trips through Firestore (`users/{uid}.chatsJson`) as
+ * a plain string. Settings, memories, and projects remain in RTDB for now.
  *
  * Merging is last-write-wins *per chat* (by id, comparing updatedAt), so a
  * chat that only exists on one device always survives — logging in on a
@@ -74,8 +74,8 @@ let projectsPushTimer: ReturnType<typeof setTimeout> | null = null;
  * back up (covers the case where this device had data the cloud didn't),
  * then subscribes for live updates from other devices/tabs.
  *
- * Every entry point into the Realtime Database SDK is wrapped defensively —
- * if the database isn't actually provisioned for this Firebase project (or
+ * Every Firebase entry point is wrapped defensively — if the relevant database
+ * isn't actually provisioned for this Firebase project (or
  * the app is offline), sync silently doesn't happen instead of throwing;
  * local storage is the source of truth either way.
  */
@@ -86,26 +86,35 @@ export async function startCloudSync(
 ): Promise<void> {
   activeUid = uid;
 
+  const firestore = getFirestoreDb();
+  if (!firestore) return;
+  const chatsRef = doc(firestore, "users", uid);
   const db = getRtdb();
-  if (!db) return;
-  const chatsRef = ref(db, `users/${uid}/chatsJson`);
-  const settingsRef = ref(db, `users/${uid}/settingsJson`);
-  const memoriesRef = ref(db, `users/${uid}/memoriesJson`);
-  const projectsRef = ref(db, `users/${uid}/projectsJson`);
+  const settingsRef = db ? ref(db, `users/${uid}/settingsJson`) : null;
+  const memoriesRef = db ? ref(db, `users/${uid}/memoriesJson`) : null;
+  const projectsRef = db ? ref(db, `users/${uid}/projectsJson`) : null;
 
   try {
-    const [chatsSnap, settingsSnap, memoriesSnap, projectsSnap] = await Promise.all([
-      dbGet(chatsRef),
-      dbGet(settingsRef),
-      dbGet(memoriesRef),
-      dbGet(projectsRef),
-    ]);
+    const chatsSnap = await getDoc(chatsRef);
     if (activeUid !== uid) return; // signed out again before this resolved
 
-    const remoteChats: Chat[] = chatsSnap.exists() ? JSON.parse(chatsSnap.val()) : [];
-    const remoteSettings: LofinSettings | null = settingsSnap.exists() ? JSON.parse(settingsSnap.val()) : null;
-    const remoteMemories: MemoryEntry[] = memoriesSnap.exists() ? JSON.parse(memoriesSnap.val()) : [];
-    const remoteProjects: Project[] = projectsSnap.exists() ? JSON.parse(projectsSnap.val()) : [];
+    // One-time read fallback for accounts saved before chats moved to Firestore.
+    // The merged payload below is written to Firestore, so later sessions no
+    // longer read this RTDB value.
+    const firestoreChatsJson = chatsSnap.exists() ? chatsSnap.data().chatsJson : null;
+    const legacyChatsSnap = typeof firestoreChatsJson !== "string" && db
+      ? await dbGet(ref(db, `users/${uid}/chatsJson`))
+      : null;
+    const chatsJson = typeof firestoreChatsJson === "string"
+      ? firestoreChatsJson
+      : legacyChatsSnap?.exists() ? legacyChatsSnap.val() : null;
+    const remoteChats: Chat[] = typeof chatsJson === "string" ? JSON.parse(chatsJson) : [];
+    const [settingsSnap, memoriesSnap, projectsSnap] = db && settingsRef && memoriesRef && projectsRef
+      ? await Promise.all([dbGet(settingsRef), dbGet(memoriesRef), dbGet(projectsRef)])
+      : [null, null, null];
+    const remoteSettings: LofinSettings | null = settingsSnap?.exists() ? JSON.parse(settingsSnap.val()) : null;
+    const remoteMemories: MemoryEntry[] = memoriesSnap?.exists() ? JSON.parse(memoriesSnap.val()) : [];
+    const remoteProjects: Project[] = projectsSnap?.exists() ? JSON.parse(projectsSnap.val()) : [];
 
     const mergedChats = mergeChats(getState().chats, remoteChats);
     const mergedSettings = mergeSettings(getState().settings, remoteSettings);
@@ -122,10 +131,12 @@ export async function startCloudSync(
     saveProjects(mergedProjects);
     setState({ chats: mergedChats, settings: mergedSettings, memories: mergedMemories, projects: mergedProjects });
 
-    dbSet(chatsRef, lastChatsJson).catch(() => {});
-    dbSet(settingsRef, lastSettingsJson).catch(() => {});
-    dbSet(memoriesRef, lastMemoriesJson).catch(() => {});
-    dbSet(projectsRef, lastProjectsJson).catch(() => {});
+    setDoc(chatsRef, { chatsJson: lastChatsJson }, { merge: true }).catch(() => {});
+    if (db && settingsRef && memoriesRef && projectsRef) {
+      dbSet(settingsRef, lastSettingsJson).catch(() => {});
+      dbSet(memoriesRef, lastMemoriesJson).catch(() => {});
+      dbSet(projectsRef, lastProjectsJson).catch(() => {});
+    }
   } catch {
     // Offline, permission-denied, database not provisioned, etc. — sync
     // just doesn't happen this session; local data still works.
@@ -133,11 +144,12 @@ export async function startCloudSync(
   }
 
   try {
-    const unsubChats = onValue(
+    const unsubChats = onSnapshot(
       chatsRef,
       (snap) => {
         if (activeUid !== uid || !snap.exists()) return;
-        const json = snap.val() as string;
+        const json = snap.data().chatsJson;
+        if (typeof json !== "string") return;
         if (json === lastChatsJson) return; // our own write echoing back
         try {
           const remoteChats: Chat[] = JSON.parse(json);
@@ -154,7 +166,7 @@ export async function startCloudSync(
       }
     );
 
-    const unsubSettings = onValue(
+    const unsubSettings = db && settingsRef ? onValue(
       settingsRef,
       (snap) => {
         if (activeUid !== uid || !snap.exists()) return;
@@ -173,9 +185,9 @@ export async function startCloudSync(
       () => {
         // listen canceled (permission/connectivity) — stay local-only
       }
-    );
+    ) : () => {};
 
-    const unsubMemories = onValue(
+    const unsubMemories = db && memoriesRef ? onValue(
       memoriesRef,
       (snap) => {
         if (activeUid !== uid || !snap.exists()) return;
@@ -194,9 +206,9 @@ export async function startCloudSync(
       () => {
         // listen canceled (permission/connectivity) — stay local-only
       }
-    );
+    ) : () => {};
 
-    const unsubProjects = onValue(
+    const unsubProjects = db && projectsRef ? onValue(
       projectsRef,
       (snap) => {
         if (activeUid !== uid || !snap.exists()) return;
@@ -215,7 +227,7 @@ export async function startCloudSync(
       () => {
         // listen canceled (permission/connectivity) — stay local-only
       }
-    );
+    ) : () => {};
 
     unsubscribers = [unsubChats, unsubSettings, unsubMemories, unsubProjects];
   } catch {
@@ -241,11 +253,11 @@ export function stopCloudSync(): void {
   lastProjectsJson = null;
 }
 
-/** Debounced push, skipped entirely while any message is actively streaming so tokens don't hammer RTDB. */
+/** Debounced Firestore push, skipped while messages stream to avoid excess writes. */
 export function pushChatsToCloud(chats: Chat[]): void {
   if (!activeUid) return;
-  const db = getRtdb();
-  if (!db) return;
+  const firestore = getFirestoreDb();
+  if (!firestore) return;
   if (chats.some((c) => c.messages.some((m) => m.streaming))) return;
   const json = JSON.stringify(chats);
   if (json === lastChatsJson) return;
@@ -254,7 +266,7 @@ export function pushChatsToCloud(chats: Chat[]): void {
   chatsPushTimer = setTimeout(() => {
     if (activeUid !== uid) return; // signed out (or switched accounts) before this fired
     lastChatsJson = json;
-    dbSet(ref(db, `users/${uid}/chatsJson`), json).catch(() => {});
+    setDoc(doc(firestore, "users", uid), { chatsJson: json }, { merge: true }).catch(() => {});
   }, 2000);
 }
 
@@ -304,7 +316,7 @@ export function pushMemoriesToCloud(memories: MemoryEntry[]): void {
 }
 
 /**
- * Mirrors each chat to a public RTDB path keyed only by chat id — this is what makes
+ * Mirrors each chat to a public Firestore document keyed only by chat id — this is what makes
  * "/c/{id}" links work for someone who isn't signed in (see fetchPublicChat below and
  * App.tsx's shared-chat view). Anyone with the exact link can read it; the id is an
  * unguessable UUID, so this is "unlisted", not access-controlled. Runs independent of
@@ -314,8 +326,8 @@ const lastPublicJson = new Map<string, string>();
 const publicPushTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
 export function pushChatsPublic(chats: Chat[]): void {
-  const db = getRtdb();
-  if (!db) return;
+  const firestore = getFirestoreDb();
+  if (!firestore) return;
   for (const chat of chats) {
     if (chat.messages.length === 0) continue; // nothing worth a link yet
     if (chat.messages.some((m) => m.streaming)) continue; // wait until settled, same as pushChatsToCloud
@@ -327,7 +339,7 @@ export function pushChatsPublic(chats: Chat[]): void {
     const timer = setTimeout(() => {
       publicPushTimers.delete(chat.id);
       lastPublicJson.set(chat.id, json);
-      dbSet(ref(db, `publicChats/${chat.id}`), json).catch(() => {});
+      setDoc(doc(firestore, "publicChats", chat.id), { json }).catch(() => {});
     }, 2000);
     publicPushTimers.set(chat.id, timer);
   }
@@ -336,14 +348,14 @@ export function pushChatsPublic(chats: Chat[]): void {
 /** Looks up a shared chat by id for an unauthenticated visitor. Returns null if it
  * doesn't exist, the database isn't reachable, or the payload is malformed. */
 /**
- * Deletes a chat from RTDB immediately, bypassing the debounced push and the
+ * Deletes a chat from Firestore immediately, bypassing the debounced push and the
  * merge-by-id logic that would otherwise resurrect it from a stale remote or
  * other-tab copy. Also removes its public share link, which pushChatsPublic
  * never cleans up since it only ever writes chats that still exist.
  */
 export function deleteChatFromCloud(chatId: string, remainingChats: Chat[]): void {
-  const db = getRtdb();
-  if (!db) return;
+  const firestore = getFirestoreDb();
+  if (!firestore) return;
 
   const publicTimer = publicPushTimers.get(chatId);
   if (publicTimer) {
@@ -351,7 +363,11 @@ export function deleteChatFromCloud(chatId: string, remainingChats: Chat[]): voi
     publicPushTimers.delete(chatId);
   }
   lastPublicJson.delete(chatId);
-  dbSet(ref(db, `publicChats/${chatId}`), null).catch(() => {});
+  deleteDoc(doc(firestore, "publicChats", chatId)).catch(() => {});
+  // Remove the previous public RTDB copy too, so an old share link can't
+  // continue serving a chat that was deleted after the migration.
+  const rtdb = getRtdb();
+  if (rtdb) dbSet(ref(rtdb, `publicChats/${chatId}`), null).catch(() => {});
 
   if (!activeUid) return;
   const uid = activeUid;
@@ -361,16 +377,24 @@ export function deleteChatFromCloud(chatId: string, remainingChats: Chat[]): voi
   }
   const json = JSON.stringify(remainingChats);
   lastChatsJson = json;
-  dbSet(ref(db, `users/${uid}/chatsJson`), json).catch(() => {});
+  setDoc(doc(firestore, "users", uid), { chatsJson: json }, { merge: true }).catch(() => {});
 }
 
 export async function fetchPublicChat(id: string): Promise<Chat | null> {
-  const db = getRtdb();
-  if (!db) return null;
+  const firestore = getFirestoreDb();
+  if (!firestore) return null;
   try {
-    const snap = await dbGet(ref(db, `publicChats/${id}`));
-    if (!snap.exists()) return null;
-    return JSON.parse(snap.val() as string) as Chat;
+    const snap = await getDoc(doc(firestore, "publicChats", id));
+    if (snap.exists()) {
+      const json = snap.data().json;
+      return typeof json === "string" ? JSON.parse(json) as Chat : null;
+    }
+    // Keep pre-migration share URLs working. Any subsequent save writes the
+    // current version to Firestore; this fallback never writes new RTDB data.
+    const rtdb = getRtdb();
+    if (!rtdb) return null;
+    const legacy = await dbGet(ref(rtdb, `publicChats/${id}`));
+    return legacy.exists() ? JSON.parse(legacy.val() as string) as Chat : null;
   } catch {
     return null;
   }

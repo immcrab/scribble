@@ -11,7 +11,10 @@ import {
   FileCode,
   Blocks,
   Folder,
+  Minus,
+  X,
 } from "lucide-react";
+import { useWorkspaceControls } from "./ChatWorkspaceSplit";
 import type { Artifact } from "../lib/codeArtifact";
 import type { Vote, ModelDef } from "../types";
 import { Markdown } from "../lib/markdown";
@@ -104,6 +107,7 @@ export function ArtifactWorkspace({
   const [activeFile, setActiveFile] = useState(0);
   const [reloadKey, setReloadKey] = useState(0);
   const [copied, setCopied] = useState(false);
+  const controls = useWorkspaceControls();
 
   const pane = panes[Math.min(activeIndex, panes.length - 1)];
   const artifact = pane?.artifact ?? null;
@@ -237,6 +241,26 @@ export function ArtifactWorkspace({
           >
             <Download size={12} /> Download
           </button>
+          {controls && (
+            <>
+              <button
+                onClick={controls.minimize}
+                title="Minimize"
+                aria-label="Minimize code panel"
+                className="rounded-md p-1.5 text-slate-400 hover:bg-base-700/60 hover:text-white"
+              >
+                <Minus size={14} />
+              </button>
+              <button
+                onClick={controls.close}
+                title="Close"
+                aria-label="Close code panel"
+                className="rounded-md p-1.5 text-slate-400 hover:bg-base-700/60 hover:text-white"
+              >
+                <X size={14} />
+              </button>
+            </>
+          )}
         </div>
       </div>
 
@@ -267,9 +291,11 @@ export function ArtifactWorkspace({
             <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
               <Blocks size={36} className={pane?.streaming ? "animate-pulse text-slate-600" : "text-slate-700"} />
               <div>
-                <p className="text-sm font-medium text-slate-300">{pane?.streaming ? "Building…" : "Nothing here yet"}</p>
+                <p className="text-sm font-medium text-slate-300">{pane?.streaming ? "Building…" : "No code yet"}</p>
                 <p className="mt-0.5 text-xs text-slate-500">
-                  {pane?.streaming ? "Preview will appear when the response is done." : "Ask for something buildable to see it here."}
+                  {pane?.streaming
+                    ? "Code will appear here as it's written."
+                    : "The last reply had no code. Ask again, or hit Retry on the message."}
                 </p>
               </div>
             </div>

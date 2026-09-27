@@ -10,6 +10,7 @@ import { getClientContext } from "./clientContext";
 import { playNotificationSound } from "./notificationSound";
 import { notifyReplyFinished } from "./desktopNotifications";
 import { acquireRequestSlot } from "./requestQueue";
+import { replyPromisedCodeButHasNone } from "./codeArtifact";
 
 /** An upstream failure worth riding out rather than surfacing: rate limits, per-minute or
  * per-day usage/quota caps, transient overload, network blips, and empty responses. Matched
@@ -75,6 +76,10 @@ const MAX_AUTO_CONTINUE_ROUNDS = 40;
 /** Consecutive auto-continue rounds that add no new text before we stop. Without this, a
  * model that answers every continue nudge with an empty reply would burn all 40 rounds. */
 const MAX_STALLED_CONTINUE_ROUNDS = 2;
+
+/** Sent when a reply announced code ("I'll build it…") but ended without a single code fence. */
+const CODE_NUDGE =
+  "You said you would write the code but your message contained none. Output the complete code now, in fenced code blocks (one per file, with the filename in bold on its own line above each fence). Do not repeat your introduction or explain first — start with the code.";
 
 /**
  * Drives a single assistant message's streaming lifecycle: fetches tokens
@@ -170,14 +175,16 @@ export async function runAssistantStream(params: {
    * Used both when the model hits its output-token ceiling and when a retryable failure
    * kills the stream after tokens have already landed (restarting from scratch there would
    * throw away everything the user can already see). */
-  const continueInPlace = async (round: number, stalled: number) => {
+  const continueInPlace = async (round: number, stalled: number, nudge = CONTINUE_NUDGE) => {
     useChatStore.getState().updateMessage(chatId, messageId, { streaming: true, truncated: false });
+    // A code nudge starts a new paragraph rather than resuming mid-line.
+    if (nudge !== CONTINUE_NUDGE) useChatStore.getState().appendMessageContent(chatId, messageId, "\n\n");
     await runAssistantStream({
       ...params,
       history: [
         ...history,
-        { role: "assistant" as const, content: currentContent() },
-        { role: "user" as const, content: CONTINUE_NUDGE },
+        { role: "assistant" as const, content: currentContent().trimEnd() },
+        { role: "user" as const, content: nudge },
       ],
       appendToExisting: true,
       autoContinueRound: round + 1,
@@ -278,6 +285,18 @@ export async function runAssistantStream(params: {
           !!finalMsg?.content;
         if (canAutoContinue) {
           await continueInPlace(round, stalled);
+          return;
+        }
+
+        // The model announced code and stopped without writing any — the panel would just sit on
+        // "Nothing here yet". Ask once, in place, for the actual code.
+        if (
+          !truncated &&
+          !appendToExisting &&
+          lastUserMessage &&
+          replyPromisedCodeButHasNone(lastUserMessage, finalMsg?.content ?? "")
+        ) {
+          await continueInPlace(round, stalled, CODE_NUDGE);
           return;
         }
 

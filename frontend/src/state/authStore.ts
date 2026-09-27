@@ -7,7 +7,8 @@ import {
   type User,
 } from "firebase/auth";
 import { ref, remove as dbRemove } from "firebase/database";
-import { auth, googleProvider, getRtdb } from "../lib/firebase";
+import { deleteDoc, doc } from "firebase/firestore";
+import { auth, googleProvider, getFirestoreDb, getRtdb } from "../lib/firebase";
 import { useChatStore } from "./chatStore";
 import { startUsageSync, stopUsageSync } from "../lib/usage";
 import { useTutorStore } from "../lib/tutorStore";
@@ -37,7 +38,7 @@ interface AuthStore {
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
   /** Reauthenticates (Firebase requires a recent login to delete an account), wipes the
-   * user's synced RTDB node, then deletes the Firebase account itself. Local chats/settings
+   * user's synced cloud records, then deletes the Firebase account itself. Local chats/settings
    * are the caller's responsibility to clear (see AccountSection.tsx). */
   deleteAccount: () => Promise<void>;
 }
@@ -70,6 +71,14 @@ export const useAuthStore = create<AuthStore>((set) => ({
         await dbRemove(ref(db, `users/${user.uid}`));
       } catch {
         // best-effort — proceed with account deletion even if the RTDB wipe fails
+      }
+    }
+    const firestore = getFirestoreDb();
+    if (firestore) {
+      try {
+        await deleteDoc(doc(firestore, "users", user.uid));
+      } catch {
+        // best-effort — proceed with account deletion even if the Firestore wipe fails
       }
     }
     await deleteUser(user);

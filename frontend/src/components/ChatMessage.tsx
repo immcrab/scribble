@@ -573,7 +573,7 @@ export function ChatMessage({
                   <span className="prelude-text">Writing {lastFileName ?? "code"}…</span>
                 </div>
               ) : (
-                !artifact.remainingText && <Markdown content="_Built the app — see the panel on the right._" />
+                !artifact.remainingText && <Markdown content="_Built the app — see the code panel._" />
               )}
             </>
           ) : message.content ? (

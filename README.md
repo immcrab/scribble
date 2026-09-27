@@ -163,9 +163,15 @@ Worker's URL (and password, if you set one). Settings are stored in
 ## Notes
 
 - **Chat history** lives in the browser's `localStorage` by default. Signing in
-  with Google (Firebase Auth) syncs chats, projects, settings, and opt-in
-  memories to Firebase Realtime Database for cross-device continuity; a public
-  copy keyed by chat id backs the `/c/{id}` share links.
+  with Google (Firebase Auth) syncs chats to Cloud Firestore for cross-device
+  continuity; a public Firestore document keyed by chat id backs the `/c/{id}`
+  share links. Projects, settings, and opt-in memories remain in Realtime
+  Database.
+
+  Enable Cloud Firestore before deploying this version, then publish
+  [`firestore.rules`](./firestore.rules). The public-share rule deliberately
+  permits unauthed reads and writes because guests can create and share chats;
+  those links are unlisted UUIDs, not private access-controlled resources.
 - **Gating** (sign-in required beyond the free default model, daily credit
   limits) is enforced client-side — an honour-system speed bump, not a security
   boundary. The Worker itself only checks the optional `LOFIN_PASSWORD` and

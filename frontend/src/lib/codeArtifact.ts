@@ -293,3 +293,20 @@ const CODING_PATTERNS: RegExp[] = [
 export function isCodingRequest(text: string): boolean {
   return CODING_PATTERNS.some((re) => re.test(text));
 }
+
+/** A reply that announces code ("I'll build…", "Here's the page:") — the shape of a model that
+ * promised to write something and then stopped before emitting any of it. */
+const CODE_PROMISE_RE = /\b(i'll|i will|i'm going to|i am going to|let me|let's|here'?s|here is|below|creating|building|writing)\b|:\s*$/i;
+
+/**
+ * True when the user asked for code, the reply contains no code fence at all, and the reply
+ * reads like a lead-in to code rather than a finished answer. Used to re-prompt a model that
+ * said it would write the code and then ended its turn without doing so.
+ */
+export function replyPromisedCodeButHasNone(request: string, reply: string): boolean {
+  if (!isCodingRequest(request)) return false;
+  if (reply.includes("```")) return false;
+  const text = reply.trim();
+  if (!text || text.length > 2500) return false;
+  return CODE_PROMISE_RE.test(text);
+}
