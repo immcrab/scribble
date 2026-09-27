@@ -17,8 +17,9 @@
 import { streamChat } from "../providers";
 import type { WireMessage } from "../providers";
 import { useChatStore } from "../state/chatStore";
-import { isModelGated } from "../config/models";
+import { isModelGated, getDefaultModel } from "../config/models";
 import { auth } from "./firebase";
+import { useAuthStore } from "../state/authStore";
 import { getClientContext } from "./clientContext";
 import { recordModelUsage } from "./modelStats";
 import { recordCreditUsage, usageGate } from "./usage";
@@ -131,8 +132,8 @@ function gateFor(model: ModelDef): string | null {
   if (model.provider === "custom" && !customProviderFor(model)) {
     return `${model.displayName} points at a connection that no longer exists — re-add it in Settings → Models.`;
   }
-  if (isModelGated(model) && !auth.currentUser) {
-    return `Sign in to use ${model.displayName} — the free default (Mistral Small 4) doesn't need an account.`;
+  if (isModelGated(model) && !useAuthStore.getState().user) {
+    return `Sign in to use ${model.displayName} — the free default (${getDefaultModel().displayName}) doesn't need an account.`;
   }
   const gate = usageGate(model);
   return gate.ok ? null : gate.reason;

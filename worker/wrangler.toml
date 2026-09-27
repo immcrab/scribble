@@ -53,3 +53,17 @@ bucket_name = "scribble-announcements"
 #   CF_ACCOUNT_ID       (Cloudflare account id — powers /api/image/generate)
 #   CF_AI_TOKEN         (Workers AI-scoped API token — powers /api/image/generate)
 #   TURNSTILE_SECRET    (Cloudflare Turnstile secret — sign-in bot protection)
+
+# Staging deployment (`wrangler deploy --env staging`). The only place TURNSTILE_QA_MODE
+# may be set: it lets Cloudflare's Turnstile *test* keys through the site gate so QA can
+# script the gate (frontend: ?turnstile_qa=pass|block|interactive). The Worker ignores it
+# on production hosts regardless (src/turnstile.ts isProductionHost).
+[env.staging]
+name = "lofin-staging"
+routes = [{ pattern = "staging.lofin.dev", custom_domain = true }]
+
+[env.staging.vars]
+ALLOWED_ORIGINS = "https://staging.lofin.dev,http://localhost:5173"
+TURNSTILE_HOSTNAMES = "staging.lofin.dev"
+FIREBASE_PROJECT_ID = "rypotic-playground"
+TURNSTILE_QA_MODE = "pass"

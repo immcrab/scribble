@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useModalFocus } from "../lib/useModalFocus";
 import { Bell, BellOff, ExternalLink, X } from "lucide-react";
 import { useCatalogStore } from "../lib/catalogSync";
 import { useChatStore } from "../state/chatStore";
@@ -62,9 +63,16 @@ export function AnnouncementLaunch() {
 export function AnnouncementCenter({ onClose }: { onClose: () => void }) {
   const announcements = useCatalogStore((s) => s.catalog.announcements ?? []);
   const { settings, updateSettings } = useChatStore();
+  const ref = useRef<HTMLDivElement>(null);
+  useModalFocus(ref);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
   return <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-fade-in" onClick={onClose}>
-    <div onClick={(e) => e.stopPropagation()} className="flex max-h-[85vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-base-600/60 bg-base-850 shadow-panel animate-fade-in-up">
-      <header className="flex items-center gap-3 border-b border-base-700/60 px-5 py-4"><div className="rounded-xl bg-accent-500/15 p-2 text-accent-300"><Bell size={18} /></div><div className="flex-1"><h1 className="font-semibold text-white">Announcements</h1><p className="text-xs text-slate-500">What’s new in Lofin</p></div><button onClick={() => updateSettings({ announcementsEnabled: !settings.announcementsEnabled })} className="flex items-center gap-1.5 rounded-lg border border-base-600/60 px-2.5 py-1.5 text-xs text-slate-300 hover:text-white">{settings.announcementsEnabled ? <Bell size={13} /> : <BellOff size={13} />}{settings.announcementsEnabled ? "On" : "Off"}</button><button onClick={onClose} className="rounded-lg p-1 text-slate-500 hover:bg-base-700 hover:text-white"><X size={18} /></button></header>
+    <div ref={ref} role="dialog" aria-modal="true" aria-labelledby="announcements-title" tabIndex={-1} onClick={(e) => e.stopPropagation()} className="flex max-h-[85vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-base-600/60 bg-base-850 shadow-panel animate-fade-in-up">
+      <header className="flex items-center gap-3 border-b border-base-700/60 px-5 py-4"><div className="rounded-xl bg-accent-500/15 p-2 text-accent-300"><Bell size={18} /></div><div className="flex-1"><h1 id="announcements-title" className="font-semibold text-white">Announcements</h1><p className="text-xs text-slate-500">What’s new in Lofin</p></div><button onClick={() => updateSettings({ announcementsEnabled: !settings.announcementsEnabled })} className="flex items-center gap-1.5 rounded-lg border border-base-600/60 px-2.5 py-1.5 text-xs text-slate-300 hover:text-white">{settings.announcementsEnabled ? <Bell size={13} /> : <BellOff size={13} />}{settings.announcementsEnabled ? "On" : "Off"}</button><button onClick={onClose} aria-label="Close announcements" className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 hover:bg-base-700 hover:text-white"><X size={18} /></button></header>
       <div className="space-y-4 overflow-y-auto p-5">{announcements.length ? announcements.map((item) => <AnnouncementCard key={item.id} item={item} />) : <p className="py-10 text-center text-sm text-slate-500">No announcements yet.</p>}</div>
     </div>
   </div>;

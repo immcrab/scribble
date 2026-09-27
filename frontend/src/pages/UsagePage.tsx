@@ -3,7 +3,7 @@ import { ArrowLeft, Gauge, LogIn, TriangleAlert, Ban, Image as ImageIcon, AudioL
 import { useAuthStore } from "../state/authStore";
 import { useUsageStore, creditStatus, creditMultiplier, MEDIA_LABELS } from "../lib/usage";
 import { useCatalogStore } from "../lib/catalogSync";
-import { getAllModels, modelKey } from "../config/models";
+import { getAllModels, getDefaultModel, modelKey } from "../config/models";
 import { modelSlug } from "../lib/modelSlug";
 import { ModelFavicon } from "../components/ProviderIcon";
 import { LogoMark } from "../components/Logo";
@@ -256,7 +256,7 @@ export function UsagePage({ onExit }: { onExit: () => void }) {
               <span className="rounded bg-accent-500/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-accent-300">
                 Always
               </span>
-              Mistral Small 4 — the free default model
+              {getDefaultModel().displayName} — the free default model
             </div>
             {postLimitModels.length === 0 ? (
               <p className="pt-2 text-xs text-slate-500">The admin hasn't opened any other models for post-limit use yet.</p>

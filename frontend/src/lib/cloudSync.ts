@@ -1,6 +1,5 @@
 import { get as dbGet, onValue, ref, set as dbSet } from "firebase/database";
-import { deleteDoc, doc, getDoc, onSnapshot, setDoc } from "firebase/firestore";
-import { getFirestoreDb, getRtdb } from "./firebase";
+import { loadFirestore, getRtdb } from "./firebase";
 import { saveChats, saveSettings, saveMemories, saveProjects, type LofinSettings } from "./storage";
 import type { Chat, MemoryEntry, Project } from "../types";
 
@@ -86,9 +85,10 @@ export async function startCloudSync(
 ): Promise<void> {
   activeUid = uid;
 
-  const firestore = getFirestoreDb();
-  if (!firestore) return;
-  const chatsRef = doc(firestore, "users", uid);
+  const fs = await loadFirestore();
+  if (!fs || activeUid !== uid) return;
+  const { doc, getDoc, setDoc, onSnapshot } = fs;
+  const chatsRef = doc(fs.db, "users", uid);
   const db = getRtdb();
   const settingsRef = db ? ref(db, `users/${uid}/settingsJson`) : null;
   const memoriesRef = db ? ref(db, `users/${uid}/memoriesJson`) : null;
@@ -256,8 +256,6 @@ export function stopCloudSync(): void {
 /** Debounced Firestore push, skipped while messages stream to avoid excess writes. */
 export function pushChatsToCloud(chats: Chat[]): void {
   if (!activeUid) return;
-  const firestore = getFirestoreDb();
-  if (!firestore) return;
   if (chats.some((c) => c.messages.some((m) => m.streaming))) return;
   const json = JSON.stringify(chats);
   if (json === lastChatsJson) return;
@@ -266,7 +264,7 @@ export function pushChatsToCloud(chats: Chat[]): void {
   chatsPushTimer = setTimeout(() => {
     if (activeUid !== uid) return; // signed out (or switched accounts) before this fired
     lastChatsJson = json;
-    setDoc(doc(firestore, "users", uid), { chatsJson: json }, { merge: true }).catch(() => {});
+    void loadFirestore().then((fs) => fs?.setDoc(fs.doc(fs.db, "users", uid), { chatsJson: json }, { merge: true }).catch(() => {}));
   }, 2000);
 }
 
@@ -326,8 +324,6 @@ const lastPublicJson = new Map<string, string>();
 const publicPushTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
 export function pushChatsPublic(chats: Chat[]): void {
-  const firestore = getFirestoreDb();
-  if (!firestore) return;
   for (const chat of chats) {
     if (chat.messages.length === 0) continue; // nothing worth a link yet
     if (chat.messages.some((m) => m.streaming)) continue; // wait until settled, same as pushChatsToCloud
@@ -339,7 +335,7 @@ export function pushChatsPublic(chats: Chat[]): void {
     const timer = setTimeout(() => {
       publicPushTimers.delete(chat.id);
       lastPublicJson.set(chat.id, json);
-      setDoc(doc(firestore, "publicChats", chat.id), { json }).catch(() => {});
+      void loadFirestore().then((fs) => fs?.setDoc(fs.doc(fs.db, "publicChats", chat.id), { json }).catch(() => {}));
     }, 2000);
     publicPushTimers.set(chat.id, timer);
   }
@@ -354,8 +350,6 @@ export function pushChatsPublic(chats: Chat[]): void {
  * never cleans up since it only ever writes chats that still exist.
  */
 export function deleteChatFromCloud(chatId: string, remainingChats: Chat[]): void {
-  const firestore = getFirestoreDb();
-  if (!firestore) return;
 
   const publicTimer = publicPushTimers.get(chatId);
   if (publicTimer) {
@@ -363,7 +357,7 @@ export function deleteChatFromCloud(chatId: string, remainingChats: Chat[]): voi
     publicPushTimers.delete(chatId);
   }
   lastPublicJson.delete(chatId);
-  deleteDoc(doc(firestore, "publicChats", chatId)).catch(() => {});
+  void loadFirestore().then((fs) => fs?.deleteDoc(fs.doc(fs.db, "publicChats", chatId)).catch(() => {}));
   // Remove the previous public RTDB copy too, so an old share link can't
   // continue serving a chat that was deleted after the migration.
   const rtdb = getRtdb();
@@ -377,14 +371,14 @@ export function deleteChatFromCloud(chatId: string, remainingChats: Chat[]): voi
   }
   const json = JSON.stringify(remainingChats);
   lastChatsJson = json;
-  setDoc(doc(firestore, "users", uid), { chatsJson: json }, { merge: true }).catch(() => {});
+  void loadFirestore().then((fs) => fs?.setDoc(fs.doc(fs.db, "users", uid), { chatsJson: json }, { merge: true }).catch(() => {}));
 }
 
 export async function fetchPublicChat(id: string): Promise<Chat | null> {
-  const firestore = getFirestoreDb();
-  if (!firestore) return null;
+  const fs = await loadFirestore();
+  if (!fs) return null;
   try {
-    const snap = await getDoc(doc(firestore, "publicChats", id));
+    const snap = await fs.getDoc(fs.doc(fs.db, "publicChats", id));
     if (snap.exists()) {
       const json = snap.data().json;
       return typeof json === "string" ? JSON.parse(json) as Chat : null;

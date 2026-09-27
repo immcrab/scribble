@@ -201,6 +201,8 @@ body {
 
 /* A quiet, dimensional shell rather than a flat set of panes. */
 .app-topbar {
+  position: relative;
+  z-index: 40;
   border-bottom: 1px solid rgb(var(--base-700) / .48);
   background: linear-gradient(90deg, rgb(var(--base-950) / .78), rgb(var(--base-900) / .4));
   backdrop-filter: blur(18px);
@@ -515,9 +517,23 @@ select {
     animation-iteration-count: 1 !important;
     opacity: 1;
   }
-  [class*="animate-"] {
+  [class*="animate-"]:not(.animate-spin) {
     animation-duration: 0.001ms !important;
     animation-iteration-count: 1 !important;
+  }
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.001ms !important;
+    transition-delay: 0s !important;
+  }
+  /* Hover lifts are decoration, not feedback — drop the movement, keep the color change. */
+  [class*="hover:-translate-y"]:hover {
+    transform: none !important;
+  }
+  /* Spinners are essential "still working" feedback: keep them turning, just slower. */
+  .animate-spin {
+    animation-duration: 1.6s !important;
   }
 }
 
@@ -534,9 +550,49 @@ select {
   animation-iteration-count: 1 !important;
   opacity: 1;
 }
-.motion-reduce-force [class*="animate-"] {
+.motion-reduce-force [class*="animate-"]:not(.animate-spin) {
   animation-duration: 0.001ms !important;
   animation-iteration-count: 1 !important;
+}
+.motion-reduce-force *,
+.motion-reduce-force *::before,
+.motion-reduce-force *::after {
+  transition-duration: 0.001ms !important;
+  transition-delay: 0s !important;
+}
+.motion-reduce-force [class*="hover:-translate-y"]:hover {
+  transform: none !important;
+}
+.motion-reduce-force .animate-spin {
+  animation-duration: 1.6s !important;
+}
+
+/* One consistent, clearly visible keyboard focus ring everywhere. Mouse/touch focus
+   (:focus without :focus-visible) stays unstyled so clicks don't flash a ring. */
+:where(a, button, input, select, textarea, summary, [role="button"], [role="menuitem"], [role="menuitemradio"], [role="option"], [role="tab"], [role="switch"], [tabindex]):focus-visible {
+  outline: 2px solid rgb(var(--accent-400));
+  outline-offset: 2px;
+  border-radius: 0.5rem;
+}
+:where(input, textarea, select):focus-visible {
+  outline-offset: 0;
+}
+/* Rows inside menus are flush with the panel edge — inset the ring so it isn't clipped. */
+[data-dropdown-menu] :where(button, [role="menuitem"], [role="menuitemradio"], [role="option"]):focus-visible {
+  outline-offset: -2px;
+  background-color: rgb(var(--base-700) / 0.5);
+}
+
+.sr-only-focusable:not(:focus):not(:focus-visible) {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 @keyframes fade-in-up {

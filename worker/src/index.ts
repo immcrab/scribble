@@ -3,15 +3,8 @@ import { corsHeaders } from "./cors";
 import { checkPassword } from "./auth";
 import { isRateLimited } from "./ratelimit";
 import { xkiroStreamChat } from "./adapters/xkiro";
-import { mistralStreamChat } from "./adapters/mistral";
-import { geminiStreamChat } from "./adapters/gemini";
-import { openrouterStreamChat } from "./adapters/openrouter";
-import { zaiStreamChat } from "./adapters/zai";
-import { customStreamChat } from "./adapters/custom";
 import { generateImage } from "./adapters/image";
-import { generateXkiroImage, editXkiroImage } from "./adapters/xkiroImage";
-import { generateXkiroSpeech, listXkiroVoices } from "./adapters/xkiroSpeech";
-import { generateTitle } from "./adapters/title";
+import { generateXkiroImage } from "./adapters/xkiroImage";
 import {
   searchWeb,
   shouldSearchWeb,
@@ -27,25 +20,13 @@ import { ndjsonLine } from "./adapters/base";
 import { verifyFirebaseIdToken } from "./firebaseVerifyToken";
 import { verifyTurnstileToken } from "./turnstile";
 import { handleLibrary, isLibraryPath } from "./library";
+import { FREE_XKIRO_MODEL_IDS } from "./freeXkiroModels";
 
 const ADMIN_EMAIL = "imcrabfr@gmail.com";
+const FREE_XKIRO_IMAGE_MODEL = "sensenova/sensenova-u1.5-lite";
 
-// "custom" isn't in here — it has no Worker secret; its key comes from the
-// request body instead (see the dispatch branch in the handler below).
 const ADAPTERS: Partial<Record<Provider, ProviderAdapter>> = {
   xkiro: xkiroStreamChat,
-  mistral: mistralStreamChat,
-  gemini: geminiStreamChat,
-  openrouter: openrouterStreamChat,
-  zai: zaiStreamChat,
-};
-
-const API_KEY_ENV: Partial<Record<Provider, keyof Env>> = {
-  xkiro: "XKIRO_API_KEY",
-  mistral: "MISTRAL_API_KEY",
-  gemini: "GEMINI_API_KEY",
-  openrouter: "OPENROUTER_API_KEY",
-  zai: "ZAI_API_KEY",
 };
 
 function json(body: unknown, status: number, headers: HeadersInit): Response {
@@ -60,8 +41,9 @@ const VALID_EFFORTS = ["low", "medium", "high", "extra", "ultra"];
 function isValidBody(body: unknown): body is ChatRequestBody {
   if (!body || typeof body !== "object") return false;
   const b = body as Record<string, unknown>;
-  if (!["xkiro", "mistral", "gemini", "openrouter", "zai", "custom"].includes(b.provider as string)) return false;
+  if (b.provider !== "xkiro") return false;
   if (typeof b.model !== "string" || !b.model) return false;
+  if (!FREE_XKIRO_MODEL_IDS.has(b.model)) return false;
   if (!Array.isArray(b.messages) || b.messages.length === 0) return false;
   if (b.effort !== undefined && !VALID_EFFORTS.includes(b.effort as string)) return false;
   if (b.webSearch !== undefined && typeof b.webSearch !== "boolean") return false;
@@ -75,12 +57,6 @@ function isValidBody(body: unknown): body is ChatRequestBody {
     if (cc.customSystemPrompt !== undefined && typeof cc.customSystemPrompt !== "string") return false;
     if (cc.memories !== undefined && (!Array.isArray(cc.memories) || !cc.memories.every((m) => typeof m === "string"))) return false;
     if (cc.replyLanguage !== undefined && typeof cc.replyLanguage !== "string") return false;
-  }
-  if (b.provider === "custom") {
-    const cp = b.customProvider as Record<string, unknown> | undefined;
-    if (!cp || typeof cp !== "object") return false;
-    if (typeof cp.baseUrl !== "string" || !cp.baseUrl) return false;
-    if (typeof cp.apiKey !== "string" || !cp.apiKey) return false;
   }
   return b.messages.every(
     (m) =>
@@ -176,20 +152,16 @@ export default {
       }
 
       if (!isValidBody(body)) {
-        return json({ error: "Request must include provider, model, and a non-empty messages array." }, 400, cors);
+        return json({ error: "Request must use a listed free xKiro model and include a non-empty messages array." }, 400, cors);
       }
 
-      let apiKey = body.customProvider?.apiKey;
-      if (body.provider !== "custom") {
-        const configuredKey = env[API_KEY_ENV[body.provider]!];
-        apiKey = typeof configuredKey === "string" ? configuredKey : undefined;
-        if (!apiKey) {
-          return json(
-            { error: `${body.provider} is not configured on this Worker (missing API key secret).` },
-            500,
-            cors
-          );
-        }
+      const apiKey = typeof env.XKIRO_API_KEY === "string" ? env.XKIRO_API_KEY : undefined;
+      if (!apiKey) {
+        return json(
+          { error: "xKiro is not configured on this Worker (missing API key secret)." },
+          500,
+          cors
+        );
       }
 
       // Built lazily inside the stream (rather than awaited up front) so a
@@ -203,7 +175,11 @@ export default {
           const lastUserIdx = messages.map((m, i) => ({ m, i })).filter((x) => x.m.role === "user").pop()?.i;
           const query = lastUserIdx !== undefined ? messages[lastUserIdx].content.trim() : "";
 
-          if (body.webSearch) {
+          // Web search and memory use auxiliary paid-capable services. They are
+          // intentionally disabled while Lofin operates as a free-model-only app.
+          const useWebSearch = false;
+          const useMemory = false;
+          if (useWebSearch && body.webSearch) {
             const pageUrl = publicUrlIn(query);
             if (pageUrl && lastUserIdx !== undefined) {
               const toolId = crypto.randomUUID();
@@ -338,7 +314,7 @@ export default {
           // classifier whether this specific turn would actually benefit from them. Fails
           // open (keeps the facts in) if the classifier call itself errors, since leaving
           // harmless context in is safer than silently dropping it.
-          if (clientContext?.memories?.length && env.GROQ_API_KEY && query) {
+          if (useMemory && clientContext?.memories?.length && env.GROQ_API_KEY && query) {
             try {
               const relevant = await shouldRecallMemory(env.GROQ_API_KEY, query, clientContext.memories);
               if (relevant) {
@@ -366,7 +342,7 @@ export default {
           // Only emit a tool-call event when there's actually a fact to show — most turns
           // yield nothing, and a badge for every "nothing to remember" turn (or a spinner
           // that has to resolve to a no-op) would be noise rather than signal.
-          if (body.memoryEnabled && env.GROQ_API_KEY && query) {
+          if (useMemory && body.memoryEnabled && env.GROQ_API_KEY && query) {
             try {
               const fact = await extractMemory(env.GROQ_API_KEY, query);
               if (fact) {
@@ -383,25 +359,14 @@ export default {
           }
 
           try {
-            const upstream =
-              body.provider === "custom"
-                ? await customStreamChat({
-                    apiKey: apiKey!,
-                    baseUrl: body.customProvider!.baseUrl,
-                    model: body.model,
-                    messages,
-                    visionCapable: !!body.visionCapable,
-                    effort: body.effort,
-                    clientContext,
-                  })
-                : await ADAPTERS[body.provider]!({
-                    apiKey: apiKey!,
-                    model: body.model,
-                    messages,
-                    visionCapable: !!body.visionCapable,
-                    effort: body.effort,
-                    clientContext,
-                  });
+            const upstream = await ADAPTERS.xkiro!({
+              apiKey,
+              model: body.model,
+              messages,
+              visionCapable: !!body.visionCapable,
+              effort: body.effort,
+              clientContext,
+            });
             const reader = upstream.getReader();
             while (true) {
               const { value, done } = await reader.read();
@@ -450,31 +415,32 @@ export default {
         return json({ error: "Request must include a non-empty prompt." }, 400, cors);
       }
 
-      // Backend picker from the frontend's Image mode: "xkiro" or (default) "cloudflare".
-      const imageProvider = b.provider === "xkiro" ? "xkiro" : "cloudflare";
-      const requestedModel = typeof b.model === "string" ? b.model : undefined;
-
       try {
-        if (imageProvider === "xkiro") {
+        if (b.provider === "xkiro") {
+          if (b.model !== FREE_XKIRO_IMAGE_MODEL) {
+            return json({ error: "Only the free xKiro SenseNova U1.5 Lite image model is available." }, 400, cors);
+          }
           if (!env.XKIRO_API_KEY) {
             return json({ error: "xKiro image generation is not configured on this Worker (missing XKIRO_API_KEY)." }, 500, cors);
           }
           const result = await generateXkiroImage({
             apiKey: env.XKIRO_API_KEY,
-            model: requestedModel,
+            model: FREE_XKIRO_IMAGE_MODEL,
             prompt: b.prompt,
             size: typeof b.size === "string" ? b.size : undefined,
           });
           return json(result, 200, cors);
         }
 
+        if (b.provider !== undefined && b.provider !== "cloudflare") {
+          return json({ error: "Unsupported image provider." }, 400, cors);
+        }
         if (!env.CF_ACCOUNT_ID || !env.CF_AI_TOKEN) {
-          return json({ error: "Image generation is not configured on this Worker (missing Cloudflare AI credentials)." }, 500, cors);
+          return json({ error: "Cloudflare Flux is not configured on this Worker (missing Cloudflare AI credentials)." }, 500, cors);
         }
         const result = await generateImage({
           accountId: env.CF_ACCOUNT_ID,
           apiToken: env.CF_AI_TOKEN,
-          model: requestedModel,
           prompt: b.prompt,
         });
         return json(result, 200, cors);
@@ -485,148 +451,19 @@ export default {
     }
 
     if (url.pathname === "/api/image/edit" && request.method === "POST") {
-      if (!checkPassword(request, env)) {
-        return json({ error: "Invalid or missing Lofin password." }, 401, cors);
-      }
-
-      const clientKey = request.headers.get("CF-Connecting-IP") ?? "unknown";
-      if (isRateLimited(clientKey)) {
-        return json({ error: "Rate limit exceeded. Slow down and try again shortly." }, 429, cors);
-      }
-
-      let body: unknown;
-      try {
-        body = await request.json();
-      } catch {
-        return json({ error: "Malformed JSON body." }, 400, cors);
-      }
-
-      const b = body as Record<string, unknown>;
-      if (!b || typeof b.prompt !== "string" || !b.prompt.trim()) {
-        return json({ error: "Request must include a non-empty prompt." }, 400, cors);
-      }
-      if (typeof b.image !== "string" || !b.image.startsWith("data:")) {
-        return json({ error: "Request must include the source image as a data: URL." }, 400, cors);
-      }
-      // ~9MB of raw image once base64-decoded — matches the frontend's attach cap.
-      if (b.image.length > 12_000_000) {
-        return json({ error: "Source image is too large. Use one under about 9MB." }, 413, cors);
-      }
-
-      // Editing is xKiro-only; Cloudflare Workers AI has no edits endpoint.
-      if (!env.XKIRO_API_KEY) {
-        return json({ error: "Image editing is not configured on this Worker (missing XKIRO_API_KEY)." }, 500, cors);
-      }
-
-      try {
-        const result = await editXkiroImage({
-          apiKey: env.XKIRO_API_KEY,
-          model: typeof b.model === "string" ? b.model : undefined,
-          prompt: b.prompt,
-          size: typeof b.size === "string" ? b.size : undefined,
-          imageDataUrl: b.image,
-        });
-        return json(result, 200, cors);
-      } catch (err) {
-        const message = err instanceof Error ? err.message : "Image editing failed.";
-        return json({ error: message }, 502, cors);
-      }
+      return json({ error: "Image editing is unavailable because it requires a paid model." }, 410, cors);
     }
 
     if (url.pathname === "/api/speech/voices" && request.method === "GET") {
-      if (!checkPassword(request, env)) {
-        return json({ error: "Invalid or missing Lofin password." }, 401, cors);
-      }
-      try {
-        const voices = await listXkiroVoices(url.searchParams.toString());
-        return new Response(JSON.stringify(voices), {
-          status: 200,
-          headers: { ...cors, "Content-Type": "application/json", "Cache-Control": "public, max-age=300" },
-        });
-      } catch (err) {
-        const message = err instanceof Error ? err.message : "Fetching voices failed.";
-        return json({ error: message }, 502, cors);
-      }
+      return json({ error: "Text-to-speech is unavailable because it requires a paid model." }, 410, cors);
     }
 
     if (url.pathname === "/api/speech/generate" && request.method === "POST") {
-      if (!checkPassword(request, env)) {
-        return json({ error: "Invalid or missing Lofin password." }, 401, cors);
-      }
-
-      const clientKey = request.headers.get("CF-Connecting-IP") ?? "unknown";
-      if (isRateLimited(clientKey)) {
-        return json({ error: "Rate limit exceeded. Slow down and try again shortly." }, 429, cors);
-      }
-
-      let body: unknown;
-      try {
-        body = await request.json();
-      } catch {
-        return json({ error: "Malformed JSON body." }, 400, cors);
-      }
-
-      const b = body as Record<string, unknown>;
-      if (!b || typeof b.input !== "string" || !b.input.trim()) {
-        return json({ error: "Request must include a non-empty input string." }, 400, cors);
-      }
-      if (typeof b.voice !== "string" || !b.voice) {
-        return json({ error: "Request must include a voice id." }, 400, cors);
-      }
-      if (!env.XKIRO_API_KEY) {
-        return json({ error: "Text-to-speech is not configured on this Worker (missing XKIRO_API_KEY)." }, 500, cors);
-      }
-
-      const speed = typeof b.speed === "number" && b.speed >= 0.25 && b.speed <= 4 ? b.speed : undefined;
-
-      try {
-        const result = await generateXkiroSpeech({
-          apiKey: env.XKIRO_API_KEY,
-          input: b.input,
-          voice: b.voice,
-          format: typeof b.format === "string" ? b.format : undefined,
-          speed,
-        });
-        return json(result, 200, cors);
-      } catch (err) {
-        const message = err instanceof Error ? err.message : "Speech generation failed.";
-        return json({ error: message }, 502, cors);
-      }
+      return json({ error: "Text-to-speech is unavailable because it requires a paid model." }, 410, cors);
     }
 
     if (url.pathname === "/api/chat/title" && request.method === "POST") {
-      if (!checkPassword(request, env)) {
-        return json({ error: "Invalid or missing Lofin password." }, 401, cors);
-      }
-
-      const clientKey = request.headers.get("CF-Connecting-IP") ?? "unknown";
-      if (isRateLimited(clientKey)) {
-        return json({ error: "Rate limit exceeded. Slow down and try again shortly." }, 429, cors);
-      }
-
-      if (!env.GROQ_API_KEY) {
-        return json({ error: "Title generation is not configured on this Worker (missing Groq API key)." }, 500, cors);
-      }
-
-      let body: unknown;
-      try {
-        body = await request.json();
-      } catch {
-        return json({ error: "Malformed JSON body." }, 400, cors);
-      }
-
-      const b = body as Record<string, unknown>;
-      if (!b || typeof b.prompt !== "string" || !b.prompt.trim()) {
-        return json({ error: "Request must include a non-empty prompt." }, 400, cors);
-      }
-
-      try {
-        const title = await generateTitle({ apiKey: env.GROQ_API_KEY, prompt: b.prompt });
-        return json({ title }, 200, cors);
-      } catch (err) {
-        const message = err instanceof Error ? err.message : "Title generation failed.";
-        return json({ error: message }, 502, cors);
-      }
+      return json({ error: "Automatic titles are unavailable because they require a paid model." }, 410, cors);
     }
 
     // Static assets are invoked after API handling. With run_worker_first this

@@ -151,7 +151,7 @@ export function LibraryPage({ onExit }: { onExit: () => void }) {
           </div>
         ) : error && items.length === 0 ? (
           <div className="flex flex-col items-center gap-3 py-20 text-center">
-            <p className="text-sm text-red-300">{error}</p>
+            <p className="text-sm text-red-300" role="alert">{error}</p>
             <button
               onClick={() => load(null)}
               className="rounded-xl border border-base-600 px-4 py-2 text-sm text-slate-200 hover:bg-base-800"
@@ -160,8 +160,8 @@ export function LibraryPage({ onExit }: { onExit: () => void }) {
             </button>
           </div>
         ) : !loaded ? (
-          <div className="flex justify-center py-20 text-slate-500">
-            <Loader2 className="animate-spin" size={22} />
+          <div className="flex justify-center py-20 text-slate-500" role="status" aria-label="Loading your library">
+            <Loader2 className="animate-spin" size={22} aria-hidden="true" />
           </div>
         ) : items.length === 0 ? (
           <div className="flex flex-col items-center gap-3 py-20 text-center">

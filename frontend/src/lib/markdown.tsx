@@ -1,16 +1,25 @@
-import { useState } from "react";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import remarkMath from "remark-math";
-import rehypeHighlight from "rehype-highlight";
-import rehypeKatex from "rehype-katex";
-import { Copy, Check } from "lucide-react";
-import "katex/dist/katex.min.css";
+import { lazy, Suspense, useEffect, useState } from "react";
+import type { MathPlugins } from "./markdown/math";
 
-const MATH_REMARK = [remarkGfm, remarkMath];
-const MATH_REHYPE = [rehypeHighlight, rehypeKatex];
-const PLAIN_REMARK = [remarkGfm];
-const PLAIN_REHYPE = [rehypeHighlight];
+const Renderer = lazy(() => import("./markdown/Renderer"));
+
+let rendererPromise: Promise<unknown> | null = null;
+/** Warm the renderer chunk (e.g. on idle after first paint) so the first reply renders styled. */
+export function preloadMarkdown(): Promise<unknown> {
+  return (rendererPromise ??= import("./markdown/Renderer"));
+}
+
+let mathCache: MathPlugins | null = null;
+let mathPromise: Promise<MathPlugins> | null = null;
+function loadMath(): Promise<MathPlugins> {
+  return (mathPromise ??= import("./markdown/math").then((m) => (mathCache = m.mathPlugins)));
+}
+
+/** Unstyled stand-in shown for the instant the renderer chunk is still loading — the
+ * text is readable immediately and in the same container, so nothing jumps. */
+function PlainFallback({ content }: { content: string }) {
+  return <div className="prose-lofin whitespace-pre-wrap break-words">{content}</div>;
+}
 
 /**
  * `math` turns on LaTeX rendering: `$x^2$` inline and `$$…$$` as a display block.
@@ -20,74 +29,20 @@ const PLAIN_REHYPE = [rehypeHighlight];
  * the one place where the trade goes the other way.
  */
 export function Markdown({ content, math = false }: { content: string; math?: boolean }) {
+  const [mathPlugins, setMathPlugins] = useState<MathPlugins | null>(mathCache);
+  useEffect(() => {
+    if (!math || mathPlugins) return;
+    let live = true;
+    void loadMath().then((m) => live && setMathPlugins(m));
+    return () => {
+      live = false;
+    };
+  }, [math, mathPlugins]);
+
+  if (math && !mathPlugins) return <PlainFallback content={content} />;
   return (
-    <div className="prose-lofin">
-      <ReactMarkdown
-        remarkPlugins={math ? MATH_REMARK : PLAIN_REMARK}
-        rehypePlugins={math ? MATH_REHYPE : PLAIN_REHYPE}
-        components={{
-          // Links in a model's reply open in a new tab — following one in place
-          // would navigate away from the chat and lose the composer's state.
-          a({ node: _node, children, href, ...props }) {
-            return (
-              <a href={href} target="_blank" rel="noopener noreferrer nofollow" {...props}>
-                {children}
-              </a>
-            );
-          },
-          code({ node, className, children, ref: _ref, ...props }) {
-            const match = /language-(\w+)/.exec(className || "");
-            const isInline = !match && node?.position?.start.line === node?.position?.end.line;
-            const codeText = String(children).replace(/\n$/, "");
-
-            if (isInline) {
-              return <code className={className} {...props}>{children}</code>;
-            }
-
-            // Block code — add a copy-to-clipboard button (tappable on mobile)
-            return (
-              <div className="code-block-wrapper relative">
-                <div className="code-block-header flex items-center justify-between rounded-t-lg border-b border-base-700 bg-base-900/60 px-3 py-1.5">
-                  {match && (
-                    <span className="text-[10px] font-medium uppercase tracking-wide text-slate-500">
-                      {match[1]}
-                    </span>
-                  )}
-                  <CopyButton text={codeText} />
-                </div>
-                <pre className={className} {...props}>
-                  {children}
-                </pre>
-              </div>
-            );
-          },
-        }}
-      >
-        {content}
-      </ReactMarkdown>
-    </div>
-  );
-}
-
-function CopyButton({ text }: { text: string }) {
-  const [copied, setCopied] = useState(false);
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    } catch {
-      // ignore — clipboard not available
-    }
-  };
-  return (
-    <button
-      type="button"
-      onClick={copy}
-      className="message-action-btn flex items-center justify-center rounded-md p-1 text-xs text-slate-500 transition-colors hover:bg-base-700/60 hover:text-white"
-      title="Copy code"
-    >
-      {copied ? <Check size={11} /> : <Copy size={11} />}
-    </button>
+    <Suspense fallback={<PlainFallback content={content} />}>
+      <Renderer content={content} math={math ? mathPlugins : null} />
+    </Suspense>
   );
 }

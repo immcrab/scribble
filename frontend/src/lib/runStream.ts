@@ -1,8 +1,9 @@
 import { streamChat, type WireMessage } from "../providers";
 import type { Effort, ModelDef } from "../types";
 import { useChatStore } from "../state/chatStore";
-import { isModelGated } from "../config/models";
+import { isModelGated, getDefaultModel } from "../config/models";
 import { auth } from "./firebase";
+import { useAuthStore } from "../state/authStore";
 import { recordModelUsage } from "./modelStats";
 import { recordCreditUsage, usageGate } from "./usage";
 import { estimateTokenCount } from "./tokenCount";
@@ -106,10 +107,10 @@ export async function runAssistantStream(params: {
   const { chatId, messageId, model, history, effort, webSearch, appendToExisting } = params;
   const store = useChatStore.getState();
 
-  if (isModelGated(model) && !auth.currentUser) {
+  if (isModelGated(model) && !useAuthStore.getState().user) {
     store.updateMessage(chatId, messageId, {
       streaming: false,
-      error: `Sign in to use ${model.displayName} — the free default (Mistral Small 4) doesn't need an account.`,
+      error: `Sign in to use ${model.displayName} — the free default (${getDefaultModel().displayName}) doesn't need an account.`,
     });
     return;
   }

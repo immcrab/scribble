@@ -7,8 +7,7 @@ import {
   type User,
 } from "firebase/auth";
 import { ref, remove as dbRemove } from "firebase/database";
-import { deleteDoc, doc } from "firebase/firestore";
-import { auth, googleProvider, getFirestoreDb, getRtdb } from "../lib/firebase";
+import { auth, googleProvider, loadFirestore, getRtdb } from "../lib/firebase";
 import { useChatStore } from "./chatStore";
 import { startUsageSync, stopUsageSync } from "../lib/usage";
 import { useTutorStore } from "../lib/tutorStore";
@@ -73,10 +72,10 @@ export const useAuthStore = create<AuthStore>((set) => ({
         // best-effort — proceed with account deletion even if the RTDB wipe fails
       }
     }
-    const firestore = getFirestoreDb();
-    if (firestore) {
+    const fs = await loadFirestore();
+    if (fs) {
       try {
-        await deleteDoc(doc(firestore, "users", user.uid));
+        await fs.deleteDoc(fs.doc(fs.db, "users", user.uid));
       } catch {
         // best-effort — proceed with account deletion even if the Firestore wipe fails
       }
@@ -85,7 +84,28 @@ export const useAuthStore = create<AuthStore>((set) => ({
   },
 }));
 
+/**
+ * End-to-end test hook — lets Playwright render signed-in UI without a real Google popup.
+ * `import.meta.env.DEV` is replaced with `false` in production builds, so this block (and
+ * the override check below) is removed entirely from what ships; it additionally refuses
+ * to install on anything but a local/`.test` host. It only changes what the UI *shows*:
+ * every server call still needs a real Firebase ID token, which a fake user can't mint.
+ */
+let e2eUserOverride = false;
+if (import.meta.env.DEV && typeof window !== "undefined" && /^(localhost|127\.0\.0\.1)$|\.(test|localhost)$/.test(window.location.hostname)) {
+  (window as unknown as { __lofinE2E?: unknown }).__lofinE2E = {
+    setUser(fake: { uid: string; email?: string; displayName?: string; emailVerified?: boolean } | null) {
+      e2eUserOverride = !!fake;
+      const user = fake
+        ? ({ photoURL: null, isAnonymous: false, providerData: [], getIdToken: async () => "e2e-token", ...fake } as unknown as User)
+        : null;
+      useAuthStore.setState({ user, loading: false });
+    },
+  };
+}
+
 onAuthStateChanged(auth, (user) => {
+  if (import.meta.env.DEV && e2eUserOverride) return;
   useAuthStore.setState({ user, loading: false });
   if (user) {
     useChatStore.getState().startCloudSync(user.uid);

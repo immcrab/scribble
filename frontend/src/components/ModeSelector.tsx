@@ -8,25 +8,38 @@ const MODES: { id: Mode; label: string; desc: string; icon: typeof Swords; gated
   { id: "battle", label: "Battle Mode", desc: "Two hidden models answer — you vote", icon: Swords, gated: true },
   { id: "agent", label: "Agent Mode", desc: "Tool-using tasks with live web search", icon: Bot, gated: true },
   { id: "side-by-side", label: "Side by Side", desc: "Compare two models you pick, side by side", icon: Columns2, gated: true },
-  { id: "image", label: "Image", desc: "Generate or edit images from a prompt", icon: ImageIcon, gated: true },
-  { id: "speech", label: "Text to Speech", desc: "Turn text into audio you can download", icon: AudioLines, gated: true },
+  { id: "image", label: "Image", desc: "Generate images with the free SenseNova model", icon: ImageIcon },
   { id: "direct", label: "Direct", desc: "A normal one-on-one chat with one model", icon: MessageCircle },
 ];
 
+/** Modes no longer offered in the menu but still used by existing chats — they must keep
+ * rendering a trigger label rather than crash when such a chat is opened. */
+const RETIRED_MODES: typeof MODES = [
+  { id: "speech", label: "Text to Speech", desc: "Turn text into audio you can download", icon: AudioLines },
+];
+
 export function ModeSelector({ mode, onChange }: { mode: Mode; onChange: (m: Mode) => void }) {
-  const current = MODES.find((m) => m.id === mode)!;
+  const current = MODES.find((m) => m.id === mode) ?? RETIRED_MODES.find((m) => m.id === mode) ?? MODES[MODES.length - 1];
   const user = useAuthStore((s) => s.user);
   const signInWithGoogle = useAuthStore((s) => s.signInWithGoogle);
 
   return (
     <Dropdown
-      menuClassName="w-72 max-w-[calc(100vw-2rem)] overflow-hidden"
-      trigger={({ open, toggle }) => (
+      label="Choose mode"
+      role="menu"
+      menuClassName="w-72 max-w-[calc(100vw-2rem)] py-1"
+      trigger={({ open, toggle, menuId }) => (
         <button
+          type="button"
           onClick={toggle}
-          className="flex items-center gap-2 rounded-lg border border-transparent px-2.5 py-1.5 text-sm font-medium text-slate-200 transition-colors hover:border-base-600 hover:bg-base-800/70"
+          aria-haspopup="menu"
+          aria-expanded={open}
+          aria-controls={open ? menuId : undefined}
+          aria-label={`Mode: ${current.label}`}
+          data-testid="mode-selector"
+          className="flex min-h-11 items-center gap-2 rounded-lg border border-transparent px-2.5 py-1.5 text-sm font-medium text-slate-200 transition-colors hover:border-base-600 hover:bg-base-800/70 sm:min-h-0"
         >
-          <current.icon size={16} className="text-accent-400" />
+          <current.icon size={16} className="text-accent-400" aria-hidden="true" />
           {current.label}
           <ChevronDown size={14} className={`text-slate-500 transition-transform ${open ? "rotate-180" : ""}`} />
         </button>
@@ -39,6 +52,10 @@ export function ModeSelector({ mode, onChange }: { mode: Mode; onChange: (m: Mod
             return (
               <button
                 key={m.id}
+                type="button"
+                role="menuitemradio"
+                aria-checked={m.id === mode}
+                data-testid={`mode-option-${m.id}`}
                 onClick={() => {
                   if (locked) {
                     signInWithGoogle();
@@ -47,11 +64,11 @@ export function ModeSelector({ mode, onChange }: { mode: Mode; onChange: (m: Mod
                   onChange(m.id);
                   close();
                 }}
-                className={`flex w-full items-start gap-3 px-3.5 py-3 text-left transition-colors ${
+                className={`flex min-h-11 w-full items-start gap-3 px-3.5 py-3 text-left transition-colors ${
                   m.id === mode ? "bg-accent-500/10" : "hover:bg-base-700/50"
                 }`}
               >
-                <m.icon size={18} className={m.id === mode ? "text-accent-400" : "text-slate-400"} />
+                <m.icon size={18} aria-hidden="true" className={m.id === mode ? "text-accent-400" : "text-slate-400"} />
                 <span className="min-w-0 flex-1">
                   <span className={`block text-sm font-medium ${m.id === mode ? "text-white" : "text-slate-200"}`}>
                     {m.label}
@@ -59,7 +76,7 @@ export function ModeSelector({ mode, onChange }: { mode: Mode; onChange: (m: Mod
                   <span className="block text-xs text-slate-500">{m.desc}</span>
                   {locked && (
                     <span className="mt-0.5 flex items-center gap-1 text-[11px] font-medium text-accent-400/90">
-                      <Lock size={10} /> Sign in to unlock
+                      <Lock size={10} aria-hidden="true" /> Sign in to unlock
                     </span>
                   )}
                 </span>

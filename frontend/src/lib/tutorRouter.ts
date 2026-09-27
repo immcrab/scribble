@@ -45,7 +45,7 @@ const PREFERENCES: Record<TutorTask, string[]> = {
   math: [
     "deepseek/deepseek-v4-pro",
     "qwen/qwen3.8-max:free",
-    "minimax/minimax-m2.7",
+    "minimax/minimax-m2.7:free",
     "nvidia/nemotron-3-ultra-550b-a55b:free",
     "deepseek/deepseek-v3.2",
   ],
@@ -59,7 +59,7 @@ const PREFERENCES: Record<TutorTask, string[]> = {
   reasoning: [
     "qwen/qwen3.8-max:free",
     "deepseek/deepseek-v4-pro",
-    "minimax/minimax-m2.7",
+    "minimax/minimax-m2.7:free",
     "z-ai/glm-5.2:free",
     "qwen/qwen3.7-max:free",
   ],
@@ -82,7 +82,7 @@ const PREFERENCES: Record<TutorTask, string[]> = {
     "qwen/qwen3.8-max:free",
     "mistralai/mistral-large-2512",
     "deepseek/deepseek-v4-pro",
-    "minimax/minimax-m2.7",
+    "minimax/minimax-m2.7:free",
   ],
 };
 

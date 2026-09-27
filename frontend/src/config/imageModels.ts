@@ -9,9 +9,9 @@ import type { ImageBilling } from "../lib/usage";
 export interface ImageModelDef {
   /** Selector id, persisted as settings.imageModelId. */
   id: string;
-  /** Routed on by the Worker — "cloudflare" (default) or "xkiro". */
+  /** Routed on by the Worker. */
   provider: "cloudflare" | "xkiro";
-  /** Wire model id sent to the provider. Cloudflare uses the Worker's own default. */
+  /** Wire model id sent to the provider. Cloudflare uses the Worker's default. */
   model?: string;
   displayName: string;
   desc: string;
@@ -30,15 +30,6 @@ export const IMAGE_MODELS: ImageModelDef[] = [
     billing: "cloudflare",
   },
   {
-    id: "xkiro-gpt-image",
-    provider: "xkiro",
-    model: "openai/gpt-image-2.5",
-    displayName: "ChatGPT Images",
-    desc: "Highest quality — supports image editing and re-framing",
-    supportsEdit: true,
-    billing: "xkiro",
-  },
-  {
     id: "xkiro-sensenova-u1.5-lite",
     provider: "xkiro",
     model: "sensenova/sensenova-u1.5-lite",
@@ -50,11 +41,10 @@ export const IMAGE_MODELS: ImageModelDef[] = [
 
 export const DEFAULT_IMAGE_MODEL_ID = "cf-flux-schnell";
 
-/** Backend used when the user edits an image (attaches a source picture). xKiro
- * is the only provider with an edits endpoint, so edits always route here
- * regardless of the generation model picked in the header. */
+/** Image editing is disabled: it has no verified free backend. Kept as a
+ * compatibility fallback for stored settings; the Worker rejects edit calls. */
 export const EDIT_IMAGE_MODEL: ImageModelDef =
-  IMAGE_MODELS.find((m) => m.supportsEdit) ?? IMAGE_MODELS[IMAGE_MODELS.length - 1];
+  IMAGE_MODELS[0];
 
 export function findImageModel(id: string | undefined): ImageModelDef {
   return IMAGE_MODELS.find((m) => m.id === id) ?? IMAGE_MODELS[0];

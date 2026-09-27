@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import JSZip from "jszip";
 import {
   Eye,
   Code2,
@@ -138,6 +137,7 @@ export function ArtifactWorkspace({
 
   const downloadZip = async () => {
     if (!artifact) return;
+    const { default: JSZip } = await import("jszip");
     const zip = new JSZip();
     for (const f of artifact.files) zip.file(f.name, f.content);
     const blob = await zip.generateAsync({ type: "blob" });

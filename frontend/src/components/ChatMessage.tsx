@@ -521,8 +521,8 @@ export function ChatMessage({
           )}
           {message.error ? (
             <div className="flex flex-col gap-2">
-              <div className="flex items-start gap-2 text-sm text-red-400">
-                <AlertTriangle size={15} className="mt-0.5 shrink-0" />
+              <div className="flex items-start gap-2 text-sm text-red-400" role="alert" data-testid="message-error">
+                <AlertTriangle size={15} className="mt-0.5 shrink-0" aria-hidden="true" />
                 <span>{message.error}</span>
               </div>
               {onRegenerate && (
@@ -620,7 +620,7 @@ export function ChatMessage({
             shown on hover for mouse. Made large enough for tappable use. */}
         {!isUser && !message.streaming && message.content && (
           <div
-            className={`mt-1 flex gap-1 px-1 transition-opacity duration-200 group-hover:opacity-100 hover:opacity-100 ${
+            className={`mt-1 flex gap-1 px-1 transition-opacity duration-200 group-hover:opacity-100 hover:opacity-100 focus-within:opacity-100 ${
               isLast ? "opacity-100" : "opacity-0 max-sm:opacity-100"
             }`}
           >
@@ -646,7 +646,7 @@ export function ChatMessage({
 
         {/* Edit button for user messages — always tappable on touch */}
         {isUser && !message.streaming && (
-          <div className="mt-1 flex gap-1 px-1 opacity-0 transition-opacity duration-200 group-hover:opacity-100 hover:opacity-100 sm:group-hover:opacity-100">
+          <div className="mt-1 flex gap-1 px-1 opacity-0 transition-opacity duration-200 group-hover:opacity-100 hover:opacity-100 focus-within:opacity-100 max-sm:opacity-100">
             {onEdit && (
               <button
                 onClick={startEdit}

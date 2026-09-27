@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useModalFocus } from "../lib/useModalFocus";
 import {
   X,
   CheckCircle2,
@@ -125,12 +126,18 @@ function AppearanceSection() {
       <div>
         <SectionLabel>Font</SectionLabel>
         <Dropdown
-          menuClassName="w-full max-w-[calc(100vw-4rem)]"
+          matchWidth
+          menuClassName="max-h-80"
           trigger={({ open, toggle }) => {
             const current = FONT_OPTIONS.find((f) => f.id === (settings.fontFamily ?? "inter")) ?? FONT_OPTIONS[0];
             return (
               <button
+                type="button"
                 onClick={toggle}
+                aria-haspopup="dialog"
+                aria-expanded={open}
+                aria-label={`Font: ${current.label}`}
+                data-testid="font-picker"
                 className="flex w-full items-center gap-2 rounded-lg border border-base-600/60 bg-base-900 px-3 py-2 text-sm text-white transition-colors hover:border-accent-500/50"
               >
                 <Type size={15} className="shrink-0 text-slate-400" />
@@ -219,7 +226,8 @@ function AppearanceSection() {
       <div>
         <SectionLabel>Reply language</SectionLabel>
         <Dropdown
-          menuClassName="w-full max-w-[calc(100vw-4rem)]"
+          matchWidth
+          menuClassName="max-h-80"
           trigger={({ open, toggle }) => {
             const current =
               REPLY_LANGUAGE_OPTIONS.find((l) => l.id === (settings.replyLanguage ?? "auto")) ?? REPLY_LANGUAGE_OPTIONS[0];
@@ -393,6 +401,8 @@ export function SettingsModal({ onClose, initialTab }: { onClose: () => void; in
   };
 
   const defaultModel = getDefaultModel(settings.defaultModelId);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useModalFocus(dialogRef);
 
   return (
     <>
@@ -401,21 +411,28 @@ export function SettingsModal({ onClose, initialTab }: { onClose: () => void; in
       onClick={commitAndClose}
     >
       <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="settings-title"
+        tabIndex={-1}
         onClick={(e) => e.stopPropagation()}
         className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-base-600/60 bg-base-850 shadow-panel animate-fade-in-up"
       >
         <div className="flex items-center justify-between px-6 pb-4 pt-6">
-          <h2 className="text-lg font-semibold text-white">Settings</h2>
-          <button onClick={commitAndClose} aria-label="Close settings" className="rounded-lg p-1 text-slate-400 hover:bg-base-700 hover:text-white">
+          <h2 id="settings-title" className="text-lg font-semibold text-white">Settings</h2>
+          <button onClick={commitAndClose} aria-label="Close settings" className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 hover:bg-base-700 hover:text-white">
             <X size={18} />
           </button>
         </div>
 
-        <div className="flex gap-1 overflow-x-auto border-b border-base-700/60 px-6 pb-0 sm:justify-between sm:gap-0">
+        <div role="tablist" aria-label="Settings sections" className="flex gap-1 overflow-x-auto border-b border-base-700/60 px-6 pb-0 sm:justify-between sm:gap-0">
           {TABS.map(({ id, label, icon: Icon }) => (
             <button
               key={id}
               onClick={() => setTab(id)}
+              role="tab"
+              aria-selected={tab === id}
               className={`flex shrink-0 items-center gap-1.5 border-b-2 px-2.5 py-2.5 text-sm font-medium transition-colors sm:flex-1 sm:justify-center ${
                 tab === id
                   ? "border-accent-500 text-white"
@@ -437,7 +454,8 @@ export function SettingsModal({ onClose, initialTab }: { onClose: () => void; in
                   <div>
                     <label className="mb-1.5 block text-sm font-medium text-slate-300">Default model</label>
                     <Dropdown
-                      menuClassName="w-full max-w-[calc(100vw-4rem)]"
+                      matchWidth
+                      menuClassName="max-h-80"
                       trigger={({ open, toggle }) => (
                         <button
                           onClick={toggle}

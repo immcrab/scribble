@@ -1,10 +1,10 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Menu } from "lucide-react";
 import { Sidebar } from "./components/Sidebar";
 import { ModeSelector } from "./components/ModeSelector";
 import { Composer } from "./components/Composer";
 import { EmptyState } from "./components/EmptyState";
-import { SettingsModal, type SettingsTab } from "./components/SettingsModal";
+import type { SettingsTab } from "./components/SettingsModal";
 import { PWAInstallPrompt } from "./components/PWAInstallPrompt";
 import { LocationConsentPrompt } from "./components/LocationConsentPrompt";
 import { ConsentGate } from "./components/ConsentGate";
@@ -29,20 +29,28 @@ import {
   isConnectionsLocation,
   isLibraryLocation,
 } from "./lib/router";
-import { DocsPage } from "./pages/DocsPage";
-import { AdminPage } from "./pages/AdminPage";
-import { UsagePage } from "./pages/UsagePage";
-import { TutorPage } from "./pages/TutorPage";
-import { ConnectionsPage } from "./pages/ConnectionsPage";
-import { LibraryPage } from "./pages/LibraryPage";
 import { fetchPublicChat } from "./lib/cloudSync";
 import { ProjectView } from "./components/ProjectView";
 import { DirectMode } from "./modes/DirectMode";
-import { BattleMode } from "./modes/BattleMode";
-import { SideBySideMode } from "./modes/SideBySideMode";
-import { AgentMode } from "./modes/AgentMode";
-import { ImageMode } from "./modes/ImageMode";
-import { SpeechMode } from "./modes/SpeechMode";
+import { RouteFallback } from "./components/RouteFallback";
+import { preloadMarkdown } from "./lib/markdown";
+
+// Route-level code splitting: Direct chat (the first screen almost everyone sees) stays
+// in the entry chunk; every other page and mode loads on demand.
+const named = <K extends string>(load: () => Promise<Record<K, React.ComponentType<any>>>, key: K) =>
+  lazy(() => load().then((m) => ({ default: m[key] })));
+const DocsPage = named(() => import("./pages/DocsPage"), "DocsPage");
+const AdminPage = named(() => import("./pages/AdminPage"), "AdminPage");
+const UsagePage = named(() => import("./pages/UsagePage"), "UsagePage");
+const TutorPage = named(() => import("./pages/TutorPage"), "TutorPage");
+const ConnectionsPage = named(() => import("./pages/ConnectionsPage"), "ConnectionsPage");
+const LibraryPage = named(() => import("./pages/LibraryPage"), "LibraryPage");
+const BattleMode = named(() => import("./modes/BattleMode"), "BattleMode");
+const SideBySideMode = named(() => import("./modes/SideBySideMode"), "SideBySideMode");
+const AgentMode = named(() => import("./modes/AgentMode"), "AgentMode");
+const ImageMode = named(() => import("./modes/ImageMode"), "ImageMode");
+const SpeechMode = named(() => import("./modes/SpeechMode"), "SpeechMode");
+const SettingsModal = named(() => import("./components/SettingsModal"), "SettingsModal");
 import { useChatStore } from "./state/chatStore";
 import type { Attachment, Chat, Mode } from "./types";
 
@@ -140,6 +148,15 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Warm the Markdown renderer once the first screen is up, so the first reply renders
+  // styled without it ever being on the critical path.
+  useEffect(() => {
+    const w = window as Window & { requestIdleCallback?: (cb: () => void) => number };
+    const run = () => void preloadMarkdown();
+    if (w.requestIdleCallback) w.requestIdleCallback(run);
+    else setTimeout(run, 1500);
+  }, []);
+
   useEffect(() => {
     applyTheme(settings.theme);
     watchSystemTheme(settings.theme);
@@ -152,7 +169,7 @@ export default function App() {
 
   useEffect(() => {
     applyAppearance(settings);
-  }, [settings.fontFamily, settings.boldText, settings.themePalette]);
+  }, [settings.fontFamily, settings.boldText, settings.themePalette, settings.reduceMotion]);
 
   // Keep the tab title in sync with whatever's actually on screen — the active
   // chat, a shared chat someone sent us, or the docs section — instead of the
@@ -400,57 +417,67 @@ export default function App() {
 
   if (docsSlug !== null) {
     return (
-      <DocsPage
-        slug={docsSlug}
-        onExit={() => {
-          window.history.pushState(null, "", import.meta.env.BASE_URL);
-          setDocsSlug(null);
-        }}
-      />
+      <Suspense fallback={<RouteFallback full />}>
+        <DocsPage
+          slug={docsSlug}
+          onExit={() => {
+            window.history.pushState(null, "", import.meta.env.BASE_URL);
+            setDocsSlug(null);
+          }}
+        />
+      </Suspense>
     );
   }
 
   if (adminRoute) {
     return (
-      <AdminPage
-        onExit={() => {
-          window.history.pushState(null, "", import.meta.env.BASE_URL);
-          setAdminRoute(false);
-        }}
-      />
+      <Suspense fallback={<RouteFallback full />}>
+        <AdminPage
+          onExit={() => {
+            window.history.pushState(null, "", import.meta.env.BASE_URL);
+            setAdminRoute(false);
+          }}
+        />
+      </Suspense>
     );
   }
 
   if (usageRoute) {
     return (
-      <UsagePage
-        onExit={() => {
-          window.history.pushState(null, "", import.meta.env.BASE_URL);
-          setUsageRoute(false);
-        }}
-      />
+      <Suspense fallback={<RouteFallback full />}>
+        <UsagePage
+          onExit={() => {
+            window.history.pushState(null, "", import.meta.env.BASE_URL);
+            setUsageRoute(false);
+          }}
+        />
+      </Suspense>
     );
   }
 
   if (connectionsRoute) {
     return (
-      <ConnectionsPage
-        onExit={() => {
-          window.history.pushState(null, "", import.meta.env.BASE_URL);
-          setConnectionsRoute(false);
-        }}
-      />
+      <Suspense fallback={<RouteFallback full />}>
+        <ConnectionsPage
+          onExit={() => {
+            window.history.pushState(null, "", import.meta.env.BASE_URL);
+            setConnectionsRoute(false);
+          }}
+        />
+      </Suspense>
     );
   }
 
   if (libraryRoute) {
     return (
-      <LibraryPage
-        onExit={() => {
-          window.history.pushState(null, "", import.meta.env.BASE_URL);
-          setLibraryRoute(false);
-        }}
-      />
+      <Suspense fallback={<RouteFallback full />}>
+        <LibraryPage
+          onExit={() => {
+            window.history.pushState(null, "", import.meta.env.BASE_URL);
+            setLibraryRoute(false);
+          }}
+        />
+      </Suspense>
     );
   }
 
@@ -467,18 +494,26 @@ export default function App() {
   // exactly as they would before their first chat message.
   if (tutorRoute) {
     return (
-      <TutorPage
-        onExit={() => {
-          window.history.pushState(null, "", import.meta.env.BASE_URL);
-          setTutorRoute(false);
-        }}
-      />
+      <Suspense fallback={<RouteFallback full />}>
+        <TutorPage
+          onExit={() => {
+            window.history.pushState(null, "", import.meta.env.BASE_URL);
+            setTutorRoute(false);
+          }}
+        />
+      </Suspense>
     );
   }
 
 
   return (
-    <div className={`flex h-dvh w-full overflow-hidden bg-base-950 ${settings.reduceMotion ? "motion-reduce-force" : ""}`}>
+    <div className="flex h-dvh w-full overflow-hidden bg-base-950">
+      <a
+        href="#main-content"
+        className="sr-only-focusable fixed left-3 top-3 z-[90] rounded-lg bg-base-800 px-3 py-2 text-sm text-white shadow-panel"
+      >
+        Skip to content
+      </a>
       <Sidebar
         onOpenSettings={(tab) => setSettingsTab(tab ?? "general")}
         onOpenAnnouncements={() => setAnnouncementsOpen(true)}
@@ -490,6 +525,9 @@ export default function App() {
         <div className="app-topbar flex min-w-0 flex-wrap items-center gap-2 px-4 py-2.5">
           <button
             onClick={() => setMobileMenuOpen(true)}
+            aria-label="Open menu"
+            aria-expanded={mobileMenuOpen}
+            data-testid="open-sidebar"
             className="flex h-11 w-11 items-center justify-center rounded-xl text-slate-400 transition-colors hover:bg-base-700/60 hover:text-white md:hidden sm:h-auto sm:w-auto sm:rounded-lg sm:p-2"
             title="Open menu"
           >
@@ -498,7 +536,8 @@ export default function App() {
           {!inProject && <ModeSelector mode={activeChat?.mode ?? "direct"} onChange={switchMode} />}
         </div>
 
-        <div className="min-h-0 flex-1">
+        <main id="main-content" tabIndex={-1} className="min-h-0 flex-1 focus:outline-none">
+          <Suspense fallback={<RouteFallback />}>
           {shareState.status === "idle" && inProject && <ProjectView projectId={activeProjectId!} />}
           {shareState.status === "resolving" && (
             <div className="flex h-full items-center justify-center text-sm text-slate-500">Loading shared chat…</div>
@@ -573,14 +612,19 @@ export default function App() {
               onConsumeInitial={consumeInitial}
             />
           )}
-        </div>
+          </Suspense>
+        </main>
       </div>
 
       <PWAInstallPrompt />
       <LocationConsentPrompt />
       <AnnouncementLaunch />
       {announcementsOpen && <AnnouncementCenter onClose={() => setAnnouncementsOpen(false)} />}
-      {settingsTab && <SettingsModal initialTab={settingsTab} onClose={() => setSettingsTab(null)} />}
+      {settingsTab && (
+        <Suspense fallback={null}>
+          <SettingsModal initialTab={settingsTab} onClose={() => setSettingsTab(null)} />
+        </Suspense>
+      )}
     </div>
   );
 }

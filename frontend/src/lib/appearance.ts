@@ -86,9 +86,14 @@ const PALETTE_IDS = new Set(THEME_PALETTE_OPTIONS.map((p) => p.id));
 
 /** Sets `data-font`, `data-bold` and `data-palette` on <html>. Falls back to the
  * defaults for anything missing/unknown (e.g. settings synced from an older client). */
-export function applyAppearance(settings: Pick<LofinSettings, "fontFamily" | "boldText" | "themePalette">): void {
+export function applyAppearance(
+  settings: Pick<LofinSettings, "fontFamily" | "boldText" | "themePalette"> & Partial<Pick<LofinSettings, "reduceMotion">>
+): void {
   const root = document.documentElement;
   root.dataset.font = FONT_IDS.has(settings.fontFamily) ? settings.fontFamily : "inter";
   root.dataset.palette = PALETTE_IDS.has(settings.themePalette) ? settings.themePalette : "mono";
   root.dataset.bold = settings.boldText ? "true" : "false";
+  // On <html> rather than the app shell so portaled layers (menus, sheets, toasts) that
+  // render straight into <body> are covered by the in-app Reduce Motion setting too.
+  root.classList.toggle("motion-reduce-force", !!settings.reduceMotion);
 }

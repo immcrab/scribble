@@ -1,4 +1,6 @@
+import { useEffect, useRef } from "react";
 import { TriangleAlert } from "lucide-react";
+import { useModalFocus } from "../lib/useModalFocus";
 
 /** Shown before a Puter.js model is used for the first time in this browser
  * session — Puter.js has its own auth and its own billing, separate from
@@ -13,18 +15,30 @@ export function PuterNoticeModal({
   onConfirm: () => void;
   onCancel: () => void;
 }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useModalFocus(ref);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onCancel();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onCancel]);
   return (
     <div
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-fade-in"
+      className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-fade-in"
       onClick={onCancel}
     >
       <div
+        ref={ref}
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="puter-notice-title"
+        tabIndex={-1}
         onClick={(e) => e.stopPropagation()}
         className="w-full max-w-sm rounded-2xl border border-base-600/60 bg-base-850 p-5 shadow-panel animate-fade-in-up"
       >
         <div className="mb-3 flex items-center gap-2 text-amber-400">
           <TriangleAlert size={18} />
-          <h3 className="text-sm font-semibold text-white">Puter.js sign-in required</h3>
+          <h3 id="puter-notice-title" className="text-sm font-semibold text-white">Puter.js sign-in required</h3>
         </div>
         <p className="mb-4 text-sm text-slate-300">
           <span className="font-medium text-slate-200">{modelName}</span> runs through Puter.js, not Lofin. You'll

@@ -109,8 +109,9 @@ export function ProjectView({ projectId }: { projectId: string }) {
               {streaming && <span className="h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-accent-400" />}
               <button
                 onClick={() => deleteChat(c.id)}
-                className="flex h-4 w-4 shrink-0 items-center justify-center rounded text-slate-500 opacity-0 hover:bg-red-500/20 hover:text-red-400 group-hover:opacity-100"
+                className="flex h-6 w-6 shrink-0 items-center justify-center rounded text-slate-500 opacity-100 hover:bg-red-500/20 hover:text-red-400 focus-visible:opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
                 title="Delete chat"
+                aria-label={`Delete chat ${c.title}`}
               >
                 <X size={11} />
               </button>

@@ -3,6 +3,7 @@ import { Loader2, ShieldCheck } from "lucide-react";
 import { Turnstile, TURNSTILE_RESET_EVENT } from "./Turnstile";
 import { isHumanVerified, markHumanVerified, verifyTurnstile } from "../lib/humanCheck";
 import { LogoMark } from "./Logo";
+import { currentTurnstileConfig } from "../lib/turnstileQa";
 
 /** Full-page "verify you're human" wall shown before the site loads (like Cloudflare's
  * interstitial). Children only mount once Turnstile passes and the Worker confirms the token;
@@ -11,6 +12,7 @@ export function HumanGate({ children }: { children: ReactNode }) {
   const [passed, setPassed] = useState(isHumanVerified);
   const [checking, setChecking] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [qaMode] = useState(() => currentTurnstileConfig().qaMode);
 
   const onToken = useCallback((token: string | null) => {
     if (!token) return;
@@ -41,15 +43,23 @@ export function HumanGate({ children }: { children: ReactNode }) {
           <h1 className="text-base font-semibold text-white">Verify you're human</h1>
         </div>
         <p className="mb-4 text-sm text-slate-400">Quick check before you continue to Lofin.</p>
+        {qaMode && (
+          <p
+            data-testid="turnstile-qa-banner"
+            className="mb-3 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs font-medium text-amber-300"
+          >
+            Staging QA mode: Turnstile test key "{qaMode}". Not available on production.
+          </p>
+        )}
         <Turnstile action="site_gate" onToken={onToken} />
         {checking && (
-          <p className="mt-2 flex items-center justify-center gap-2 text-xs text-slate-400">
-            <Loader2 size={13} className="animate-spin" /> Verifying…
+          <p className="mt-2 flex items-center justify-center gap-2 text-xs text-slate-400" role="status">
+            <Loader2 size={13} className="animate-spin" aria-hidden="true" /> Verifying…
           </p>
         )}
         {error && (
           <div className="mt-2 space-y-2">
-            <p className="text-xs text-red-400">{error}</p>
+            <p className="text-xs text-red-400" role="alert">{error}</p>
             <button
               type="button"
               onClick={() => window.location.reload()}

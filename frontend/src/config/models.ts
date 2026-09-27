@@ -75,6 +75,17 @@ const XKIRO_MODELS: ModelDef[] = [
   },
   {
     provider: "xkiro",
+    modelId: "qwen/qwen3.7-flash:free",
+    displayName: "Qwen3.7 Flash",
+    icon: "Sparkles",
+    contextLength: 1000000,
+    capabilities: ["text", "reasoning", "vision"],
+    free: true,
+    supportsStreaming: true,
+    supportsVision: true,
+  },
+  {
+    provider: "xkiro",
     modelId: "qwen/qwen3.6-max-preview:free",
     displayName: "Qwen3.6 Max Preview",
     icon: "Sparkles",
@@ -317,7 +328,7 @@ const XKIRO_MODELS: ModelDef[] = [
   },
   {
     provider: "xkiro",
-    modelId: "minimax/minimax-m2.7",
+    modelId: "minimax/minimax-m2.7:free",
     displayName: "MiniMax M2.7",
     icon: "Sparkles",
     contextLength: 204800,
@@ -328,7 +339,18 @@ const XKIRO_MODELS: ModelDef[] = [
   },
   {
     provider: "xkiro",
-    modelId: "minimax/minimax-m2.7-highspeed",
+    modelId: "minimax/minimax-m3:free",
+    displayName: "MiniMax M3",
+    icon: "Sparkles",
+    contextLength: 1000000,
+    capabilities: ["text", "reasoning", "vision", "code"],
+    free: true,
+    supportsStreaming: true,
+    supportsVision: true,
+  },
+  {
+    provider: "xkiro",
+    modelId: "minimax/minimax-m2.7-highspeed:free",
     displayName: "MiniMax M2.7 Highspeed",
     icon: "Sparkles",
     contextLength: 204800,
@@ -339,7 +361,7 @@ const XKIRO_MODELS: ModelDef[] = [
   },
   {
     provider: "xkiro",
-    modelId: "minimax/minimax-m2.5",
+    modelId: "minimax/minimax-m2.5:free",
     displayName: "MiniMax M2.5",
     icon: "Sparkles",
     contextLength: 204800,
@@ -350,7 +372,7 @@ const XKIRO_MODELS: ModelDef[] = [
   },
   {
     provider: "xkiro",
-    modelId: "minimax/minimax-m2.5-highspeed",
+    modelId: "minimax/minimax-m2.5-highspeed:free",
     displayName: "MiniMax M2.5 Highspeed",
     icon: "Sparkles",
     contextLength: 204800,
@@ -361,7 +383,7 @@ const XKIRO_MODELS: ModelDef[] = [
   },
   {
     provider: "xkiro",
-    modelId: "minimax/minimax-m2.1",
+    modelId: "minimax/minimax-m2.1:free",
     displayName: "MiniMax M2.1",
     icon: "Sparkles",
     contextLength: 204800,
@@ -372,7 +394,7 @@ const XKIRO_MODELS: ModelDef[] = [
   },
   {
     provider: "xkiro",
-    modelId: "minimax/minimax-m2.1-highspeed",
+    modelId: "minimax/minimax-m2.1-highspeed:free",
     displayName: "MiniMax M2.1 Highspeed",
     icon: "Sparkles",
     contextLength: 204800,
@@ -383,7 +405,7 @@ const XKIRO_MODELS: ModelDef[] = [
   },
   {
     provider: "xkiro",
-    modelId: "minimax/minimax-m2",
+    modelId: "minimax/minimax-m2:free",
     displayName: "MiniMax M2",
     icon: "Sparkles",
     contextLength: 204800,
@@ -396,6 +418,17 @@ const XKIRO_MODELS: ModelDef[] = [
     provider: "xkiro",
     modelId: "deepseek/deepseek-v4-pro",
     displayName: "DeepSeek V4 Pro",
+    icon: "Sparkles",
+    contextLength: 1048576,
+    capabilities: ["text", "reasoning"],
+    free: true,
+    supportsStreaming: true,
+    supportsVision: false,
+  },
+  {
+    provider: "xkiro",
+    modelId: "deepseek/deepseek-v4.1-flash:free",
+    displayName: "DeepSeek V4.1 Flash",
     icon: "Sparkles",
     contextLength: 1048576,
     capabilities: ["text", "reasoning"],
@@ -438,12 +471,22 @@ const XKIRO_MODELS: ModelDef[] = [
   },
   {
     provider: "xkiro",
-    modelId: "stealth/ox-alpha-free",
-    displayName: "OX Alpha",
+    modelId: "sensenova/sensenova-6.8-flash-lite",
+    displayName: "SenseNova 6.8 Flash-Lite",
     icon: "Sparkles",
-    logoUrl: "https://cdn.xtrouter.com/tag-images/Stealth.svg",
-    contextLength: 1048576,
-    capabilities: ["text", "reasoning", "vision"],
+    contextLength: 262144,
+    capabilities: ["text", "vision"],
+    free: true,
+    supportsStreaming: true,
+    supportsVision: true,
+  },
+  {
+    provider: "xkiro",
+    modelId: "sensenova/sensenova-6.7-flash-lite",
+    displayName: "SenseNova 6.7 Flash-Lite",
+    icon: "Sparkles",
+    contextLength: 262144,
+    capabilities: ["text", "vision"],
     free: true,
     supportsStreaming: true,
     supportsVision: true,
@@ -606,6 +649,17 @@ const XKIRO_MODELS: ModelDef[] = [
     provider: "xkiro",
     modelId: "cohere/tiny-aya-fire",
     displayName: "Tiny Aya Fire",
+    icon: "Sparkles",
+    contextLength: 8000,
+    capabilities: ["text"],
+    free: true,
+    supportsStreaming: true,
+    supportsVision: false,
+  },
+  {
+    provider: "xkiro",
+    modelId: "cohere/tiny-aya-water",
+    displayName: "Tiny Aya Water",
     icon: "Sparkles",
     contextLength: 8000,
     capabilities: ["text"],
@@ -1046,9 +1100,6 @@ const ZAI_MODELS: ModelDef[] = [
 
 export const ALL_MODELS: ModelDef[] = [
   ...XKIRO_MODELS,
-  ...GEMINI_MODELS,
-  ...OPENROUTER_MODELS,
-  ...ZAI_MODELS,
 ];
 
 // The free, current all-purpose entry point: reasoning + vision, 1M context.
@@ -1068,11 +1119,9 @@ export function catalogSizeLabel(): string {
   return `${Math.floor(ALL_MODELS.length / 10) * 10}+`;
 }
 
-/** Every model except the free default requires signing in — see the plan's
- * "Sign-in gating" slice. Checked by ModelSelector, SettingsModal's default-model
- * picker, ChatMessage's regenerate-with menu, and defensively in runStream.ts. */
+/** Every model except the free xKiro default requires signing in. */
 export function isModelGated(model: Pick<ModelDef, "modelId" | "provider">): boolean {
-  if (isLocalDev()) return false; // local dev: every model open, no sign-in needed
+  if (isLocalDev()) return false;
   return !(model.provider === "xkiro" && model.modelId === DEFAULT_MODEL_ID);
 }
 
@@ -1170,9 +1219,24 @@ export function getAllModels(): ModelDef[] {
   return allModels();
 }
 
+/** Case/space-insensitive display name, for spotting the same model listed twice. */
+function nameKey(m: ModelDef): string {
+  return m.displayName.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+/**
+ * Every selectable model grouped by provider, each listed exactly once. `allModels()`
+ * already collapses identical `provider:modelId` keys; this also drops a second entry
+ * under the same provider with the same display name (e.g. an admin-published or custom
+ * copy of a built-in under a slightly different id), keeping the first — built-ins win.
+ */
 export function modelsByProvider(): Record<Provider, ModelDef[]> {
   const grouped = {} as Record<Provider, ModelDef[]>;
+  const seen = new Set<string>();
   for (const m of allModels()) {
+    const k = `${m.provider}|${nameKey(m)}`;
+    if (seen.has(k)) continue;
+    seen.add(k);
     (grouped[m.provider] ??= []).push(m);
   }
   return grouped;

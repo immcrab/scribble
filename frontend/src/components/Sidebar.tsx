@@ -26,6 +26,7 @@ import {
   Menu,
 } from "lucide-react";
 import { LogoMark } from "./Logo";
+import { useMediaQuery } from "../lib/useMediaQuery";
 import { useChatStore } from "../state/chatStore";
 import { useAuthStore } from "../state/authStore";
 import { ExportChat } from "./ExportChat";
@@ -101,64 +102,51 @@ type MoreItem = { label: string; icon: ReactNode; onSelect: () => void };
 
 /** Footer "More" button (three lines) that pops a menu of the secondary pages upward. */
 function MoreMenu({ items, collapsed }: { items: MoreItem[]; collapsed: boolean }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const onPointerDown = (e: PointerEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
-    };
-    document.addEventListener("pointerdown", onPointerDown);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("pointerdown", onPointerDown);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [open]);
-
   return (
-    <div ref={ref} className="relative">
-      {open && (
-        <div
-          role="menu"
-          className={`absolute bottom-full left-0 z-50 mb-2 origin-bottom-left animate-pop-up rounded-xl border border-base-600/70 bg-base-850 p-1.5 shadow-panel ${
-            collapsed ? "w-52" : "w-full"
-          }`}
+    <Dropdown
+      role="menu"
+      label="More pages"
+      matchWidth={!collapsed}
+      menuClassName={`p-1.5 ${collapsed ? "w-52" : ""}`}
+      trigger={({ open, toggle, menuId }) => (
+        <button
+          type="button"
+          onClick={toggle}
+          aria-haspopup="menu"
+          aria-expanded={open}
+          aria-controls={open ? menuId : undefined}
+          title="More"
+          data-testid="sidebar-more"
+          className={`flex min-h-11 w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm transition-colors hover:bg-base-800/70 hover:text-white md:min-h-0 ${
+            open ? "bg-base-800/70 text-white" : "text-slate-400"
+          } ${collapsed && "md:justify-center"}`}
         >
+          <Menu size={16} aria-hidden="true" />
+          {collapsed ? <span className="sr-only">More</span> : "More"}
+        </button>
+      )}
+    >
+      {({ close }) => (
+        <>
           {items.map((it, i) => (
             <button
               key={it.label}
+              type="button"
               role="menuitem"
               onClick={() => {
-                setOpen(false);
+                close();
                 it.onSelect();
               }}
               style={{ animationDelay: `${i * 30}ms` }}
-              className="flex w-full animate-fade-in-up items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm text-slate-300 transition-colors [animation-fill-mode:backwards] hover:bg-base-700/70 hover:text-white"
+              className="flex min-h-11 w-full animate-fade-in-up items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm text-slate-300 transition-colors [animation-fill-mode:backwards] hover:bg-base-700/70 hover:text-white"
             >
-              <span className="text-slate-400">{it.icon}</span>
+              <span className="text-slate-400" aria-hidden="true">{it.icon}</span>
               {it.label}
             </button>
           ))}
-        </div>
+        </>
       )}
-      <button
-        onClick={() => setOpen((o) => !o)}
-        aria-haspopup="menu"
-        aria-expanded={open}
-        title="More"
-        className={`flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm transition-colors hover:bg-base-800/70 hover:text-white ${
-          open ? "bg-base-800/70 text-white" : "text-slate-400"
-        } ${collapsed && "md:justify-center"}`}
-      >
-        <Menu size={16} />
-        {!collapsed && "More"}
-      </button>
-    </div>
+    </Dropdown>
   );
 }
 
@@ -284,6 +272,53 @@ export function Sidebar({
 
   const activeChat = chats.find((c) => c.id === activeChatId);
 
+  // Below `md` the sidebar is an off-canvas drawer. Closed, it's made inert so keyboard
+  // and screen-reader users can't wander into content that's translated off-screen; open,
+  // it behaves as a modal dialog: focus moves in, Tab is trapped, Escape closes it.
+  const isDesktop = useMediaQuery("(min-width: 768px)");
+  const panelRef = useRef<HTMLDivElement>(null);
+  const drawerModal = !isDesktop && mobileOpen;
+  useEffect(() => {
+    const el = panelRef.current;
+    if (!el) return;
+    if (!isDesktop && !mobileOpen) el.setAttribute("inert", "");
+    else el.removeAttribute("inert");
+  }, [isDesktop, mobileOpen]);
+  useEffect(() => {
+    if (!drawerModal) return;
+    const el = panelRef.current;
+    const previouslyFocused = document.activeElement as HTMLElement | null;
+    const focusables = () =>
+      Array.from(el?.querySelectorAll<HTMLElement>('button:not([disabled]), a[href], input:not([disabled]), [tabindex]:not([tabindex="-1"])') ?? []);
+    requestAnimationFrame(() => focusables()[0]?.focus());
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        if (document.querySelector("[data-dropdown-menu]")) return; // a menu inside closes first
+        e.preventDefault();
+        onCloseMobile();
+        return;
+      }
+      if (e.key !== "Tab") return;
+      const f = focusables();
+      if (f.length === 0) return;
+      const first = f[0];
+      const last = f[f.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      previouslyFocused?.focus?.();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [drawerModal]);
+
   // Chats that belong to a project live inside that project's tabbed view, not the flat
   // History list. A brand-new zero-message chat is also kept out until it has a first
   // message — except the one currently on screen, so the fresh compose screen still
@@ -338,11 +373,18 @@ export function Sidebar({
     <>
       {mobileOpen && (
         <div
+          aria-hidden="true"
+          data-testid="sidebar-backdrop"
           onClick={onCloseMobile}
           className="fixed inset-0 z-30 animate-fade-in bg-black/60 backdrop-blur-sm md:hidden"
         />
       )}
-      <div
+      <nav
+        ref={panelRef}
+        aria-label="Sidebar"
+        data-testid="sidebar"
+        data-state={mobileOpen ? "open" : "closed"}
+        {...(drawerModal ? { role: "dialog", "aria-modal": true } : {})}
         className={`fixed inset-y-0 left-0 z-40 h-full w-72 shrink-0 border-r border-base-700/60 glass-panel transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] md:relative md:z-20 md:translate-x-0 md:transition-[width] ${
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         } ${sidebarOpen ? "md:w-72" : "md:w-[60px]"}`}
@@ -465,7 +507,7 @@ export function Sidebar({
                           <button
                             onClick={() => { deleteProject(p.id); setConfirmDeleteId(null); }}
                             className="flex h-8 items-center rounded-lg px-2 text-[11px] font-medium text-red-400 hover:bg-red-500/20"
-                            title="Delete project (keeps its chats)"
+                            title="Confirm delete project (keeps its chats)"
                           >
                             Delete?
                           </button>
@@ -479,7 +521,7 @@ export function Sidebar({
                         </span>
                       )}
                       {editingProjectId !== p.id && confirmDeleteId !== `project:${p.id}` && (
-                        <span className="flex shrink-0 gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100">
+                        <span className="flex shrink-0 gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
                           <button
                             onClick={() => startProjectEdit(p.id, p.name)}
                             className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-base-600 hover:text-white"
@@ -508,6 +550,9 @@ export function Sidebar({
               <div className="relative">
                 <Search size={14} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" />
                 <input
+                  type="search"
+                  aria-label="Search chats"
+                  data-testid="chat-search"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="Search chats..."
@@ -573,6 +618,8 @@ export function Sidebar({
                     ) : (
                       <button
                         onClick={closeOnMobileSelect(() => setActiveChat(chat.id))}
+                        aria-current={chat.id === activeChatId ? "page" : undefined}
+                        data-testid="chat-row"
                         className="min-w-0 flex-1 py-0.5 text-left"
                         title={chat.title}
                       >
@@ -741,7 +788,7 @@ export function Sidebar({
             </button>
           </div>
         </div>
-      </div>
+      </nav>
     </>
   );
 }

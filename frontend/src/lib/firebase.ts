@@ -1,7 +1,6 @@
 import { initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
 import { getDatabase, type Database } from "firebase/database";
-import { getFirestore, type Firestore } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBydJIC0fsocxmei-HBI6IH0ZlF-pwOcqg",
@@ -37,17 +36,13 @@ export function getRtdb(): Database | null {
   return rtdbInstance;
 }
 
-// Firestore backs saved chats and public share links. Keep this lazy for the
-// same reason as RTDB: a visitor who never signs in should not open a Firebase
-// connection just by loading the app.
-let firestoreInstance: Firestore | null | undefined;
-export function getFirestoreDb(): Firestore | null {
-  if (firestoreInstance === undefined) {
-    try {
-      firestoreInstance = getFirestore(firebaseApp);
-    } catch {
-      firestoreInstance = null;
-    }
-  }
-  return firestoreInstance;
+// Firestore backs saved chats and public share links. The SDK is ~300 kB, so it is
+// both lazily *connected* (a visitor who never saves a chat opens no connection) and
+// lazily *loaded*: the module is fetched on first use, keeping it out of the entry chunk.
+export type FirestoreKit = typeof import("firebase/firestore") & { db: import("firebase/firestore").Firestore };
+let firestorePromise: Promise<FirestoreKit | null> | undefined;
+export function loadFirestore(): Promise<FirestoreKit | null> {
+  return (firestorePromise ??= import("firebase/firestore")
+    .then((mod) => ({ ...mod, db: mod.getFirestore(firebaseApp) }))
+    .catch(() => null));
 }

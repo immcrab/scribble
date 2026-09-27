@@ -7,3 +7,5 @@ dist/
 .env.local
 .dev.vars
 *.tsbuildinfo
+test-results/
+playwright-report/

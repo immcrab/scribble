@@ -25,15 +25,17 @@ export function ExportChat({
 }) {
   const [copied, setCopied] = useState(false);
   const [shared, setShared] = useState(false);
+  const [copyError, setCopyError] = useState(false);
 
   const shareLink = async () => {
     if (!chatId) return;
     try {
       await navigator.clipboard.writeText(`${window.location.origin}/c/${chatId}`);
       setShared(true);
+      setCopyError(false);
       setTimeout(() => setShared(false), 2000);
     } catch {
-      // ignore — clipboard unavailable
+      setCopyError(true);
     }
   };
 
@@ -87,9 +89,10 @@ export function ExportChat({
     try {
       await navigator.clipboard.writeText(toMarkdown());
       setCopied(true);
+      setCopyError(false);
       setTimeout(() => setCopied(false), 1500);
     } catch {
-      // ignore — clipboard unavailable
+      setCopyError(true);
     }
   };
 
@@ -100,11 +103,16 @@ export function ExportChat({
     <div className="flex flex-col gap-1.5">
     <div className="flex items-center gap-1.5">
       <Dropdown
-        menuClassName="w-40"
-        trigger={({ toggle }) => (
+        role="menu"
+        label="Export format"
+        menuClassName="w-40 py-1"
+        trigger={({ open, toggle, menuId }) => (
           <button
             type="button"
             onClick={toggle}
+            aria-haspopup="menu"
+            aria-expanded={open}
+            aria-controls={open ? menuId : undefined}
             className="flex h-11 items-center justify-center gap-1 rounded-xl bg-base-800/60 px-2.5 text-slate-400 transition-colors hover:bg-base-700/60 hover:text-white sm:h-auto sm:rounded-lg sm:py-1.5"
             title="Export chat"
           >
@@ -116,10 +124,10 @@ export function ExportChat({
       >
         {({ close }) => (
           <>
-            <button className={itemClass} onClick={() => { downloadBlob(toMarkdown(), "text/markdown", "md"); close(); }}>
+            <button type="button" role="menuitem" className={itemClass} onClick={() => { downloadBlob(toMarkdown(), "text/markdown", "md"); close(); }}>
               Markdown (.md)
             </button>
-            <button className={itemClass} onClick={() => { downloadBlob(toJson(), "application/json", "json"); close(); }}>
+            <button type="button" role="menuitem" className={itemClass} onClick={() => { downloadBlob(toJson(), "application/json", "json"); close(); }}>
               JSON (.json)
             </button>
           </>
@@ -148,9 +156,15 @@ export function ExportChat({
         </button>
       )}
     </div>
-    {shared && (
-      <p className="px-1 text-[11px] text-slate-500">Anyone with this link can view the conversation.</p>
-    )}
+    <p className={`px-1 text-[11px] ${copyError ? "text-red-400" : "text-slate-500"}`} role="status" aria-live="polite" data-testid="export-status">
+      {copyError
+        ? "Couldn't copy — your browser blocked clipboard access."
+        : shared
+          ? "Link copied. Anyone with this link can view the conversation."
+          : copied
+            ? "Transcript copied to clipboard."
+            : ""}
+    </p>
     </div>
   );
 }

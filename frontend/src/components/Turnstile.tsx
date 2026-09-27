@@ -1,6 +1,5 @@
 import { useEffect, useRef } from "react";
-
-const SITE_KEY = "0x4AAAAAAFDwyUYIy39o_-gg";
+import { currentTurnstileConfig } from "../lib/turnstileQa";
 const SCRIPT_URL = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
 
 type TurnstileApi = {
@@ -49,7 +48,7 @@ export function Turnstile({ action, onToken }: { action: string; onToken: (token
         if (!active || !containerRef.current) return;
         api = loaded;
         widgetIdRef.current = loaded.render(containerRef.current, {
-          sitekey: SITE_KEY,
+          sitekey: currentTurnstileConfig().siteKey,
           action,
           callback: (token: string) => onToken(token),
           "expired-callback": () => onToken(null),

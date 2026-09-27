@@ -18,6 +18,9 @@ export interface Env {
   TURNSTILE_SECRET?: string;
   /** Comma-separated hostnames accepted from Turnstile Siteverify. Plain var. */
   TURNSTILE_HOSTNAMES?: string;
+  /** Staging only: "pass" | "fail" lets Cloudflare's test site keys through the gate
+   * (see turnstile.ts). Ignored on production hosts. Never set in the top-level config. */
+  TURNSTILE_QA_MODE?: string;
   /** R2 bucket for admin announcement artwork, served through the Worker. */
   ANNOUNCEMENT_ASSETS?: R2Bucket;
   FIREBASE_PROJECT_ID?: string;
