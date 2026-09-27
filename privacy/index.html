@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Privacy Policy — Lofin</title>
+    <meta name="description" content="How Lofin handles your data." />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" href="/favicon.ico" sizes="48x48" />
+
+    <!-- Cloudflare Web Analytics --><script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "8c31e25d6bdc447baa67133c616c0642"}'></script><!-- End Cloudflare Web Analytics -->
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,300;8..60,500;8..60,600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        color-scheme: dark;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+      }
+      body {
+        background: #1b1a18;
+        color: #e7e1da;
+        font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+        line-height: 1.65;
+      }
+      .wrap {
+        max-width: 720px;
+        margin: 0 auto;
+        padding: 56px 24px 96px;
+      }
+      header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 40px;
+      }
+      .mark {
+        width: 28px;
+        height: 28px;
+        flex-shrink: 0;
+      }
+      header a {
+        color: #f5f0eb;
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 1.05rem;
+      }
+      .updated {
+        color: #68615a;
+        font-size: 0.82rem;
+        margin: -28px 0 40px;
+      }
+      h1 {
+        font-family: "Source Serif 4", ui-serif, Georgia, serif;
+        font-weight: 300;
+        letter-spacing: -0.02em;
+        font-size: 2.4rem;
+        margin: 0 0 8px;
+        color: #f5f0eb;
+      }
+      h2 {
+        font-size: 1.05rem;
+        font-weight: 600;
+        color: #f5f0eb;
+        margin: 2.2em 0 0.6em;
+      }
+      p,
+      li {
+        color: #c7c2bc;
+        font-size: 0.94rem;
+      }
+      ul {
+        padding-left: 1.3em;
+        margin: 0.6em 0;
+      }
+      li {
+        margin: 0.35em 0;
+      }
+      a {
+        color: #f5f0eb;
+        text-decoration: underline;
+        text-underline-offset: 2px;
+      }
+      .note {
+        margin-top: 3em;
+        padding: 14px 16px;
+        border: 1px solid #413d39;
+        border-radius: 10px;
+        background: #23211f;
+        font-size: 0.82rem;
+        color: #827c73;
+      }
+      code {
+        background: #2c2925;
+        border: 1px solid #413d39;
+        border-radius: 5px;
+        padding: 0.1em 0.4em;
+        font-size: 0.85em;
+        font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header>
+        <svg class="mark" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+          <rect width="32" height="32" rx="9" fill="#252523" />
+          <path d="M16 6c1 6 3 9 10 10-7 1-9 4-10 10-1-6-3-9-10-10 7-1 9-4 10-10Z" fill="#f5f0eb" />
+        </svg>
+        <a href="/">Lofin</a>
+      </header>
+
+      <h1>Privacy Policy</h1>
+      <p class="updated">Last updated: August 2026</p>
+
+      <p>
+        Lofin is a small, independently run AI playground. This page explains what data the app
+        touches, where it goes, and what choices you have. It's written in plain language rather than
+        formal legalese — if you need something more formal for a commercial deployment, have a lawyer
+        review it.
+      </p>
+
+      <h2>What's stored, and where</h2>
+      <ul>
+        <li>
+          <strong>Chats and attachments.</strong> By default, everything you type — messages, uploaded
+          images/files, and app settings — is saved only in your browser's local storage on your device.
+          Nothing is sent to a Lofin-operated database unless you sign in (below).
+        </li>
+        <li>
+          <strong>Signing in with Google.</strong> If you sign in, your chats and preferences (not your
+          optional access password) are synced to a Firebase Realtime Database so they follow you across
+          devices logged into the same account. Deleting a chat removes it from that synced copy too.
+          Signing out stops the sync; local data stays on the device.
+        </li>
+        <li>
+          <strong>Account info.</strong> Signing in uses Google's own OAuth flow via Firebase
+          Authentication. Lofin only receives the basic profile info Google provides (name, email,
+          avatar) — no password is ever seen by this app.
+        </li>
+      </ul>
+
+      <h2>What happens when you send a message</h2>
+      <p>
+        Your message (and any attachment) is sent to Lofin's own Cloudflare Worker, which forwards it
+        to whichever AI model provider you selected and streams the reply back. Depending on the model,
+        that provider is <strong>xKiro, Mistral, Google Gemini, or OpenRouter</strong> for chat,
+        <strong>Cloudflare Workers AI or xKiro</strong> for image generation and editing, and
+        <strong>xKiro</strong> for text to speech. (A "Puter.js" model, if you pick one, is the exception —
+        those requests go straight from your browser to Puter under its own sign-in and never touch
+        Lofin's Worker.) The Worker doesn't write your conversations to a log or database of its own;
+        it's a pass-through, and once a response finishes streaming it holds nothing.
+      </p>
+      <p>
+        The model provider you picked does receive your message content to generate a response, the same
+        way it would through their own product. How long they retain it, and whether it's used to improve
+        their models, is governed by that provider's own privacy policy, not this one — check theirs if
+        that matters to you.
+      </p>
+      <p>
+        A few small helper calls also go out with a chat, all to <strong>Groq</strong>: the first message
+        of a new chat is sent there to generate a short sidebar title, and — when web search or memory is
+        active — the message is sent there for a quick yes/no classification of whether it needs a live
+        lookup or a stored fact. This happens regardless of which model you picked for the conversation.
+      </p>
+
+      <h2>Web search</h2>
+      <p>
+        When automatic web search is on (it's a per-turn "search only if it would help" mode, on by
+        default), a message the classifier decides needs current information is rewritten into a search
+        query and sent to <strong>SerpApi</strong>, which runs the search and returns results that are
+        folded into the model's context. Turns that don't need a lookup never reach SerpApi.
+      </p>
+
+      <h2>Approximate location</h2>
+      <p>
+        If you allow it (Lofin asks once, and you can change it anytime in Settings), each chat request
+        includes a rough city-level location. It's estimated from your IP address via
+        <strong>ipapi.co</strong> — never the browser's GPS, and never anything more precise than
+        city / region / country. Your local date, time, and timezone are always sent, since reading the
+        system clock reveals nothing sensitive. Decline, and no location is looked up or sent.
+      </p>
+
+      <h2>Memory</h2>
+      <p>
+        Memory is off by default. If you turn it on, Lofin will save short facts you ask it to remember
+        (or that it judges worth keeping) and send them back as context in later chats. Those facts are
+        stored with your account in the same Firebase database as your synced chats, and are cleared when
+        you delete a memory, turn memory off, or delete your account.
+      </p>
+
+      <h2>Analytics</h2>
+      <p>
+        Lofin uses <strong>Cloudflare Web Analytics</strong> to see aggregate, non-identifying usage — page
+        views and roughly where visitors are. It is privacy-first: it does not use cookies or track
+        individual users across sites. Lofin never sends your chat content,
+        messages, or account email to Cloudflare, and there are no ads or advertising trackers on the site.
+        You can block the analytics script with a content blocker — Lofin still works with it blocked.
+      </p>
+
+      <h2>What Lofin doesn't do</h2>
+      <ul>
+        <li>No advertising, and no ad trackers.</li>
+        <li>No selling or renting of your data to anyone.</li>
+        <li>No sending of your chat content, messages, or email to analytics systems.</li>
+        <li>No payment processing — the app is free to use.</li>
+        <li>No server-side chat history kept by Lofin's own backend.</li>
+      </ul>
+
+      <h2>Your choices</h2>
+      <ul>
+        <li>Delete any chat from the sidebar at any time.</li>
+        <li>Clear your browser's local storage to remove everything stored on-device — or use "Clear local data" in Settings.</li>
+        <li>Turn off web search, memory, and location sharing in Settings.</li>
+        <li>Block the analytics script with a browser extension — the app still works.</li>
+        <li>Sign out to stop cross-device sync; sign back in later to resume it.</li>
+        <li>Delete your account entirely from Settings → Account, which also removes your synced data.</li>
+        <li>Use Lofin without ever signing in — your chats then stay only in this browser.</li>
+      </ul>
+
+      <h2>Children</h2>
+      <p>Lofin isn't directed at children under 13 and isn't designed to collect data from them.</p>
+
+      <h2>Changes</h2>
+      <p>
+        This page may be updated as the app changes. Meaningful changes will be reflected here with an
+        updated date at the top.
+      </p>
+
+      <h2>Contact</h2>
+      <p>
+        Questions about this policy: <a href="mailto:support@lofin.dev">support@lofin.dev</a>.
+      </p>
+
+      <p class="note">
+        This is a template written for a small independent project, not formal legal advice. It describes
+        the app's actual behavior as of the date above, based on its source code — if you self-host or
+        fork Lofin, review and adjust it to match your own deployment before relying on it.
+      </p>
+    </div>
+  </body>
+</html>
