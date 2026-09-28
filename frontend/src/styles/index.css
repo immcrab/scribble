@@ -504,6 +504,24 @@ select {
   animation: fade-in 0.2s ease-out;
 }
 
+/* Settings is intentionally roomier than short confirmation dialogs: its tabs
+   contain full form controls and model lists. The paired animations give both
+   opening and closing a clear, tactile pop without making the UI feel slow. */
+.settings-backdrop {
+  animation: settings-backdrop-in 180ms ease-out both;
+}
+.settings-backdrop--closing {
+  animation: settings-backdrop-out 180ms ease-in both;
+  pointer-events: none;
+}
+.settings-panel {
+  transform-origin: center 45%;
+  animation: settings-pop-stretch-in 340ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.settings-panel--closing {
+  animation: settings-pop-stretch-out 180ms cubic-bezier(0.4, 0, 1, 1) both;
+}
+
 /* Respect reduced motion: freeze the infinite breathing/pulse animations and
    the soft scroll, so the UI stays calm for anyone who's opted out. */
 @media (prefers-reduced-motion: reduce) {
@@ -512,7 +530,9 @@ select {
   }
   .stream-cursor::after,
   .thinking-dots span,
-  .stream-prelude .prelude-text {
+  .stream-prelude .prelude-text,
+  .settings-backdrop,
+  .settings-panel {
     animation-duration: 0.001ms !important;
     animation-iteration-count: 1 !important;
     opacity: 1;
@@ -545,7 +565,9 @@ select {
 }
 .motion-reduce-force .stream-cursor::after,
 .motion-reduce-force .thinking-dots span,
-.motion-reduce-force .stream-prelude .prelude-text {
+.motion-reduce-force .stream-prelude .prelude-text,
+.motion-reduce-force .settings-backdrop,
+.motion-reduce-force .settings-panel {
   animation-duration: 0.001ms !important;
   animation-iteration-count: 1 !important;
   opacity: 1;
@@ -749,6 +771,23 @@ select {
   bottom: 15px;
   left: 6px;
   animation: imggen-walk 6s ease-in-out infinite;
+}
+@keyframes settings-backdrop-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes settings-backdrop-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+@keyframes settings-pop-stretch-in {
+  from { opacity: 0; transform: translateY(18px) scale(0.9, 0.82); }
+  60% { opacity: 1; transform: translateY(-1px) scale(1.012, 0.995); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes settings-pop-stretch-out {
+  from { opacity: 1; transform: translateY(0) scale(1); }
+  to { opacity: 0; transform: translateY(10px) scale(0.96, 0.86); }
 }
 .imggen-buddy-flip {
   animation: imggen-flip 6s step-end infinite;

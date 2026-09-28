@@ -376,14 +376,24 @@ export function SettingsModal({ onClose, initialTab }: { onClose: () => void; in
   const [customSystemPrompt, setCustomSystemPrompt] = useState(settings.customSystemPrompt);
   const [status, setStatus] = useState<"idle" | "checking" | "ok" | "fail">("idle");
   const [pendingPuterModel, setPendingPuterModel] = useState<ModelDef | null>(null);
+  const [isClosing, setIsClosing] = useState(false);
+  const closeTimer = useRef<number | null>(null);
 
   // Flush the few text fields that aren't live-saved (Worker URL, password, custom
   // instructions), then close. Every other control in here already applies on change,
   // so there's just one "Done" — no Save/Cancel split to reason about.
   const commitAndClose = () => {
+    if (isClosing) return;
     updateSettings({ workerUrl: workerUrl.trim(), password, customSystemPrompt: customSystemPrompt.trim() });
-    onClose();
+    // Let the panel finish its compact exit motion before it unmounts. This
+    // keeps the modal from disappearing abruptly without delaying data saves.
+    setIsClosing(true);
+    closeTimer.current = window.setTimeout(onClose, 180);
   };
+
+  useEffect(() => () => {
+    if (closeTimer.current !== null) window.clearTimeout(closeTimer.current);
+  }, []);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -407,7 +417,7 @@ export function SettingsModal({ onClose, initialTab }: { onClose: () => void; in
   return (
     <>
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-fade-in"
+      className={`settings-backdrop fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm ${isClosing ? "settings-backdrop--closing" : ""}`}
       onClick={commitAndClose}
     >
       <div
@@ -417,16 +427,16 @@ export function SettingsModal({ onClose, initialTab }: { onClose: () => void; in
         aria-labelledby="settings-title"
         tabIndex={-1}
         onClick={(e) => e.stopPropagation()}
-        className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-base-600/60 bg-base-850 shadow-panel animate-fade-in-up"
+        className={`settings-panel flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-base-600/60 bg-base-850 shadow-panel ${isClosing ? "settings-panel--closing" : ""}`}
       >
-        <div className="flex items-center justify-between px-6 pb-4 pt-6">
+        <div className="flex items-center justify-between px-5 pb-4 pt-5 sm:px-8 sm:pt-7">
           <h2 id="settings-title" className="text-lg font-semibold text-white">Settings</h2>
           <button onClick={commitAndClose} aria-label="Close settings" className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 hover:bg-base-700 hover:text-white">
             <X size={18} />
           </button>
         </div>
 
-        <div role="tablist" aria-label="Settings sections" className="flex gap-1 overflow-x-auto border-b border-base-700/60 px-6 pb-0 sm:justify-between sm:gap-0">
+        <div role="tablist" aria-label="Settings sections" className="flex gap-1 overflow-x-auto border-b border-base-700/60 px-5 pb-0 sm:justify-between sm:gap-0 sm:px-8">
           {TABS.map(({ id, label, icon: Icon }) => (
             <button
               key={id}
@@ -445,7 +455,7 @@ export function SettingsModal({ onClose, initialTab }: { onClose: () => void; in
           ))}
         </div>
 
-        <div className="flex-1 overflow-y-auto px-6 py-5">
+        <div className="flex-1 overflow-y-auto px-5 py-5 sm:px-8 sm:py-6">
           {tab === "general" && (
             <div className="space-y-6">
               <div>

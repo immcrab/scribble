@@ -5,7 +5,17 @@ import react from "@vitejs/plugin-react";
 // VITE_BASE at build time if you ever deploy under a GitHub Pages subpath instead
 // (e.g. "/lofin/") — also update the matching segmentCount in public/404.html.
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react(),
+    // Vite warns for an unset %VITE_*% HTML replacement. This token has a
+    // stable app-build default while preserving the docs deployment's opt-in.
+    {
+      name: "lofin-docs-static-fallback",
+      transformIndexHtml(html) {
+        return html.replace("__LOFIN_DOCS_SITE__", process.env.VITE_DOCS_SITE === "true" ? "true" : "false");
+      },
+    },
+  ],
   base: process.env.VITE_BASE ?? "/",
   server: {
     port: process.env.PORT ? Number(process.env.PORT) : 5173,

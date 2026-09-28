@@ -41,6 +41,26 @@ async function imageGenerationBuddyMotion(page: Page) {
 }
 
 test.describe("Reduced motion", () => {
+  test("Settings opens as a wider pop-and-stretch panel and respects reduced motion", async ({ page }) => {
+    await page.goto("/");
+    await page.getByTestId("sidebar").getByRole("button", { name: "Settings" }).click();
+    const dialog = page.getByRole("dialog", { name: "Settings" });
+    await expect(dialog).toBeVisible();
+    // clientWidth is stable while the entry animation is still scaling the
+    // visual bounding box.
+    expect(await dialog.evaluate((el) => el.clientWidth)).toBeGreaterThanOrEqual(850);
+    expect(await dialog.evaluate((el) => getComputedStyle(el).animationName)).toBe("settings-pop-stretch-in");
+
+    await page.keyboard.press("Escape");
+    await expect(dialog).toBeHidden();
+
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.getByTestId("sidebar").getByRole("button", { name: "Settings" }).click();
+    await expect(dialog).toBeVisible();
+    const duration = await dialog.evaluate((el) => getComputedStyle(el).animationDuration);
+    expect(parseFloat(duration) * (duration.endsWith("ms") ? 1 : 1000)).toBeLessThan(1);
+  });
+
   test("baseline: animations run normally", async ({ page }) => {
     await page.goto("/");
     await expect(page.getByRole("textbox", { name: "Message" })).toBeVisible();
