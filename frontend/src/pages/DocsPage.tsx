@@ -33,7 +33,7 @@ import { getAllModels, PROVIDER_LABELS, isModelGated } from "../config/models";
 import { getModelDescription } from "../config/modelDocs";
 import { ModelFavicon, ProviderFavicon } from "../components/ProviderIcon";
 import { LogoMark } from "../components/Logo";
-import { DOCS_ORIGIN, docsPath } from "../lib/router";
+import { DOCS_ORIGIN, docsPath, isDocsSite } from "../lib/router";
 import { modelSlug } from "../lib/modelSlug";
 import { monthKey, fetchMonthStats, type MonthStats } from "../lib/modelStats";
 import type { ModelCapability, ModelDef, Provider } from "../types";
@@ -1065,7 +1065,7 @@ export function DocsPage({ slug, onExit }: { slug: string; onExit: () => void })
   const exitDocs = () => {
     // The legacy /docs route returns to the app in-place. On the dedicated
     // host, returning in-place would render the chat app on docs.lofin.dev.
-    if (window.location.hostname === "docs.lofin.dev") {
+    if (isDocsSite()) {
       window.location.assign("https://lofin.dev/");
       return;
     }

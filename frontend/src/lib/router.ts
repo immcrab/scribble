@@ -17,8 +17,16 @@ function normalizeId(raw: string): string {
  * app's "Docs" links, canonical URLs, and the standalone docs build agree. */
 export const DOCS_ORIGIN = "https://docs.lofin.dev";
 
-function isDocsHost(): boolean {
-  return window.location.hostname === "docs.lofin.dev";
+export function isDocsSite(): boolean {
+  const host = window.location.hostname;
+  // The latter two hostnames let the Cloudflare Pages production and preview
+  // URLs behave exactly like docs.lofin.dev before the custom domain is live.
+  return (
+    host === "docs.lofin.dev" ||
+    host === "lofin-docs.pages.dev" ||
+    host.endsWith(".lofin-docs.pages.dev") ||
+    import.meta.env.VITE_DOCS_SITE === "true"
+  );
 }
 
 export function parseChatIdFromLocation(): string | null {
@@ -166,7 +174,7 @@ export function onPopState(handler: (chatId: string | null) => void): () => void
 export function parseDocsSlugFromLocation(): string | null {
   // On docs.lofin.dev the documentation is the site root, so clean URLs are
   // /, /using, /models, and /{model-slug}. The legacy app route remains below.
-  if (isDocsHost()) {
+  if (isDocsSite()) {
     const path = window.location.pathname.replace(/\/+$/, "") || "/";
     if (path === "/") return "";
     const match = path.match(/^\/([^/]+)$/);
@@ -180,7 +188,7 @@ export function parseDocsSlugFromLocation(): string | null {
 }
 
 export function docsPath(slug?: string): string {
-  if (isDocsHost()) return slug ? `/${encodeURIComponent(slug)}` : "/";
+  if (isDocsSite()) return slug ? `/${encodeURIComponent(slug)}` : "/";
   const base = import.meta.env.BASE_URL.replace(/\/$/, "");
   return slug ? `${base}/docs/${encodeURIComponent(slug)}` : `${base}/docs`;
 }
