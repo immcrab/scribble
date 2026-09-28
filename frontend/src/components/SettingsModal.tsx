@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useModalFocus } from "../lib/useModalFocus";
 import {
   X,
@@ -22,6 +22,10 @@ import {
   AlignJustify,
   Languages,
   Wrench,
+  Bell,
+  Search,
+  Sparkles,
+  Server,
 } from "lucide-react";
 import { useChatStore } from "../state/chatStore";
 import { useAuthStore } from "../state/authStore";
@@ -45,15 +49,18 @@ function SectionLabel({ children }: { children: string }) {
   return <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">{children}</h3>;
 }
 
-export type SettingsTab = "general" | "appearance" | "account" | "models" | "memory";
+export type SettingsTab = "general" | "appearance" | "notifications" | "personalization" | "account" | "models" | "memory" | "advanced";
 type Tab = SettingsTab;
 
-const TABS: { id: Tab; label: string; icon: typeof Sliders }[] = [
-  { id: "general", label: "General", icon: Sliders },
-  { id: "appearance", label: "Appearance", icon: Palette },
-  { id: "account", label: "Account", icon: UserCircle2 },
-  { id: "models", label: "Models", icon: Blocks },
-  { id: "memory", label: "Memory", icon: Brain },
+const TABS: { id: Tab; label: string; icon: typeof Sliders; group: "Personal" | "Workspace"; keywords: string }[] = [
+  { id: "general", label: "General", icon: Sliders, group: "Personal", keywords: "preferences keyboard send web search location" },
+  { id: "appearance", label: "Appearance", icon: Palette, group: "Personal", keywords: "theme color font text density language" },
+  { id: "notifications", label: "Notifications", icon: Bell, group: "Personal", keywords: "sound browser alerts announcements" },
+  { id: "personalization", label: "Personalization", icon: Sparkles, group: "Personal", keywords: "instructions replies preferences" },
+  { id: "memory", label: "Memory", icon: Brain, group: "Personal", keywords: "remember stored memories" },
+  { id: "account", label: "Account", icon: UserCircle2, group: "Workspace", keywords: "profile sign in data" },
+  { id: "models", label: "Models", icon: Blocks, group: "Workspace", keywords: "providers custom models endpoints" },
+  { id: "advanced", label: "Advanced", icon: Server, group: "Workspace", keywords: "worker connection password request spacing" },
 ];
 
 const THEME_OPTIONS: { id: Theme; label: string; icon: typeof Sun }[] = [
@@ -377,7 +384,12 @@ export function SettingsModal({ onClose, initialTab }: { onClose: () => void; in
   const [status, setStatus] = useState<"idle" | "checking" | "ok" | "fail">("idle");
   const [pendingPuterModel, setPendingPuterModel] = useState<ModelDef | null>(null);
   const [isClosing, setIsClosing] = useState(false);
+  const [search, setSearch] = useState("");
   const closeTimer = useRef<number | null>(null);
+  const visibleTabs = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    return query ? TABS.filter((item) => `${item.label} ${item.keywords}`.toLowerCase().includes(query)) : TABS;
+  }, [search]);
 
   // Flush the few text fields that aren't live-saved (Worker URL, password, custom
   // instructions), then close. Every other control in here already applies on change,
@@ -429,33 +441,54 @@ export function SettingsModal({ onClose, initialTab }: { onClose: () => void; in
         onClick={(e) => e.stopPropagation()}
         className={`settings-panel flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-base-600/60 bg-base-850 shadow-panel ${isClosing ? "settings-panel--closing" : ""}`}
       >
-        <div className="flex items-center justify-between px-5 pb-4 pt-5 sm:px-8 sm:pt-7">
+        <div className="flex items-center justify-between border-b border-base-700/60 px-5 py-4 sm:px-6">
           <h2 id="settings-title" className="text-lg font-semibold text-white">Settings</h2>
           <button onClick={commitAndClose} aria-label="Close settings" className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 hover:bg-base-700 hover:text-white">
             <X size={18} />
           </button>
         </div>
 
-        <div role="tablist" aria-label="Settings sections" className="flex gap-1 overflow-x-auto border-b border-base-700/60 px-5 pb-0 sm:justify-between sm:gap-0 sm:px-8">
-          {TABS.map(({ id, label, icon: Icon }) => (
-            <button
-              key={id}
-              onClick={() => setTab(id)}
-              role="tab"
-              aria-selected={tab === id}
-              className={`flex shrink-0 items-center gap-1.5 border-b-2 px-2.5 py-2.5 text-sm font-medium transition-colors sm:flex-1 sm:justify-center ${
-                tab === id
-                  ? "border-accent-500 text-white"
-                  : "border-transparent text-slate-500 hover:text-slate-300"
-              }`}
-            >
-              <Icon size={14} />
-              {label}
-            </button>
-          ))}
-        </div>
+        <div className="flex min-h-0 flex-1 flex-col sm:flex-row">
+          <aside className="w-full shrink-0 border-b border-base-700/60 bg-base-900/35 p-4 sm:w-64 sm:overflow-y-auto sm:border-b-0 sm:border-r">
+            <label className="relative block">
+              <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+              <input
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search settings"
+                aria-label="Search settings"
+                className="w-full rounded-xl border border-base-600/60 bg-base-850 py-2 pl-9 pr-3 text-sm text-white outline-none placeholder:text-slate-500 focus:border-accent-500"
+              />
+            </label>
+            <div role="tablist" aria-label="Settings sections" className="mt-4 grid grid-cols-2 gap-1 sm:block">
+              {(["Personal", "Workspace"] as const).map((group) => {
+                const items = visibleTabs.filter((item) => item.group === group);
+                if (!items.length) return null;
+                return (
+                  <div key={group} className="col-span-2 sm:mb-4">
+                    <p className="mb-1.5 px-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">{group}</p>
+                    {items.map(({ id, label, icon: Icon }) => (
+                      <button
+                        key={id}
+                        onClick={() => setTab(id)}
+                        role="tab"
+                        aria-selected={tab === id}
+                        className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm font-medium transition-colors ${
+                          tab === id ? "bg-accent-500/15 text-white" : "text-slate-400 hover:bg-base-700/60 hover:text-slate-200"
+                        }`}
+                      >
+                        <Icon size={16} className={tab === id ? "text-accent-300" : "text-slate-500"} />
+                        <span className="truncate">{label}</span>
+                      </button>
+                    ))}
+                  </div>
+                );
+              })}
+              {visibleTabs.length === 0 && <p className="col-span-2 px-2 py-3 text-xs text-slate-500">No matching settings.</p>}
+            </div>
+          </aside>
 
-        <div className="flex-1 overflow-y-auto px-5 py-5 sm:px-8 sm:py-6">
+          <div className="min-w-0 flex-1 overflow-y-auto px-5 py-5 sm:px-8 sm:py-6">
           {tab === "general" && (
             <div className="space-y-6">
               <div>
@@ -687,9 +720,52 @@ export function SettingsModal({ onClose, initialTab }: { onClose: () => void; in
           )}
 
           {tab === "appearance" && <AppearanceSection />}
+          {tab === "notifications" && (
+            <div className="space-y-3">
+              <SectionLabel>Notifications</SectionLabel>
+              <ToggleSwitch label="Product announcements" description="Show new-release popups and keep updates in the Announcements tab" checked={settings.announcementsEnabled} onChange={(v) => updateSettings({ announcementsEnabled: v })} />
+              <ToggleSwitch label="Notification sound" description="Play a short chime when a reply finishes" checked={settings.notificationSound} onChange={(v) => updateSettings({ notificationSound: v })} />
+              <ToggleSwitch
+                label="Browser notifications"
+                description="Notify you when a reply finishes while Lofin is in the background"
+                checked={settings.desktopNotifications}
+                onChange={async (enabled) => {
+                  if (!enabled) return updateSettings({ desktopNotifications: false });
+                  updateSettings({ desktopNotifications: await requestDesktopNotificationPermission() });
+                }}
+              />
+            </div>
+          )}
+          {tab === "personalization" && (
+            <div className="space-y-5">
+              <div>
+                <SectionLabel>Custom instructions</SectionLabel>
+                <textarea value={customSystemPrompt} onChange={(e) => setCustomSystemPrompt(e.target.value)} onBlur={() => updateSettings({ customSystemPrompt: customSystemPrompt.trim() })} maxLength={2000} rows={7} placeholder="e.g. Always answer in bullet points. I'm a backend engineer, skip basic explanations." className="w-full resize-y rounded-lg border border-base-600/60 bg-base-900 px-3 py-2 text-sm text-white outline-none focus:border-accent-500" />
+                <p className="mt-1 text-xs text-slate-500">Added to every request, on top of Lofin's own instructions.</p>
+              </div>
+              <ToggleSwitch label="Show token counts" description="Print the estimated token count under each reply" checked={settings.showTokenCounts} onChange={(v) => updateSettings({ showTokenCounts: v })} />
+            </div>
+          )}
           {tab === "account" && <AccountSection />}
           {tab === "models" && <CustomModelsSection />}
           {tab === "memory" && <MemorySection />}
+          {tab === "advanced" && (
+            <div className="space-y-5">
+              <div>
+                <SectionLabel>Worker connection</SectionLabel>
+                <label className="mb-1.5 block text-sm font-medium text-slate-300">Worker URL</label>
+                <input value={workerUrl} onChange={(e) => setWorkerUrl(e.target.value)} onBlur={() => updateSettings({ workerUrl: workerUrl.trim() })} placeholder="https://lofin.your-subdomain.workers.dev" className="w-full rounded-lg border border-base-600/60 bg-base-900 px-3 py-2 text-sm text-white outline-none focus:border-accent-500" />
+                <p className="mt-1 text-xs text-slate-500">Only change this when you run your own Cloudflare Worker.</p>
+              </div>
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-slate-300">Access password (optional)</label>
+                <input value={password} type="password" onChange={(e) => setPassword(e.target.value)} onBlur={() => updateSettings({ password })} placeholder="Only if the Worker has LOFIN_PASSWORD set" className="w-full rounded-lg border border-base-600/60 bg-base-900 px-3 py-2 text-sm text-white outline-none focus:border-accent-500" />
+              </div>
+              <button onClick={test} disabled={!workerUrl.trim()} className="rounded-lg border border-base-600/60 px-3 py-2 text-sm font-medium text-slate-300 hover:bg-base-700/60 disabled:opacity-50">{status === "checking" ? "Testing…" : status === "ok" ? "Connection reachable" : status === "fail" ? "Connection unavailable" : "Test connection"}</button>
+              <ToggleSwitch label="Auto-retry on rate limits" description="Wait out temporary rate limits and retry with backoff" checked={settings.autoRetryRateLimited} onChange={(v) => updateSettings({ autoRetryRateLimited: v })} />
+            </div>
+          )}
+        </div>
         </div>
 
         <div className="flex items-center justify-between gap-2 border-t border-base-700/60 px-6 py-4">
