@@ -34,7 +34,7 @@ import { Dropdown } from "./Dropdown";
 import { ModelFavicon } from "./ProviderIcon";
 import { findModel } from "../config/models";
 import { useUsageStore, creditStatus } from "../lib/usage";
-import { docsPath, adminPath, usagePath, tutorPath, connectionsPath, libraryPath } from "../lib/router";
+import { docsUrl, adminPath, usagePath, tutorPath, connectionsPath, libraryPath } from "../lib/router";
 import { isAdmin } from "../lib/admin";
 import type { SettingsTab } from "./SettingsModal";
 import type { Chat, Mode } from "../types";
@@ -753,7 +753,7 @@ export function Sidebar({
               collapsed={!sidebarOpen && !mobileOpen}
               items={[
                 { label: "Tutor", icon: <GraduationCap size={16} />, onSelect: () => goTo(tutorPath()) },
-                { label: "Docs", icon: <BookOpen size={16} />, onSelect: () => goTo(docsPath()) },
+                { label: "Docs", icon: <BookOpen size={16} />, onSelect: () => window.location.assign(docsUrl()) },
                 { label: "Connections", icon: <Globe size={16} />, onSelect: () => goTo(connectionsPath()) },
                 ...(user ? [
                   { label: "Library", icon: <Images size={16} />, onSelect: () => goTo(libraryPath()) },

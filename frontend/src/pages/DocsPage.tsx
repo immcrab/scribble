@@ -33,7 +33,7 @@ import { getAllModels, PROVIDER_LABELS, isModelGated } from "../config/models";
 import { getModelDescription } from "../config/modelDocs";
 import { ModelFavicon, ProviderFavicon } from "../components/ProviderIcon";
 import { LogoMark } from "../components/Logo";
-import { docsPath } from "../lib/router";
+import { DOCS_ORIGIN, docsPath } from "../lib/router";
 import { modelSlug } from "../lib/modelSlug";
 import { monthKey, fetchMonthStats, type MonthStats } from "../lib/modelStats";
 import type { ModelCapability, ModelDef, Provider } from "../types";
@@ -155,12 +155,18 @@ const DOCS_NAV = [
   { slug: "worker", label: "Deploy a Worker" },
 ] as const;
 
+const DOCS_GROUPS = [
+  { label: "Get started", items: DOCS_NAV.slice(0, 2) },
+  { label: "Reference", items: DOCS_NAV.slice(2, 5) },
+  { label: "Self-hosting", items: DOCS_NAV.slice(5) },
+] as const;
+
 function DocsHeader({ slug, onNavigate, onExit }: { slug: string; onNavigate: (slug: string) => void; onExit: () => void }) {
   // Model pages don't match any nav slug, but they're logically under "Models" —
   // highlight that tab rather than none.
   const isModelPage = slug !== "" && !DOCS_NAV.some((n) => n.slug === slug);
   return (
-    <header className="flex flex-col gap-2 border-b border-base-700/60 px-4 py-3 sm:px-6">
+    <header className="flex flex-col gap-2 border-b border-base-700/60 bg-base-950/90 px-4 py-3 backdrop-blur sm:px-6">
       <div className="flex items-center justify-between gap-3">
         <button onClick={() => onNavigate("")} className="flex items-center gap-2 text-sm text-slate-300 hover:text-white">
           <LogoMark size={24} />
@@ -174,7 +180,7 @@ function DocsHeader({ slug, onNavigate, onExit }: { slug: string; onNavigate: (s
           Back to app
         </button>
       </div>
-      <nav className="flex flex-wrap items-center gap-1">
+      <nav aria-label="Documentation navigation" className="flex flex-wrap items-center gap-1 lg:hidden">
         {DOCS_NAV.map((item) => {
           const active = item.slug === slug || (item.slug === "models" && isModelPage);
           return (
@@ -191,6 +197,40 @@ function DocsHeader({ slug, onNavigate, onExit }: { slug: string; onNavigate: (s
         })}
       </nav>
     </header>
+  );
+}
+
+function DocsSidebar({ slug, onNavigate }: { slug: string; onNavigate: (slug: string) => void }) {
+  const isModelPage = slug !== "" && !DOCS_NAV.some((item) => item.slug === slug);
+  return (
+    <aside className="sticky top-0 hidden h-[calc(100dvh-57px)] w-52 shrink-0 overflow-y-auto border-r border-base-700/60 py-7 pr-5 lg:block">
+      <nav aria-label="Documentation sections" className="space-y-6">
+        {DOCS_GROUPS.map((group) => (
+          <div key={group.label}>
+            <p className="mb-1.5 px-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-600">{group.label}</p>
+            <div className="space-y-0.5">
+              {group.items.map((item) => {
+                const active = item.slug === slug || (item.slug === "models" && isModelPage);
+                return (
+                  <button
+                    key={item.slug || "home"}
+                    onClick={() => onNavigate(item.slug)}
+                    className={`w-full rounded-md px-2 py-1.5 text-left text-sm transition-colors ${
+                      active ? "bg-accent-500/15 font-medium text-accent-400" : "text-slate-400 hover:bg-base-800/70 hover:text-white"
+                    }`}
+                  >
+                    {item.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </nav>
+      <a href="https://lofin.dev" className="mt-8 flex items-center gap-1 px-2 text-xs text-slate-500 hover:text-white">
+        <ArrowLeft size={12} /> lofin.dev
+      </a>
+    </aside>
   );
 }
 
@@ -1022,6 +1062,15 @@ export function DocsPage({ slug, onExit }: { slug: string; onExit: () => void })
     window.dispatchEvent(new PopStateEvent("popstate"));
   };
   const backToIndex = () => navigate("models");
+  const exitDocs = () => {
+    // The legacy /docs route returns to the app in-place. On the dedicated
+    // host, returning in-place would render the chat app on docs.lofin.dev.
+    if (window.location.hostname === "docs.lofin.dev") {
+      window.location.assign("https://lofin.dev/");
+      return;
+    }
+    onExit();
+  };
 
   const RESERVED_SLUGS = ["", "using", "models", "providers", "top-models", "worker"];
   const isReserved = RESERVED_SLUGS.includes(slug);
@@ -1037,6 +1086,34 @@ export function DocsPage({ slug, onExit }: { slug: string; onExit: () => void })
       worker: "Deploy your own Worker — Lofin Docs",
     };
     document.title = model ? `${model.displayName} — Lofin Docs` : (RESERVED_TITLES[slug] ?? "Lofin Docs");
+    const description = model
+      ? `${model.displayName} on Lofin: capabilities, context length, streaming support, provider, and access requirements.`
+      : slug === "using"
+        ? "Learn how to use Lofin's Direct, Battle, Side by Side, Agent, Image, and Text to Speech modes."
+        : slug === "worker"
+          ? "Deploy the Lofin Cloudflare Worker, configure provider secrets, and connect your own frontend."
+          : "Guides and reference for Lofin's AI chat modes, model catalog, providers, and self-hosted Worker.";
+    const canonical = `${DOCS_ORIGIN}${slug ? `/${encodeURIComponent(slug)}` : "/"}`;
+    const setMeta = (selector: string, attribute: "name" | "property", key: string, content: string) => {
+      let element = document.head.querySelector<HTMLMetaElement>(selector);
+      if (!element) {
+        element = document.createElement("meta");
+        element.setAttribute(attribute, key);
+        document.head.appendChild(element);
+      }
+      element.content = content;
+    };
+    let canonicalElement = document.head.querySelector<HTMLLinkElement>('link[rel="canonical"]');
+    if (!canonicalElement) {
+      canonicalElement = document.createElement("link");
+      canonicalElement.rel = "canonical";
+      document.head.appendChild(canonicalElement);
+    }
+    canonicalElement.href = canonical;
+    setMeta('meta[name="description"]', "name", "description", description);
+    setMeta('meta[property="og:title"]', "property", "og:title", document.title);
+    setMeta('meta[property="og:description"]', "property", "og:description", description);
+    setMeta('meta[property="og:url"]', "property", "og:url", canonical);
   }, [model, slug]);
 
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -1058,10 +1135,11 @@ export function DocsPage({ slug, onExit }: { slug: string; onExit: () => void })
       <div className="fixed inset-x-0 top-0 z-20 h-[2px] bg-base-800/60">
         <div className="h-full bg-accent-500 transition-[width]" style={{ width: `${scrollPct * 100}%` }} />
       </div>
-      <DocsHeader slug={slug} onNavigate={navigate} onExit={onExit} />
+      <DocsHeader slug={slug} onNavigate={navigate} onExit={exitDocs} />
 
-      <div className="mx-auto flex w-full max-w-[900px] flex-1 flex-col gap-6 px-4 py-6 lg:px-8">
-        <div className="min-w-0 flex-1">
+      <div className="mx-auto flex w-full max-w-7xl flex-1 gap-6 px-4 lg:px-8">
+        <DocsSidebar slug={slug} onNavigate={navigate} />
+        <main className="min-w-0 flex-1 py-1" id="docs-content">
           {slug === "" && <HomePage onOpen={navigate} />}
           {slug === "using" && <UsingLofinPage onOpen={navigate} />}
           {slug === "models" && <DocsIndex onOpen={navigate} />}
@@ -1070,7 +1148,7 @@ export function DocsPage({ slug, onExit }: { slug: string; onExit: () => void })
           {slug === "worker" && <WorkerGuidePage onOpen={navigate} />}
           {!isReserved && model && <ModelPage model={model} onOpen={navigate} onBackToIndex={backToIndex} />}
           {!isReserved && !model && <NotFound onBackToIndex={backToIndex} />}
-        </div>
+        </main>
       </div>
 
       <BackToTop visible={scrollPct > 0.15} onClick={() => scrollRef.current?.scrollTo({ top: 0, behavior: "smooth" })} />

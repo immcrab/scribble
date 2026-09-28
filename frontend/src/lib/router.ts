@@ -13,6 +13,14 @@ function normalizeId(raw: string): string {
   }
 }
 
+/** Documentation has its own public origin. Keeping this in the router makes the
+ * app's "Docs" links, canonical URLs, and the standalone docs build agree. */
+export const DOCS_ORIGIN = "https://docs.lofin.dev";
+
+function isDocsHost(): boolean {
+  return window.location.hostname === "docs.lofin.dev";
+}
+
 export function parseChatIdFromLocation(): string | null {
   const match = window.location.pathname.match(/\/c\/([^/]+)\/?$/);
   return match ? normalizeId(match[1]) : null;
@@ -156,6 +164,14 @@ export function onPopState(handler: (chatId: string | null) => void): () => void
  * redirect pair. `null` means "not a docs URL", `""` means the docs index.
  */
 export function parseDocsSlugFromLocation(): string | null {
+  // On docs.lofin.dev the documentation is the site root, so clean URLs are
+  // /, /using, /models, and /{model-slug}. The legacy app route remains below.
+  if (isDocsHost()) {
+    const path = window.location.pathname.replace(/\/+$/, "") || "/";
+    if (path === "/") return "";
+    const match = path.match(/^\/([^/]+)$/);
+    return match ? normalizeId(match[1]) : null;
+  }
   const base = import.meta.env.BASE_URL.replace(/\/$/, "");
   const path = window.location.pathname;
   if (path === `${base}/docs` || path === `${base}/docs/`) return "";
@@ -164,8 +180,14 @@ export function parseDocsSlugFromLocation(): string | null {
 }
 
 export function docsPath(slug?: string): string {
+  if (isDocsHost()) return slug ? `/${encodeURIComponent(slug)}` : "/";
   const base = import.meta.env.BASE_URL.replace(/\/$/, "");
   return slug ? `${base}/docs/${encodeURIComponent(slug)}` : `${base}/docs`;
+}
+
+/** The public, shareable docs URL. Use this for links originating in the app. */
+export function docsUrl(slug?: string): string {
+  return slug ? `${DOCS_ORIGIN}/${encodeURIComponent(slug)}` : `${DOCS_ORIGIN}/`;
 }
 
 export function pushDocsPath(slug?: string): void {
