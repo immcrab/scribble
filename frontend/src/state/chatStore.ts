@@ -553,7 +553,15 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     void startCloudSync(
       uid,
       () => ({ chats: get().chats, settings: get().settings, memories: get().memories, projects: get().projects }),
-      (patch) => set(patch)
+      (patch) => {
+        // Cloud settings can include new model preferences, so keep the
+        // selector registry aligned with the persisted state too.
+        if (patch.settings) {
+          setCustomModels(patch.settings.customModels);
+          setPuterFavorites(patch.settings.puterFavoriteModels);
+        }
+        set(patch);
+      }
     );
   },
   stopCloudSync: () => stopCloudSync(),

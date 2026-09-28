@@ -242,20 +242,28 @@ const LEGACY_API_URL = `https://api.${LEGACY_STORAGE_PREFIX}ai.dev`;
 const DEFAULT_WORKER_URL: string = import.meta.env.VITE_WORKER_URL || LOFIN_WORKER_URL;
 
 export function loadSettings(): LofinSettings {
-  const base = { workerUrl: DEFAULT_WORKER_URL, password: "", ...SETTINGS_DEFAULTS };
   try {
     const raw = readAndMigrateLocal(SETTINGS_KEY, "settings");
-    if (!raw) return base;
+    if (!raw) return normalizeSettings();
     const stored = JSON.parse(raw) as Partial<LofinSettings>;
     // Move existing browsers off the retired Worker too. Every API client
     // (chat, image, speech, auth, and admin assets) reads this shared value.
     if ([LEGACY_WORKER_URL, LEGACY_WORKERS_DEV_URL, LEGACY_API_URL].includes(stored.workerUrl?.replace(/\/$/, "") || "")) {
       stored.workerUrl = LOFIN_WORKER_URL;
     }
-    return { ...base, ...stored };
+    return normalizeSettings(stored);
   } catch {
-    return base;
+    return normalizeSettings();
   }
+}
+
+/**
+ * Adds defaults introduced by newer app versions to an older saved settings
+ * record. This is also used after cloud sync, whose record may have been
+ * written before a setting existed.
+ */
+export function normalizeSettings(stored: Partial<LofinSettings> = {}): LofinSettings {
+  return { workerUrl: DEFAULT_WORKER_URL, password: "", ...SETTINGS_DEFAULTS, ...stored };
 }
 
 export function saveSettings(settings: LofinSettings): void {

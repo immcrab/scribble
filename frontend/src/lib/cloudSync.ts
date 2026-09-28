@@ -1,12 +1,12 @@
 import { get as dbGet, onValue, ref, set as dbSet } from "firebase/database";
 import { loadFirestore, getRtdb } from "./firebase";
-import { saveChats, saveSettings, saveMemories, saveProjects, type LofinSettings } from "./storage";
+import { normalizeSettings, saveChats, saveSettings, saveMemories, saveProjects, type LofinSettings } from "./storage";
 import type { Chat, MemoryEntry, Project } from "../types";
 
 /**
- * Cross-device continuity: the same JSON already used for localStorage
- * (see storage.ts) round-trips through Firestore (`users/{uid}.chatsJson`) as
- * a plain string. Settings, memories, and projects remain in RTDB for now.
+ * Cross-device continuity: chats and settings round-trip through the signed-in
+ * user's Firestore document. Browser storage remains the immediate fallback,
+ * so a deploy or temporary network outage cannot reset settings.
  *
  * Merging is last-write-wins *per chat* (by id, comparing updatedAt), so a
  * chat that only exists on one device always survives — logging in on a
@@ -31,7 +31,21 @@ export function mergeChats(local: Chat[], remote: Chat[]): Chat[] {
 export function mergeSettings(local: LofinSettings, remote: LofinSettings | null): LofinSettings {
   if (!remote) return local;
   const winner = remote.updatedAt > local.updatedAt ? remote : local;
-  return { ...winner, password: local.password, customProviders: local.customProviders, customModels: local.customModels };
+  // Credentials and custom-provider configuration never leave this browser.
+  // Normalizing here preserves settings added by a newer app version when the
+  // cloud document was saved by an older deployment.
+  return normalizeSettings({
+    ...winner,
+    password: local.password,
+    customProviders: local.customProviders,
+    customModels: local.customModels,
+  });
+}
+
+/** Remove device-only secrets before settings are persisted to Firestore. */
+function settingsJsonForCloud(settings: LofinSettings): string {
+  const { password: _password, customProviders: _customProviders, customModels: _customModels, ...safeSettings } = settings;
+  return JSON.stringify(safeSettings);
 }
 
 /** Memories don't carry a per-entry `updatedAt` — they're append/delete, not edited in place —
@@ -98,7 +112,6 @@ export async function startCloudSync(
   const { doc, getDoc, setDoc, onSnapshot } = fs;
   const chatsRef = doc(fs.db, "users", uid);
   const db = getRtdb();
-  const settingsRef = db ? ref(db, `users/${uid}/settingsJson`) : null;
   const memoriesRef = db ? ref(db, `users/${uid}/memoriesJson`) : null;
   const projectsRef = db ? ref(db, `users/${uid}/projectsJson`) : null;
 
@@ -117,10 +130,20 @@ export async function startCloudSync(
       ? firestoreChatsJson
       : legacyChatsSnap?.exists() ? legacyChatsSnap.val() : null;
     const remoteChats: Chat[] = typeof chatsJson === "string" ? JSON.parse(chatsJson) : [];
-    const [settingsSnap, memoriesSnap, projectsSnap] = db && settingsRef && memoriesRef && projectsRef
-      ? await Promise.all([dbGet(settingsRef), dbGet(memoriesRef), dbGet(projectsRef)])
-      : [null, null, null];
-    const remoteSettings: LofinSettings | null = settingsSnap?.exists() ? JSON.parse(settingsSnap.val()) : null;
+    // Read the legacy RTDB setting only when Firestore does not have one, then
+    // immediately migrate the merged result below. This keeps existing account
+    // settings without making RTDB a dependency for future deployments.
+    const firestoreSettingsJson = chatsSnap.exists() ? chatsSnap.data().settingsJson : null;
+    const legacySettingsSnap = typeof firestoreSettingsJson !== "string" && db
+      ? await dbGet(ref(db, `users/${uid}/settingsJson`))
+      : null;
+    const [memoriesSnap, projectsSnap] = db && memoriesRef && projectsRef
+      ? await Promise.all([dbGet(memoriesRef), dbGet(projectsRef)])
+      : [null, null];
+    const settingsJson = typeof firestoreSettingsJson === "string"
+      ? firestoreSettingsJson
+      : legacySettingsSnap?.exists() ? legacySettingsSnap.val() : null;
+    const remoteSettings: LofinSettings | null = typeof settingsJson === "string" ? JSON.parse(settingsJson) : null;
     const remoteMemories: MemoryEntry[] = memoriesSnap?.exists() ? JSON.parse(memoriesSnap.val()) : [];
     const remoteProjects: Project[] = projectsSnap?.exists() ? JSON.parse(projectsSnap.val()) : [];
 
@@ -130,7 +153,7 @@ export async function startCloudSync(
     const mergedProjects = mergeProjects(getState().projects, remoteProjects);
 
     lastChatsJson = JSON.stringify(mergedChats);
-    lastSettingsJson = JSON.stringify(mergedSettings);
+    lastSettingsJson = settingsJsonForCloud(mergedSettings);
     lastMemoriesJson = JSON.stringify(mergedMemories);
     lastProjectsJson = JSON.stringify(mergedProjects);
     saveChats(mergedChats);
@@ -139,9 +162,8 @@ export async function startCloudSync(
     saveProjects(mergedProjects);
     setState({ chats: mergedChats, settings: mergedSettings, memories: mergedMemories, projects: mergedProjects });
 
-    setDoc(chatsRef, { chatsJson: lastChatsJson }, { merge: true }).catch(() => {});
-    if (db && settingsRef && memoriesRef && projectsRef) {
-      dbSet(settingsRef, lastSettingsJson).catch(() => {});
+    setDoc(chatsRef, { chatsJson: lastChatsJson, settingsJson: lastSettingsJson }, { merge: true }).catch(() => {});
+    if (db && memoriesRef && projectsRef) {
       dbSet(memoriesRef, lastMemoriesJson).catch(() => {});
       dbSet(projectsRef, lastProjectsJson).catch(() => {});
     }
@@ -157,34 +179,23 @@ export async function startCloudSync(
       (snap) => {
         if (activeUid !== uid || !snap.exists()) return;
         const json = snap.data().chatsJson;
-        if (typeof json !== "string") return;
-        if (json === lastChatsJson) return; // our own write echoing back
-        try {
-          const remoteChats: Chat[] = JSON.parse(json);
-          const merged = mergeChats(getState().chats, remoteChats);
-          lastChatsJson = JSON.stringify(merged);
-          saveChats(merged);
-          setState({ chats: merged });
-        } catch {
-          // malformed remote payload — ignore, keep local state
+        const settingsJson = snap.data().settingsJson;
+        if (typeof json === "string" && json !== lastChatsJson) {
+          try {
+            const remoteChats: Chat[] = JSON.parse(json);
+            const merged = mergeChats(getState().chats, remoteChats);
+            lastChatsJson = JSON.stringify(merged);
+            saveChats(merged);
+            setState({ chats: merged });
+          } catch {
+            // malformed remote payload — ignore, keep local state
+          }
         }
-      },
-      () => {
-        // listen canceled (permission/connectivity) — stay local-only
-      }
-    );
-
-    const unsubSettings = db && settingsRef ? onValue(
-      settingsRef,
-      (snap) => {
-        if (activeUid !== uid || !snap.exists()) return;
-        const json = snap.val() as string;
-        if (json === lastSettingsJson) return;
-        if (hasPendingLocalSettingsWrite) return;
+        if (typeof settingsJson !== "string" || settingsJson === lastSettingsJson || hasPendingLocalSettingsWrite) return;
         try {
-          const remoteSettings: LofinSettings = JSON.parse(json);
+          const remoteSettings: LofinSettings = JSON.parse(settingsJson);
           const merged = mergeSettings(getState().settings, remoteSettings);
-          lastSettingsJson = JSON.stringify(merged);
+          lastSettingsJson = settingsJsonForCloud(merged);
           saveSettings(merged);
           setState({ settings: merged });
         } catch {
@@ -194,7 +205,7 @@ export async function startCloudSync(
       () => {
         // listen canceled (permission/connectivity) — stay local-only
       }
-    ) : () => {};
+    );
 
     const unsubMemories = db && memoriesRef ? onValue(
       memoriesRef,
@@ -238,7 +249,7 @@ export async function startCloudSync(
       }
     ) : () => {};
 
-    unsubscribers = [unsubChats, unsubSettings, unsubMemories, unsubProjects];
+    unsubscribers = [unsubChats, unsubMemories, unsubProjects];
   } catch {
     // onValue itself threw synchronously — stay local-only
   }
@@ -281,9 +292,7 @@ export function pushChatsToCloud(chats: Chat[]): void {
 
 export function pushSettingsToCloud(settings: LofinSettings): void {
   if (!activeUid) return;
-  const db = getRtdb();
-  if (!db) return;
-  const json = JSON.stringify(settings);
+  const json = settingsJsonForCloud(settings);
   if (json === lastSettingsJson) return;
   const uid = activeUid;
   const writeRevision = ++settingsWriteRevision;
@@ -291,7 +300,10 @@ export function pushSettingsToCloud(settings: LofinSettings): void {
   if (settingsPushTimer) clearTimeout(settingsPushTimer);
   settingsPushTimer = setTimeout(() => {
     if (activeUid !== uid) return; // signed out (or switched accounts) before this fired
-    dbSet(ref(db, `users/${uid}/settingsJson`), json)
+    loadFirestore().then((fs) => {
+      if (!fs) throw new Error("Firestore is unavailable");
+      return fs.setDoc(fs.doc(fs.db, "users", uid), { settingsJson: json }, { merge: true });
+    })
       .then(() => {
         if (activeUid !== uid || writeRevision !== settingsWriteRevision) return;
         lastSettingsJson = json;

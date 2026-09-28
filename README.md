@@ -169,8 +169,8 @@ The Cloudflare rule prevents framing before any page JavaScript can run.
 - **Chat history** lives in the browser's `localStorage` by default. Signing in
   with Google (Firebase Auth) syncs chats to Cloud Firestore for cross-device
   continuity; a public Firestore document keyed by chat id backs the `/c/{id}`
-  share links. Projects, settings, and opt-in memories remain in Realtime
-  Database.
+  share links and signed-in settings. Projects and opt-in memories remain in
+  Realtime Database.
 
   Enable Cloud Firestore before deploying this version, then publish
   [`firestore.rules`](./firestore.rules). The public-share rule deliberately
