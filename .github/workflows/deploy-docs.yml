@@ -37,6 +37,7 @@ jobs:
         run: |
           cp frontend/dist/docs-robots.txt frontend/dist/robots.txt
           cp frontend/dist/docs-sitemap.xml frontend/dist/sitemap.xml
+          cp frontend/public/_redirects frontend/dist/_redirects
       - name: Create docs Pages project if needed
         # Wrangler returns a non-zero status when the project already exists;
         # the deploy below remains the authoritative check in either case.
