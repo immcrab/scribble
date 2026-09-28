@@ -45,12 +45,18 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       - name: Attach docs.lofin.dev
-        run: >
-          curl --fail-with-body --request PUT
-          "https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/pages/projects/lofin-docs/domains/docs.lofin.dev"
-          --header "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}"
-          --header "Content-Type: application/json"
-          --data '{}'
+        run: |
+          docs_domains=$(curl --fail-with-body \
+            "https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/pages/projects/lofin-docs/domains" \
+            --header "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}")
+          if echo "$docs_domains" | grep -q '"name":"docs.lofin.dev"'; then
+            exit 0
+          fi
+          curl --fail-with-body --request POST \
+            "https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/pages/projects/lofin-docs/domains" \
+            --header "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
+            --header "Content-Type: application/json" \
+            --data '{"name":"docs.lofin.dev"}'
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
