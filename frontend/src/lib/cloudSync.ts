@@ -64,6 +64,14 @@ let lastMemoriesJson: string | null = null;
 let lastProjectsJson: string | null = null;
 let chatsPushTimer: ReturnType<typeof setTimeout> | null = null;
 let settingsPushTimer: ReturnType<typeof setTimeout> | null = null;
+// A settings change is applied locally before its debounced cloud write runs.
+// Do not let an in-flight listener snapshot from another tab/device replace that
+// newer local choice in this window. In particular, this prevents a switch from
+// visibly snapping back to its previous value a moment after it is turned on.
+// The flag is cleared only after Firebase confirms the write; if the write fails,
+// local storage remains authoritative until a later successful settings save.
+let hasPendingLocalSettingsWrite = false;
+let settingsWriteRevision = 0;
 let memoriesPushTimer: ReturnType<typeof setTimeout> | null = null;
 let projectsPushTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -172,6 +180,7 @@ export async function startCloudSync(
         if (activeUid !== uid || !snap.exists()) return;
         const json = snap.val() as string;
         if (json === lastSettingsJson) return;
+        if (hasPendingLocalSettingsWrite) return;
         try {
           const remoteSettings: LofinSettings = JSON.parse(json);
           const merged = mergeSettings(getState().settings, remoteSettings);
@@ -245,6 +254,8 @@ export function stopCloudSync(): void {
   if (projectsPushTimer) clearTimeout(projectsPushTimer);
   chatsPushTimer = null;
   settingsPushTimer = null;
+  hasPendingLocalSettingsWrite = false;
+  settingsWriteRevision = 0;
   memoriesPushTimer = null;
   projectsPushTimer = null;
   lastChatsJson = null;
@@ -275,11 +286,21 @@ export function pushSettingsToCloud(settings: LofinSettings): void {
   const json = JSON.stringify(settings);
   if (json === lastSettingsJson) return;
   const uid = activeUid;
+  const writeRevision = ++settingsWriteRevision;
+  hasPendingLocalSettingsWrite = true;
   if (settingsPushTimer) clearTimeout(settingsPushTimer);
   settingsPushTimer = setTimeout(() => {
     if (activeUid !== uid) return; // signed out (or switched accounts) before this fired
-    lastSettingsJson = json;
-    dbSet(ref(db, `users/${uid}/settingsJson`), json).catch(() => {});
+    dbSet(ref(db, `users/${uid}/settingsJson`), json)
+      .then(() => {
+        if (activeUid !== uid || writeRevision !== settingsWriteRevision) return;
+        lastSettingsJson = json;
+        hasPendingLocalSettingsWrite = false;
+      })
+      .catch(() => {
+        // Keep the pending flag set: a stale cloud snapshot must not undo a
+        // setting that was saved locally but could not be uploaded.
+      });
   }, 2000);
 }
 
