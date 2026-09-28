@@ -1,0 +1,3 @@
+# Cloudflare Pages serves the documentation as an SPA at its own hostname.
+# Returning index.html with 200 preserves clean URLs for readers and crawlers.
+/* /index.html 200
