@@ -22,6 +22,24 @@ async function expectReduced(page: Page) {
   expect((await probe(page, "animate-spin")).animation).toBeGreaterThan(500);
 }
 
+async function imageGenerationBuddyMotion(page: Page) {
+  return page.evaluate(() => {
+    const scene = document.createElement("div");
+    scene.className = "imggen-scene";
+    const buddy = document.createElement("div");
+    buddy.className = "imggen-buddy";
+    scene.appendChild(buddy);
+    document.body.appendChild(scene);
+    const style = getComputedStyle(buddy);
+    const result = {
+      duration: parseFloat(style.animationDuration) * (style.animationDuration.endsWith("ms") ? 1 : 1000),
+      iterations: style.animationIterationCount,
+    };
+    scene.remove();
+    return result;
+  });
+}
+
 test.describe("Reduced motion", () => {
   test("baseline: animations run normally", async ({ page }) => {
     await page.goto("/");
@@ -34,6 +52,9 @@ test.describe("Reduced motion", () => {
     await page.goto("/");
     await expect(page.getByRole("textbox", { name: "Message" })).toBeVisible();
     await expectReduced(page);
+    const buddy = await imageGenerationBuddyMotion(page);
+    expect(buddy.duration).toBeGreaterThan(10_000);
+    expect(buddy.iterations).toBe("infinite");
   });
 
   test("in-app Reduce Motion setting applies app-wide, including portaled menus, and persists", async ({ page }) => {
@@ -47,6 +68,9 @@ test.describe("Reduced motion", () => {
 
     await expect(page.locator("html")).toHaveClass(/motion-reduce-force/);
     await expectReduced(page);
+    const buddy = await imageGenerationBuddyMotion(page);
+    expect(buddy.duration).toBeGreaterThan(10_000);
+    expect(buddy.iterations).toBe("infinite");
 
     // A menu portaled to <body> is covered too.
     await page.getByTestId("mode-selector").click();

@@ -840,7 +840,6 @@ select {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .imggen-buddy,
   .imggen-buddy-flip,
   .imggen-body,
   .imggen-leg,
@@ -849,6 +848,12 @@ select {
   .image-studio-orb {
     animation-duration: 0.001ms !important;
     animation-iteration-count: 1 !important;
+  }
+  /* The buddy is the image generator's working indicator, just like a
+     spinner. Keep that status visible, but make its travel more gradual. */
+  .imggen-buddy {
+    animation-duration: 14s !important;
+    animation-iteration-count: infinite !important;
   }
   .imggen-spark { opacity: 0.55; }
 }
@@ -891,12 +896,15 @@ select {
   animation-iteration-count: 1 !important;
   height: 55%;
 }
-.motion-reduce-force .imggen-buddy,
 .motion-reduce-force .imggen-buddy-flip,
 .motion-reduce-force .imggen-body,
 .motion-reduce-force .imggen-leg,
 .motion-reduce-force .imggen-spark {
   animation-duration: 0.001ms !important;
   animation-iteration-count: 1 !important;
+}
+.motion-reduce-force .imggen-buddy {
+  animation-duration: 14s !important;
+  animation-iteration-count: infinite !important;
 }
 .motion-reduce-force .imggen-spark { opacity: 0.55; }
