@@ -709,6 +709,10 @@ const PROVIDERS_META: Record<Provider, { description: string; link?: { href: str
     description: "Google's Gemini model family, called directly through Google's Generative Language API.",
     link: { href: "https://ai.google.dev", label: "ai.google.dev" },
   },
+  groq: {
+    description: "Groq's ultra-fast hosted inference for GPT-OSS and Qwen models, called directly through GroqCloud's OpenAI-compatible API.",
+    link: { href: "https://console.groq.com/docs/models", label: "Groq models" },
+  },
   openrouter: {
     description:
       "A gateway that proxies many upstream model providers behind one API — how Lofin reaches models it has no direct integration for.",

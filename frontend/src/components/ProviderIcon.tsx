@@ -131,6 +131,10 @@ export function OpenRouterIcon({ size = 16, className = "" }: { size?: number; c
   return <LogoImage src={LOGO_URLS.openrouter} size={size} className={className} />;
 }
 
+export function GroqIcon({ size = 16, className = "" }: { size?: number; className?: string }) {
+  return <LogoImage src={LOGO_URLS.groq} size={size} className={className} />;
+}
+
 export function QwenIcon({ size = 16, className = "" }: { size?: number; className?: string }) {
   return <LogoImage src={LOGO_URLS.qwen} size={size} className={className} />;
 }
@@ -179,6 +183,8 @@ export function ProviderFavicon({
   switch (provider) {
     case "gemini":
       return <GeminiIcon size={size} className={className} />;
+    case "groq":
+      return <GroqIcon size={size} className={className} />;
     case "mistral":
       return <MistralIcon size={size} className={className} />;
     case "xkiro":

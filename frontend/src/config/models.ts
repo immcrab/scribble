@@ -827,6 +827,50 @@ const GEMINI_MODELS: ModelDef[] = [
 ];
 
 /**
+ * Groq's active developer-plan chat models. They are billed by Groq, so the
+ * picker does not show a misleading "$0" badge. Refresh this list against
+ * https://console.groq.com/docs/models or GET /openai/v1/models.
+ */
+const GROQ_MODELS: ModelDef[] = [
+  {
+    provider: "groq",
+    modelId: "openai/gpt-oss-120b",
+    displayName: "GPT-OSS 120B",
+    icon: "Zap",
+    contextLength: 131072,
+    capabilities: ["text", "code", "reasoning"],
+    free: false,
+    supportsStreaming: true,
+    supportsVision: false,
+    description: "Groq's fastest large reasoning model.",
+  },
+  {
+    provider: "groq",
+    modelId: "openai/gpt-oss-20b",
+    displayName: "GPT-OSS 20B",
+    icon: "Zap",
+    contextLength: 131072,
+    capabilities: ["text", "code", "reasoning"],
+    free: false,
+    supportsStreaming: true,
+    supportsVision: false,
+    description: "A fast, lower-cost Groq reasoning model.",
+  },
+  {
+    provider: "groq",
+    modelId: "qwen/qwen3.8-27b",
+    displayName: "Qwen 3.8 27B",
+    icon: "Zap",
+    contextLength: 131072,
+    capabilities: ["text", "vision", "code", "reasoning"],
+    free: false,
+    supportsStreaming: true,
+    supportsVision: true,
+    description: "Groq's multimodal Qwen model for image and text tasks.",
+  },
+];
+
+/**
  * OpenRouter — single OpenAI-compatible endpoint that proxies to many
  * upstream providers, model ids namespaced as "{provider}/{model}":
  * https://openrouter.ai/api/v1/chat/completions
@@ -1100,6 +1144,14 @@ const ZAI_MODELS: ModelDef[] = [
 
 export const ALL_MODELS: ModelDef[] = [
   ...XKIRO_MODELS,
+  // Each provider below has a corresponding Worker secret and adapter. Keep the
+  // catalog inclusive so setting one of those keys actually makes its free
+  // models available in the picker.
+  ...MISTRAL_MODELS,
+  ...GEMINI_MODELS,
+  ...GROQ_MODELS,
+  ...OPENROUTER_MODELS,
+  ...ZAI_MODELS,
 ];
 
 // The free, current all-purpose entry point: reasoning + vision, 1M context.
@@ -1129,6 +1181,7 @@ export const PROVIDER_LABELS: Record<Provider, string> = {
   xkiro: "xKiro",
   mistral: "Mistral",
   gemini: "Google Gemini",
+  groq: "Groq",
   openrouter: "OpenRouter",
   zai: "Z.ai (GLM)",
   puter: "Puter.js",

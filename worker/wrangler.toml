@@ -43,8 +43,9 @@ binding = "ANNOUNCEMENT_ASSETS"
 # remains available; public URLs are served from the Lofin Worker.
 bucket_name = "scribble-announcements"
 # Secrets (never commit real values — set these with `wrangler secret put NAME`):
-#   XKIRO_API_KEY       (chat provider + richer web search + GPT Image backend + text-to-speech)
-#   GROQ_API_KEY        (not a selectable provider — only powers chat-title generation)
+#   XKIRO_API_KEY       (chat provider + GPT Image backend + text-to-speech)
+#   EXA_API_KEY         (live web search)
+#   GROQ_API_KEY        (Groq chat models + optional chat-title generation)
 #   MISTRAL_API_KEY
 #   GEMINI_API_KEY
 #   OPENROUTER_API_KEY

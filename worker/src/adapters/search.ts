@@ -23,7 +23,8 @@ export function explicitlyRequestsWeb(query: string): boolean {
   return (
     /\b(?:search|google|look\s*up|browse|visit|open|check|use)\b[\s\S]{0,80}\b(?:the\s+)?(?:web|internet|site|website|webpage|page)\b/i.test(query) ||
     /\b(?:search|google|look\s*up)\b[\s\S]{0,80}\b(?:for|about)\b/i.test(query) ||
-    /\b(?:can|could|will)\s+you\s+(?:browse|search|visit|open|check|use)\b/i.test(query) ||
+    /\b(?:can|could|will|would)\s+you\s+(?:browse|search|visit|open|check|use|look\s*up|research|find)\b/i.test(query) ||
+    /\b(?:please\s+)?(?:research|search\s+online|go\s+online|find)\b[\s\S]{0,80}\b(?:online|on\s+(?:the\s+)?(?:web|internet)|from\s+(?:the\s+)?web)\b/i.test(query) ||
     /https?:\/\/[^\s]+/i.test(query)
   );
 }
@@ -180,7 +181,7 @@ export async function shouldSearchWeb(apiKey: string, query: string): Promise<bo
         {
           role: "system",
           content:
-            'Decide whether answering the user\'s message well requires a live web search for a specific real-world fact. Search for: current events, prices, scores, recent releases, "today"/"latest"/"right now", anything that changes over time or postdates your training, and factual lookups about real people/places/products/statistics a memorized answer would likely get wrong or outdated. Do NOT search for: arithmetic or math of any kind — no matter how large, long, or odd-looking the numbers are, a calculation is never a web search — nor coding, writing, brainstorming, opinions, hypotheticals, or general conceptual knowledge. If the message isn\'t clearly asking about a real-world fact, the answer is no. Reply with exactly one word: "yes" or "no".',
+            'Decide whether answering the user\'s message well requires a live web search. Search for: current events, prices, scores, recent releases, "today"/"latest"/"right now", anything that changes over time or postdates your training, factual lookups about real people/places/products/statistics a memorized answer would likely get wrong or outdated, recommendations or comparisons that depend on what is currently available, local businesses or travel options, and requests for sources, links, reviews, or recent research. Do NOT search for: arithmetic or math of any kind — no matter how large, long, or odd-looking the numbers are, a calculation is never a web search — nor coding, writing, brainstorming, purely personal opinions, hypotheticals, or stable general conceptual knowledge. If current online information would not materially improve the answer, the answer is no. Reply with exactly one word: "yes" or "no".',
         },
         { role: "user", content: query.slice(0, 2000) },
       ],
@@ -257,29 +258,42 @@ export async function buildSearchQuery(
   return raw.slice(0, 300);
 }
 
-/** xKiro Web Search — https://docs.xkiro.com/api/web-search/
+/** Exa Search — https://exa.ai/docs/reference/search
  *
- * Search stays server-side, so the browser never sees the credential used for
- * chat, images, or web results. A single XKIRO_API_KEY covers all three.
+ * Search stays server-side, so the browser never sees the Exa credential.
+ * Highlights provide compact, grounded context for the chat model without a
+ * second content-fetch request for every result.
  */
-async function searchXkiro(apiKey: string, query: string): Promise<SearchResult[]> {
-  const res = await fetch("https://api.xkiro.com/v1/search", {
+async function searchExa(apiKey: string, query: string): Promise<SearchResult[]> {
+  const res = await fetch("https://api.exa.ai/search", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
+      "x-api-key": apiKey,
     },
-    body: JSON.stringify({ model: "xkiro/web-search", query, max_results: 10 }),
+    body: JSON.stringify({
+      query,
+      type: "auto",
+      numResults: 10,
+      contents: { highlights: true },
+    }),
   });
   if (!res.ok) {
-    throw new Error(`xKiro web search error ${res.status}: ${await res.text()}`);
+    throw new Error(`Exa web search error ${res.status}: ${await res.text()}`);
   }
 
   const json = (await res.json()) as {
-    results?: Array<{ title?: string; url?: string; snippet?: string; thumbnailUrl?: string | null; faviconUrl?: string | null }>;
+    results?: Array<{
+      title?: string;
+      url?: string;
+      highlights?: string[] | null;
+      text?: string | null;
+      image?: string | null;
+      favicon?: string | null;
+    }>;
     error?: string | { message?: string };
   };
-  if (json.error) throw new Error(typeof json.error === "string" ? json.error : json.error.message || "xKiro web search failed.");
+  if (json.error) throw new Error(typeof json.error === "string" ? json.error : json.error.message || "Exa web search failed.");
 
   return (json.results ?? [])
     .slice(0, 10)
@@ -288,16 +302,16 @@ async function searchXkiro(apiKey: string, query: string): Promise<SearchResult[
       return {
         title: r.title || "",
         link,
-        snippet: r.snippet || "",
-        ...(r.thumbnailUrl ? { thumbnailUrl: r.thumbnailUrl } : {}),
-        ...(r.faviconUrl || fallbackFavicon(link) ? { faviconUrl: r.faviconUrl || fallbackFavicon(link) } : {}),
+        snippet: r.highlights?.filter(Boolean).join(" ") || r.text || "",
+        ...(r.image ? { thumbnailUrl: r.image } : {}),
+        ...(r.favicon || fallbackFavicon(link) ? { faviconUrl: r.favicon || fallbackFavicon(link) } : {}),
       };
     })
     .filter((r) => r.title && r.link);
 }
 
 /**
- * Keyless fallback for chat providers other than xKiro. Bing's public RSS
+ * Keyless fallback when Exa is not configured or temporarily unavailable. Bing's public RSS
  * response has a small, stable XML surface and lets a Worker retrieve ordinary
  * web results without exposing a key or charging the user. It is deliberately
  * a fallback: xKiro results include richer previews when that integration is
@@ -335,16 +349,16 @@ async function searchBingRss(query: string): Promise<SearchResult[]> {
     .filter((result) => result.title && /^https?:\/\//i.test(result.link));
 }
 
-/** Search without making the selected chat provider matter.  xKiro remains an
+/** Search without making the selected chat provider matter. Exa remains an
  * optional richer backend; when it is absent or temporarily unavailable, every
- * model (including Mistral Small 4) receives free live results. */
+ * model receives free live results. */
 export async function searchWeb(apiKey: string | undefined, query: string): Promise<SearchResult[]> {
   if (apiKey) {
     try {
-      const results = await searchXkiro(apiKey, query);
+      const results = await searchExa(apiKey, query);
       if (results.length) return results;
     } catch {
-      // The free backend below keeps search working during xKiro outages too.
+      // The free backend below keeps search working during Exa outages too.
     }
   }
   return searchBingRss(query);

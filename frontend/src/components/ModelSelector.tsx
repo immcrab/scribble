@@ -51,15 +51,17 @@ function puterInfoToModelDef(info: PuterModelInfo): ModelDef {
   };
 }
 
-/** Small labelled capability chip. Icon-only below `sm`, with the label kept for screen readers. */
+/** Compact capability chip. The visible icon keeps dense model rows scannable;
+ * the accessible label and tooltip still explain every symbol. */
 function Badge({ tone, icon, label, title }: { tone: string; icon: ReactNode; label: string; title: string }) {
   return (
     <span
-      title={title}
-      className={`inline-flex shrink-0 items-center gap-1 rounded border px-1 py-0.5 text-[10px] font-semibold tracking-wide sm:px-1.5 ${tone}`}
+      aria-label={label}
+      title={`${label}: ${title}`}
+      className={`inline-flex shrink-0 items-center justify-center rounded border p-1 text-[10px] font-semibold tracking-wide ${tone}`}
     >
       <span aria-hidden="true">{icon}</span>
-      <span className="sr-only sm:not-sr-only">{label}</span>
+      <span className="sr-only">{label}</span>
     </span>
   );
 }

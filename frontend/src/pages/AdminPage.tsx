@@ -48,7 +48,7 @@ import type { AdminCatalog, Announcement, Connection, ModelDef, Provider, UsageC
 /** Providers the admin can publish an official model against — the ones the Worker
  * already holds a key for, plus Puter (in-browser, no key). "custom" is per-browser only,
  * so it's not offered here. */
-const PUBLISHABLE_PROVIDERS: Provider[] = ["xkiro", "gemini", "openrouter", "zai", "puter"];
+const PUBLISHABLE_PROVIDERS: Provider[] = ["xkiro", "mistral", "gemini", "groq", "openrouter", "zai", "puter"];
 
 const DEFAULT_CONTEXT_LENGTH = 128000;
 

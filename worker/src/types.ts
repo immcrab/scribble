@@ -3,6 +3,8 @@ export interface Env {
   ASSETS: Fetcher;
   ALLOWED_ORIGINS: string;
   XKIRO_API_KEY?: string;
+  /** Exa key used exclusively for live web search. Set with `wrangler secret put EXA_API_KEY`. */
+  EXA_API_KEY?: string;
   GROQ_API_KEY?: string;
   MISTRAL_API_KEY?: string;
   GEMINI_API_KEY?: string;
@@ -26,7 +28,7 @@ export interface Env {
   FIREBASE_PROJECT_ID?: string;
 }
 
-export type Provider = "xkiro" | "mistral" | "gemini" | "openrouter" | "zai" | "custom";
+export type Provider = "xkiro" | "mistral" | "gemini" | "groq" | "openrouter" | "zai" | "custom";
 
 /** Claude-Code-style reasoning depth. Gemini maps it to a native
  * thinkingBudget param; providers without one (xKiro, Mistral,
@@ -87,7 +89,7 @@ export interface ChatRequestBody {
   effort?: Effort;
   /** The client's "auto web search" setting. When true, the Worker first asks a fast
    * Groq classifier whether the latest user message actually needs a live search, and
-   * then uses the optional xKiro backend or a keyless web-search fallback. */
+   * then uses the optional Exa backend or a keyless web-search fallback. */
   webSearch?: boolean;
   /** The client's "memory" setting. When true, the Worker asks a fast Groq classifier
    * whether the latest user message contains something worth remembering, and if so,

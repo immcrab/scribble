@@ -24,6 +24,11 @@ export const MODEL_DOCS: Record<string, string> = {
   "gemini-3.5-flash-lite": "Lighter/faster Gemini — trades some capability for speed and cost, still reads images.",
   "gemini-3.1-flash-lite": "Frontier-class performance at reduced cost — the budget Flash-Lite option, 1M context, reads images.",
 
+  // Groq (developer-plan models; pricing is managed by Groq, not Lofin)
+  "openai/gpt-oss-120b": "GPT-OSS 120B on Groq — a large, fast reasoning and coding model with a 131K-token context window.",
+  "openai/gpt-oss-20b": "GPT-OSS 20B on Groq — a smaller, very fast reasoning and coding model with a 131K-token context window.",
+  "qwen/qwen3.8-27b": "Qwen 3.8 27B on Groq — a fast multimodal model that handles image understanding, coding, and reasoning.",
+
   // OpenRouter (every model OpenRouter's catalog currently lists as free)
   "z-ai/glm-5.2:free": "Zhipu's GLM 5.2 via OpenRouter — strong general and code model with a 256K context window.",
   "minimax/minimax-m3:free": "MiniMax M3 — natively multimodal, 1M context, reasoning-capable.",

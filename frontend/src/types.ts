@@ -1,4 +1,4 @@
-export type Provider = "xkiro" | "mistral" | "gemini" | "openrouter" | "zai" | "puter" | "custom";
+export type Provider = "xkiro" | "mistral" | "gemini" | "groq" | "openrouter" | "zai" | "puter" | "custom";
 
 /** Claude-Code-style reasoning depth, sent to the Worker and mapped to a
  * per-provider native param (or a system-prompt nudge) — see worker/src/adapters. */

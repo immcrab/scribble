@@ -3,6 +3,11 @@ import { corsHeaders } from "./cors";
 import { checkPassword } from "./auth";
 import { isRateLimited } from "./ratelimit";
 import { xkiroStreamChat } from "./adapters/xkiro";
+import { mistralStreamChat } from "./adapters/mistral";
+import { geminiStreamChat } from "./adapters/gemini";
+import { groqStreamChat } from "./adapters/groq";
+import { openrouterStreamChat } from "./adapters/openrouter";
+import { zaiStreamChat } from "./adapters/zai";
 import { generateImage } from "./adapters/image";
 import { generateXkiroImage } from "./adapters/xkiroImage";
 import {
@@ -21,12 +26,18 @@ import { verifyFirebaseIdToken } from "./firebaseVerifyToken";
 import { verifyTurnstileToken } from "./turnstile";
 import { handleLibrary, isLibraryPath } from "./library";
 import { FREE_XKIRO_MODEL_IDS } from "./freeXkiroModels";
+import { FREE_PROVIDER_MODEL_IDS } from "./freeProviderModels";
 
 const ADMIN_EMAIL = "imcrabfr@gmail.com";
 const FREE_XKIRO_IMAGE_MODEL = "sensenova/sensenova-u1.5-lite";
 
 const ADAPTERS: Partial<Record<Provider, ProviderAdapter>> = {
   xkiro: xkiroStreamChat,
+  mistral: mistralStreamChat,
+  gemini: geminiStreamChat,
+  groq: groqStreamChat,
+  openrouter: openrouterStreamChat,
+  zai: zaiStreamChat,
 };
 
 function json(body: unknown, status: number, headers: HeadersInit): Response {
@@ -41,9 +52,10 @@ const VALID_EFFORTS = ["low", "medium", "high", "extra", "ultra"];
 function isValidBody(body: unknown): body is ChatRequestBody {
   if (!body || typeof body !== "object") return false;
   const b = body as Record<string, unknown>;
-  if (b.provider !== "xkiro") return false;
+  if (!["xkiro", "mistral", "gemini", "groq", "openrouter", "zai"].includes(b.provider as string)) return false;
   if (typeof b.model !== "string" || !b.model) return false;
-  if (!FREE_XKIRO_MODEL_IDS.has(b.model)) return false;
+  const provider = b.provider as keyof typeof FREE_PROVIDER_MODEL_IDS | "xkiro";
+  if (provider === "xkiro" ? !FREE_XKIRO_MODEL_IDS.has(b.model) : !FREE_PROVIDER_MODEL_IDS[provider].has(b.model)) return false;
   if (!Array.isArray(b.messages) || b.messages.length === 0) return false;
   if (b.effort !== undefined && !VALID_EFFORTS.includes(b.effort as string)) return false;
   if (b.webSearch !== undefined && typeof b.webSearch !== "boolean") return false;
@@ -152,13 +164,23 @@ export default {
       }
 
       if (!isValidBody(body)) {
-        return json({ error: "Request must use a listed free xKiro model and include a non-empty messages array." }, 400, cors);
+        return json({ error: "Request must use a listed free model and include a non-empty messages array." }, 400, cors);
       }
 
-      const apiKey = typeof env.XKIRO_API_KEY === "string" ? env.XKIRO_API_KEY : undefined;
+      const apiKeys: Record<Exclude<Provider, "custom">, string | undefined> = {
+        xkiro: env.XKIRO_API_KEY,
+        mistral: env.MISTRAL_API_KEY,
+        gemini: env.GEMINI_API_KEY,
+        groq: env.GROQ_API_KEY,
+        openrouter: env.OPENROUTER_API_KEY,
+        zai: env.ZAI_API_KEY,
+      };
+      // isValidBody has already excluded the client-supplied "custom" provider.
+      const provider = body.provider as Exclude<Provider, "custom">;
+      const apiKey = typeof apiKeys[provider] === "string" ? apiKeys[provider] : undefined;
       if (!apiKey) {
         return json(
-          { error: "xKiro is not configured on this Worker (missing API key secret)." },
+          { error: `${provider} is not configured on this Worker (missing API key secret).` },
           500,
           cors
         );
@@ -175,11 +197,17 @@ export default {
           const lastUserIdx = messages.map((m, i) => ({ m, i })).filter((x) => x.m.role === "user").pop()?.i;
           const query = lastUserIdx !== undefined ? messages[lastUserIdx].content.trim() : "";
 
-          // Web search and memory use auxiliary paid-capable services. They are
-          // intentionally disabled while Lofin operates as a free-model-only app.
-          const useWebSearch = false;
+          // Web search is provider-independent: Exa supplies results when its
+          // key is configured and the keyless fallback keeps the capability
+          // available otherwise. Memory remains independently disabled below.
+          const useWebSearch = true;
           const useMemory = false;
-          if (useWebSearch && body.webSearch) {
+          // The setting enables automatic research. An unambiguous request to
+          // search, browse, or inspect a URL should still work when automatic
+          // search is off: that is an explicit, per-turn instruction from the
+          // user rather than an automatic lookup.
+          const userRequestedWeb = explicitlyRequestsWeb(query);
+          if (useWebSearch && (body.webSearch || userRequestedWeb)) {
             const pageUrl = publicUrlIn(query);
             if (pageUrl && lastUserIdx !== undefined) {
               const toolId = crypto.randomUUID();
@@ -225,7 +253,7 @@ export default {
             // A person can explicitly ask to preview a site; treat that as a
             // lookup even if the general-purpose classifier would have judged
             // the short request as conversational rather than factual.
-            const wantsWeb = explicitlyRequestsWeb(query);
+            const wantsWeb = userRequestedWeb;
             let worthSearching =
               !looksLikeArithmetic(query) && !isOwnLocationAlreadyKnown(query, body.clientContext?.location);
             if (wantsWeb) worthSearching = true;
@@ -263,7 +291,7 @@ export default {
                 })
               );
               try {
-                const results = await searchWeb(env.XKIRO_API_KEY, searchQuery);
+                const results = await searchWeb(env.EXA_API_KEY, searchQuery);
                 const resultsText = results.length
                   ? results.map((r, i) => `${i + 1}. ${r.title} — ${r.link}\n${r.snippet}`).join("\n\n")
                   : "No results found.";
@@ -359,7 +387,9 @@ export default {
           }
 
           try {
-            const upstream = await ADAPTERS.xkiro!({
+            const adapter = ADAPTERS[provider];
+            if (!adapter) throw new Error(`No adapter is configured for ${provider}.`);
+            const upstream = await adapter({
               apiKey,
               model: body.model,
               messages,

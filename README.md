@@ -4,11 +4,11 @@ A polished AI playground in the spirit of Arena.ai — six modes (Battle, Agent,
 Side by Side, Direct, Image, Text to Speech), a writing Tutor that learns your
 voice from your own work, real streaming responses, and a
 dark, blue, glass-panel UI. The frontend is a static site (GitHub Pages); the Worker is a Cloudflare
-Worker that proxies xKiro, Mistral, Gemini, OpenRouter, and Z.ai / GLM (chat), xKiro's free image model so API keys
+Worker that proxies xKiro, Mistral, Gemini, OpenRouter, and Z.ai / GLM (chat), Exa (web search), and xKiro's free image model so API keys
 never touch the browser.
 
 ```
-GitHub Pages (frontend) → Cloudflare Worker (proxy) → xKiro / Mistral / Gemini / OpenRouter / Z.ai (GLM)
+GitHub Pages (frontend) → Cloudflare Worker (proxy) → xKiro / Mistral / Gemini / OpenRouter / Z.ai (GLM) / Exa (search)
 ```
 
 ## Project structure
@@ -92,16 +92,18 @@ committed and never sent to the browser:
 ```bash
 cd worker
 npx wrangler secret put XKIRO_API_KEY
+npx wrangler secret put EXA_API_KEY
 
 # optional — gates the Worker behind a shared password (see below)
 npx wrangler secret put LOFIN_PASSWORD
 ```
 
-Only `XKIRO_API_KEY` is required for chat models.
+`XKIRO_API_KEY` is required for xKiro chat models. `EXA_API_KEY` enables live web search.
 
-`GROQ_API_KEY` isn't tied to a selectable provider — it only powers automatic
-chat-title generation (`npx wrangler secret put GROQ_API_KEY`) and is
-optional; without it, chats fall back to a truncated-prompt title.
+`GROQ_API_KEY` enables the Groq models in the picker and also powers automatic
+chat-title generation (`npx wrangler secret put GROQ_API_KEY`). Without it,
+the Groq section reports that its provider is not configured and chats fall
+back to a truncated-prompt title.
 
 Also edit `worker/wrangler.toml` → `ALLOWED_ORIGINS` to include your deployed
 GitHub Pages origin (comma-separated, no paths — e.g.
