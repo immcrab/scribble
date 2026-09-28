@@ -26,6 +26,8 @@ import {
   Search,
   Sparkles,
   Server,
+  HardDrive,
+  ShieldCheck,
 } from "lucide-react";
 import { useChatStore } from "../state/chatStore";
 import { useAuthStore } from "../state/authStore";
@@ -49,7 +51,7 @@ function SectionLabel({ children }: { children: string }) {
   return <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">{children}</h3>;
 }
 
-export type SettingsTab = "general" | "appearance" | "notifications" | "personalization" | "account" | "models" | "memory" | "advanced";
+export type SettingsTab = "general" | "appearance" | "notifications" | "personalization" | "privacy" | "account" | "models" | "memory" | "storage" | "advanced";
 type Tab = SettingsTab;
 
 const TABS: { id: Tab; label: string; icon: typeof Sliders; group: "Personal" | "Workspace"; keywords: string }[] = [
@@ -57,9 +59,11 @@ const TABS: { id: Tab; label: string; icon: typeof Sliders; group: "Personal" | 
   { id: "appearance", label: "Appearance", icon: Palette, group: "Personal", keywords: "theme color font text density language" },
   { id: "notifications", label: "Notifications", icon: Bell, group: "Personal", keywords: "sound browser alerts announcements" },
   { id: "personalization", label: "Personalization", icon: Sparkles, group: "Personal", keywords: "instructions replies preferences" },
+  { id: "privacy", label: "Privacy", icon: ShieldCheck, group: "Personal", keywords: "location data security" },
   { id: "memory", label: "Memory", icon: Brain, group: "Personal", keywords: "remember stored memories" },
   { id: "account", label: "Account", icon: UserCircle2, group: "Workspace", keywords: "profile sign in data" },
   { id: "models", label: "Models", icon: Blocks, group: "Workspace", keywords: "providers custom models endpoints" },
+  { id: "storage", label: "Storage", icon: HardDrive, group: "Workspace", keywords: "space usage files images chats attachments local data" },
   { id: "advanced", label: "Advanced", icon: Server, group: "Workspace", keywords: "worker connection password request spacing" },
 ];
 
@@ -83,15 +87,18 @@ const DENSITY_OPTIONS: { id: LofinSettings["density"]; label: string }[] = [
 function AppearanceSection() {
   const { settings, updateSettings } = useChatStore();
   return (
-    <div className="space-y-5">
+    <div className="mx-auto max-w-2xl space-y-6">
       <div>
-        <SectionLabel>Theme</SectionLabel>
-        <div className="grid grid-cols-3 gap-2">
+        <h3 className="mb-5 text-base font-semibold text-white">Appearance</h3>
+        <SectionLabel>Visual style</SectionLabel>
+        <div className="rounded-2xl border border-base-600/70 bg-base-900/35 p-3">
+          <div className="mb-2 flex items-center justify-between px-1"><span className="text-sm font-medium text-slate-200">Mode</span><span className="text-xs text-slate-500">Choose how Lofin looks</span></div>
+          <div className="grid grid-cols-3 gap-2">
           {THEME_OPTIONS.map(({ id, label, icon: Icon }) => (
             <button
               key={id}
               onClick={() => updateSettings({ theme: id })}
-              className={`flex flex-col items-center gap-1.5 rounded-xl border px-3 py-3 text-xs font-medium transition-colors ${
+              className={`flex min-h-20 flex-col items-center justify-center gap-1.5 rounded-xl border px-3 py-3 text-xs font-medium transition-colors ${
                 settings.theme === id
                   ? "border-accent-500/60 bg-accent-500/10 text-white"
                   : "border-base-600/60 bg-base-900/60 text-slate-400 hover:border-base-500/60 hover:text-slate-200"
@@ -101,19 +108,22 @@ function AppearanceSection() {
               {label}
             </button>
           ))}
+          </div>
         </div>
-        <p className="mt-2 text-xs text-slate-500">System follows your OS's light/dark preference.</p>
       </div>
 
       <div>
-        <SectionLabel>Theme color</SectionLabel>
-        <div className="flex flex-wrap gap-2">
+        <SectionLabel>Theme</SectionLabel>
+        <div className="overflow-hidden rounded-2xl border border-base-600/70 bg-base-900/35">
+          <div className="flex items-center justify-between gap-3 border-b border-base-700/60 px-4 py-3">
+            <span className="text-sm font-medium text-slate-200">Accent</span>
+            <div className="flex flex-wrap justify-end gap-1.5">
           {THEME_PALETTE_OPTIONS.map(({ id, label, swatch }) => (
             <button
               key={id}
               onClick={() => updateSettings({ themePalette: id })}
               title={label}
-              className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-medium transition-colors ${
+              className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-xs font-medium transition-colors ${
                 (settings.themePalette ?? "mono") === id
                   ? "border-accent-500/60 bg-accent-500/10 text-white"
                   : "border-base-600/60 bg-base-900/60 text-slate-400 hover:border-base-500/60 hover:text-slate-200"
@@ -126,12 +136,20 @@ function AppearanceSection() {
               {label}
             </button>
           ))}
+            </div>
+          </div>
+          <div className="flex items-center justify-between px-4 py-3 text-sm">
+            <span className="font-medium text-slate-200">Background</span>
+            <span className="rounded-full border border-base-600/70 bg-base-850 px-2.5 py-1 text-xs text-slate-300">Follows mode</span>
+          </div>
         </div>
-        <p className="mt-2 text-xs text-slate-500">Tints buttons, links, and highlights — works in both light and dark.</p>
       </div>
 
       <div>
-        <SectionLabel>Font</SectionLabel>
+        <SectionLabel>Typography</SectionLabel>
+        <div className="overflow-hidden rounded-2xl border border-base-600/70 bg-base-900/35">
+          <div className="flex items-center justify-between gap-3 px-4 py-3">
+            <span className="flex items-center gap-2 text-sm font-medium text-slate-200"><Type size={15} className="text-slate-500" />Font</span>
         <Dropdown
           matchWidth
           menuClassName="max-h-80"
@@ -145,7 +163,7 @@ function AppearanceSection() {
                 aria-expanded={open}
                 aria-label={`Font: ${current.label}`}
                 data-testid="font-picker"
-                className="flex w-full items-center gap-2 rounded-lg border border-base-600/60 bg-base-900 px-3 py-2 text-sm text-white transition-colors hover:border-accent-500/50"
+                className="flex items-center gap-2 rounded-full border border-base-600/60 bg-base-850 px-3 py-1.5 text-sm text-white transition-colors hover:border-accent-500/50"
               >
                 <Type size={15} className="shrink-0 text-slate-400" />
                 <span className="min-w-0 flex-1 truncate text-left">{current.label}</span>
@@ -180,7 +198,8 @@ function AppearanceSection() {
             </div>
           )}
         </Dropdown>
-        <div className="mt-3">
+          </div>
+        <div className="border-t border-base-700/60 px-4 py-2">
           <ToggleSwitch
             label="Bolder text"
             description="Heavier weight across the whole UI"
@@ -188,11 +207,12 @@ function AppearanceSection() {
             onChange={(v) => updateSettings({ boldText: v })}
           />
         </div>
+        </div>
       </div>
 
       <div>
         <SectionLabel>Text size</SectionLabel>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-3 gap-2 rounded-2xl border border-base-600/70 bg-base-900/35 p-3">
           {TEXT_SIZE_OPTIONS.map(({ id, label }) => (
             <button
               key={id}
@@ -212,7 +232,7 @@ function AppearanceSection() {
 
       <div>
         <SectionLabel>Message density</SectionLabel>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-2 gap-2 rounded-2xl border border-base-600/70 bg-base-900/35 p-3">
           {DENSITY_OPTIONS.map(({ id, label }) => (
             <button
               key={id}
@@ -232,6 +252,7 @@ function AppearanceSection() {
 
       <div>
         <SectionLabel>Reply language</SectionLabel>
+        <div className="rounded-2xl border border-base-600/70 bg-base-900/35 p-3">
         <Dropdown
           matchWidth
           menuClassName="max-h-80"
@@ -241,7 +262,7 @@ function AppearanceSection() {
             return (
               <button
                 onClick={toggle}
-                className="flex w-full items-center gap-2 rounded-lg border border-base-600/60 bg-base-900 px-3 py-2 text-sm text-white transition-colors hover:border-accent-500/50"
+                className="flex w-full items-center gap-2 rounded-full border border-base-600/60 bg-base-850 px-3 py-2 text-sm text-white transition-colors hover:border-accent-500/50"
               >
                 <Languages size={15} className="shrink-0 text-slate-400" />
                 <span className="min-w-0 flex-1 truncate text-left">{current.label}</span>
@@ -273,6 +294,7 @@ function AppearanceSection() {
             </div>
           )}
         </Dropdown>
+        </div>
         <p className="mt-2 text-xs text-slate-500">
           Lofin always answers in this language, whatever language you write in. Auto matches you.
         </p>
@@ -280,11 +302,12 @@ function AppearanceSection() {
 
       <div>
         <SectionLabel>Default reasoning effort</SectionLabel>
-        <EffortSelector value={settings.effort} onChange={(e) => updateSettings({ effort: e })} />
+        <div className="rounded-2xl border border-base-600/70 bg-base-900/35 p-3"><EffortSelector value={settings.effort} onChange={(e) => updateSettings({ effort: e })} /></div>
         <p className="mt-2 text-xs text-slate-500">
           Used for new chats — each chat can override it from its own header.
         </p>
       </div>
+      <ToggleSwitch label="Reduce motion" description="Turn off streaming and hover animations" checked={settings.reduceMotion} onChange={(v) => updateSettings({ reduceMotion: v })} />
     </div>
   );
 }
@@ -369,6 +392,52 @@ function MemorySection() {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+const INCLUDED_STORAGE_BYTES = 70 * 1024 * 1024;
+
+function formatStorage(bytes: number): string {
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(bytes < 10 * 1024 * 1024 ? 1 : 0)} MB`;
+}
+
+function StorageSection() {
+  const { chats, memories, projects } = useChatStore();
+  const encoder = new TextEncoder();
+  const messages = chats.flatMap((chat) => chat.messages ?? []);
+  const attachments = messages.flatMap((message) => message.attachments ?? []);
+  const images = attachments.filter((attachment) => attachment.type.startsWith("image/") || attachment.dataUrl.startsWith("data:image/"));
+  const fileAttachments = attachments.filter((attachment) => !images.includes(attachment));
+  const imageBytes = images.reduce((total, attachment) => total + (attachment.size || encoder.encode(attachment.dataUrl).length), 0);
+  const fileBytes = fileAttachments.reduce((total, attachment) => total + (attachment.size || encoder.encode(attachment.dataUrl).length), 0);
+  const localBytes = [chats, memories, projects].reduce((total, value) => total + encoder.encode(JSON.stringify(value)).length, 0);
+  const usedBytes = Math.max(localBytes, imageBytes + fileBytes);
+  const usedPercent = Math.min(100, (usedBytes / INCLUDED_STORAGE_BYTES) * 100);
+
+  const Item = ({ label, detail }: { label: string; detail: string }) => (
+    <div className="flex items-center justify-between gap-4 border-b border-base-700/60 px-4 py-3 last:border-b-0">
+      <div><p className="text-sm font-medium text-slate-100">{label}</p><p className="mt-0.5 text-xs text-slate-500">{detail}</p></div>
+      <ChevronDown size={17} className="-rotate-90 text-slate-500" />
+    </div>
+  );
+
+  return (
+    <div className="mx-auto max-w-2xl">
+      <h3 className="text-base font-semibold text-white">Storage</h3>
+      <p className="mt-5 text-sm font-semibold text-slate-200">{formatStorage(usedBytes)} of 70 MB used</p>
+      <div className="mt-3 h-3 overflow-hidden rounded-full bg-base-700/80"><div className="h-full min-w-1 rounded-full bg-accent-400 transition-all" style={{ width: `${Math.max(usedPercent, usedBytes ? 0.4 : 0)}%` }} /></div>
+      <div className="mt-10">
+        <h4 className="text-base font-semibold text-white">Manage storage</h4>
+        <p className="mt-1 text-sm text-slate-400">Review data saved in this browser.</p>
+        <div className="mt-3 overflow-hidden rounded-2xl border border-base-600/70 bg-base-900/35">
+          <Item label="Files" detail={`${formatStorage(fileBytes)} · ${fileAttachments.length} ${fileAttachments.length === 1 ? "file" : "files"}`} />
+          <Item label="Images" detail={`${formatStorage(imageBytes)} · ${images.length} ${images.length === 1 ? "image" : "images"}`} />
+          <Item label="Chats & memories" detail={`${formatStorage(localBytes)} · ${chats.length} ${chats.length === 1 ? "chat" : "chats"}, ${memories.length} memories`} />
+        </div>
+      </div>
+      <p className="mt-4 text-xs leading-5 text-slate-500">Attachments are saved with their chats on this device. Delete a chat or use Account → Clear local data to free up space.</p>
     </div>
   );
 }
@@ -569,72 +638,7 @@ export function SettingsModal({ onClose, initialTab }: { onClose: () => void; in
                     checked={settings.autoWebSearch}
                     onChange={(v) => updateSettings({ autoWebSearch: v })}
                   />
-                  <ToggleSwitch
-                    label="Product announcements"
-                    description="Show new-release popups and keep updates in the Announcements tab"
-                    checked={settings.announcementsEnabled}
-                    onChange={(v) => updateSettings({ announcementsEnabled: v })}
-                  />
-                  <ToggleSwitch
-                    label="Reduce motion"
-                    description="Turn off streaming/hover animations"
-                    checked={settings.reduceMotion}
-                    onChange={(v) => updateSettings({ reduceMotion: v })}
-                  />
-                  <ToggleSwitch
-                    label="Share approximate location"
-                    description="Lets Lofin give locally-relevant answers, using a city-level estimate from your IP address — never exact GPS. Off by default"
-                    checked={settings.locationConsent === "granted"}
-                    onChange={(v) => updateSettings({ locationConsent: v ? "granted" : "denied" })}
-                  />
-                  <ToggleSwitch
-                    label="Notification sound"
-                    description="Play a short chime when a reply finishes"
-                    checked={settings.notificationSound}
-                    onChange={(v) => updateSettings({ notificationSound: v })}
-                  />
-                  <ToggleSwitch
-                    label="Browser notifications"
-                    description="Notify you when a reply finishes while Lofin is in the background"
-                    checked={settings.desktopNotifications}
-                    onChange={async (enabled) => {
-                      if (!enabled) {
-                        updateSettings({ desktopNotifications: false });
-                        return;
-                      }
-                      const granted = await requestDesktopNotificationPermission();
-                      updateSettings({ desktopNotifications: granted });
-                    }}
-                  />
-                  <ToggleSwitch
-                    label="Show token counts"
-                    description="Print the estimated token count under each reply"
-                    checked={settings.showTokenCounts}
-                    onChange={(v) => updateSettings({ showTokenCounts: v })}
-                  />
-                  <ToggleSwitch
-                    label="Auto-retry on rate limits"
-                    description="Wait out rate limits, usage caps and transient server errors and keep retrying with backoff until the reply lands — a reply cut off mid-stream resumes where it stopped instead of restarting. Stop cancels at any point."
-                    checked={settings.autoRetryRateLimited}
-                    onChange={(v) => updateSettings({ autoRetryRateLimited: v })}
-                  />
                 </div>
-              </div>
-
-              <div>
-                <SectionLabel>Custom instructions</SectionLabel>
-                <textarea
-                  value={customSystemPrompt}
-                  onChange={(e) => setCustomSystemPrompt(e.target.value)}
-                  onBlur={() => updateSettings({ customSystemPrompt: customSystemPrompt.trim() })}
-                  maxLength={2000}
-                  rows={4}
-                  placeholder="e.g. Always answer in bullet points. I'm a backend engineer, skip basic explanations."
-                  className="w-full resize-y rounded-lg border border-base-600/60 bg-base-900 px-3 py-2 text-sm text-white outline-none focus:border-accent-500"
-                />
-                <p className="mt-1 text-xs text-slate-500">
-                  Added to every request, on top of Lofin's own instructions.
-                </p>
               </div>
 
               <details className="group rounded-lg border border-base-700/60 bg-base-900/40 [&_summary::-webkit-details-marker]:hidden">
@@ -746,9 +750,21 @@ export function SettingsModal({ onClose, initialTab }: { onClose: () => void; in
               <ToggleSwitch label="Show token counts" description="Print the estimated token count under each reply" checked={settings.showTokenCounts} onChange={(v) => updateSettings({ showTokenCounts: v })} />
             </div>
           )}
+          {tab === "privacy" && (
+            <div className="space-y-5">
+              <div><SectionLabel>Privacy</SectionLabel><p className="text-sm text-slate-400">Control what contextual information Lofin can use to make replies more useful.</p></div>
+              <ToggleSwitch
+                label="Share approximate location"
+                description="Lets Lofin give locally-relevant answers using a city-level estimate from your IP address — never exact GPS. Off by default."
+                checked={settings.locationConsent === "granted"}
+                onChange={(v) => updateSettings({ locationConsent: v ? "granted" : "denied" })}
+              />
+            </div>
+          )}
           {tab === "account" && <AccountSection />}
           {tab === "models" && <CustomModelsSection />}
           {tab === "memory" && <MemorySection />}
+          {tab === "storage" && <StorageSection />}
           {tab === "advanced" && (
             <div className="space-y-5">
               <div>
