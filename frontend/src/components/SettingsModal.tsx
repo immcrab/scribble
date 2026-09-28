@@ -46,6 +46,8 @@ import { isPuterSignedIn } from "../lib/puterClient";
 import { requestDesktopNotificationPermission } from "../lib/desktopNotifications";
 import type { ModelDef } from "../types";
 import type { LofinSettings } from "../lib/storage";
+import { clearAllLocalData } from "../lib/storage";
+import type { Attachment } from "../types";
 
 function SectionLabel({ children }: { children: string }) {
   return <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">{children}</h3>;
@@ -403,11 +405,18 @@ function formatStorage(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(bytes < 10 * 1024 * 1024 ? 1 : 0)} MB`;
 }
 
+type StoredAttachment = Attachment & { chatTitle: string; messageId: string };
+
 function StorageSection() {
   const { chats, memories, projects } = useChatStore();
+  const [view, setView] = useState<"files" | "images" | null>(null);
+  const [confirmingClear, setConfirmingClear] = useState(false);
   const encoder = new TextEncoder();
-  const messages = chats.flatMap((chat) => chat.messages ?? []);
-  const attachments = messages.flatMap((message) => message.attachments ?? []);
+  const attachments: StoredAttachment[] = chats.flatMap((chat) =>
+    (chat.messages ?? []).flatMap((message) =>
+      (message.attachments ?? []).map((attachment) => ({ ...attachment, chatTitle: chat.title || "Untitled chat", messageId: message.id }))
+    )
+  );
   const images = attachments.filter((attachment) => attachment.type.startsWith("image/") || attachment.dataUrl.startsWith("data:image/"));
   const fileAttachments = attachments.filter((attachment) => !images.includes(attachment));
   const imageBytes = images.reduce((total, attachment) => total + (attachment.size || encoder.encode(attachment.dataUrl).length), 0);
@@ -416,12 +425,13 @@ function StorageSection() {
   const usedBytes = Math.max(localBytes, imageBytes + fileBytes);
   const usedPercent = Math.min(100, (usedBytes / INCLUDED_STORAGE_BYTES) * 100);
 
-  const Item = ({ label, detail }: { label: string; detail: string }) => (
+  const Item = ({ label, detail, onView }: { label: string; detail: string; onView?: () => void }) => (
     <div className="flex items-center justify-between gap-4 border-b border-base-700/60 px-4 py-3 last:border-b-0">
       <div><p className="text-sm font-medium text-slate-100">{label}</p><p className="mt-0.5 text-xs text-slate-500">{detail}</p></div>
-      <ChevronDown size={17} className="-rotate-90 text-slate-500" />
+      {onView && <button onClick={onView} className="rounded-lg border border-base-600/60 px-2.5 py-1.5 text-xs font-medium text-slate-300 transition-colors hover:border-accent-500/50 hover:bg-base-700/60 hover:text-white">View</button>}
     </div>
   );
+  const viewedAttachments = view === "images" ? images : fileAttachments;
 
   return (
     <div className="mx-auto max-w-2xl">
@@ -432,17 +442,34 @@ function StorageSection() {
         <h4 className="text-base font-semibold text-white">Manage storage</h4>
         <p className="mt-1 text-sm text-slate-400">Review data saved in this browser.</p>
         <div className="mt-3 overflow-hidden rounded-2xl border border-base-600/70 bg-base-900/35">
-          <Item label="Files" detail={`${formatStorage(fileBytes)} · ${fileAttachments.length} ${fileAttachments.length === 1 ? "file" : "files"}`} />
-          <Item label="Images" detail={`${formatStorage(imageBytes)} · ${images.length} ${images.length === 1 ? "image" : "images"}`} />
+          <Item label="Files" detail={`${formatStorage(fileBytes)} · ${fileAttachments.length} ${fileAttachments.length === 1 ? "file" : "files"}`} onView={() => setView(view === "files" ? null : "files")} />
+          <Item label="Images" detail={`${formatStorage(imageBytes)} · ${images.length} ${images.length === 1 ? "image" : "images"}`} onView={() => setView(view === "images" ? null : "images")} />
           <Item label="Chats & memories" detail={`${formatStorage(localBytes)} · ${chats.length} ${chats.length === 1 ? "chat" : "chats"}, ${memories.length} memories`} />
         </div>
       </div>
-      <p className="mt-4 text-xs leading-5 text-slate-500">Attachments are saved with their chats on this device. Delete a chat or use Account → Clear local data to free up space.</p>
+      {view && (
+        <div className="mt-5">
+          <div className="mb-2 flex items-center justify-between"><h4 className="text-sm font-semibold text-white">{view === "images" ? "Images" : "Files"}</h4><button onClick={() => setView(null)} className="text-xs text-slate-400 hover:text-white">Close</button></div>
+          {viewedAttachments.length === 0 ? <p className="rounded-xl border border-dashed border-base-700/60 px-3 py-5 text-center text-xs text-slate-500">No {view} saved in this browser.</p> : (
+            <div className={view === "images" ? "grid grid-cols-2 gap-3 sm:grid-cols-3" : "space-y-2"}>
+              {viewedAttachments.map((attachment) => view === "images" ? (
+                <a key={`${attachment.messageId}:${attachment.id}`} href={attachment.dataUrl} download={attachment.name} className="overflow-hidden rounded-xl border border-base-600/70 bg-base-900/40 hover:border-accent-500/50" title={`Download ${attachment.name}`}><img src={attachment.dataUrl} alt={attachment.name} className="aspect-square w-full object-cover" /><span className="block truncate px-2.5 py-2 text-xs text-slate-300">{attachment.name}</span></a>
+              ) : (
+                <a key={`${attachment.messageId}:${attachment.id}`} href={attachment.dataUrl} download={attachment.name} className="flex items-center justify-between gap-3 rounded-xl border border-base-600/70 bg-base-900/40 px-3 py-2.5 transition-colors hover:border-accent-500/50 hover:bg-base-700/40" title={`Download ${attachment.name}`}><span className="min-w-0"><span className="block truncate text-sm text-slate-200">{attachment.name}</span><span className="block truncate text-xs text-slate-500">{attachment.chatTitle} · {formatStorage(attachment.size || encoder.encode(attachment.dataUrl).length)}</span></span><span className="shrink-0 text-xs text-accent-300">Download</span></a>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+      <div className="mt-5 rounded-xl border border-red-500/25 bg-red-500/[0.04] p-3">
+        {!confirmingClear ? <button onClick={() => setConfirmingClear(true)} className="flex w-full items-center gap-2 text-left text-sm text-red-300 hover:text-red-200"><Trash2 size={15} /><span><span className="block font-medium">Clear all local data</span><span className="block text-xs text-red-300/70">Remove saved files, images, chats, memories, projects, and settings from this browser.</span></span></button> : <div><p className="text-xs text-red-200">This cannot be undone. Synced cloud data is not affected.</p><div className="mt-3 flex gap-2"><button onClick={() => setConfirmingClear(false)} className="flex-1 rounded-lg px-3 py-1.5 text-xs text-slate-300 hover:bg-base-700/60">Cancel</button><button onClick={() => { clearAllLocalData(); window.location.reload(); }} className="flex-1 rounded-lg bg-red-500/90 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-500">Yes, clear all</button></div></div>}
+      </div>
+      <p className="mt-4 text-xs leading-5 text-slate-500">Attachments are saved with their chats on this device. Files and images can be viewed or downloaded here; chats and memories remain summary-only.</p>
     </div>
   );
 }
 
-export function SettingsModal({ onClose, initialTab }: { onClose: () => void; initialTab?: SettingsTab }) {
+export function SettingsModal({ onClose, initialTab, onTabChange }: { onClose: () => void; initialTab?: SettingsTab; onTabChange?: (tab: SettingsTab) => void }) {
   const { settings, updateSettings } = useChatStore();
   const user = useAuthStore((s) => s.user);
   const signInWithGoogle = useAuthStore((s) => s.signInWithGoogle);
@@ -459,6 +486,9 @@ export function SettingsModal({ onClose, initialTab }: { onClose: () => void; in
     const query = search.trim().toLowerCase();
     return query ? TABS.filter((item) => `${item.label} ${item.keywords}`.toLowerCase().includes(query)) : TABS;
   }, [search]);
+
+  useEffect(() => { if (initialTab) setTab(initialTab); }, [initialTab]);
+  const selectTab = (nextTab: Tab) => { setTab(nextTab); onTabChange?.(nextTab); };
 
   // Flush the few text fields that aren't live-saved (Worker URL, password, custom
   // instructions), then close. Every other control in here already applies on change,
@@ -539,7 +569,7 @@ export function SettingsModal({ onClose, initialTab }: { onClose: () => void; in
                     {items.map(({ id, label, icon: Icon }) => (
                       <button
                         key={id}
-                        onClick={() => setTab(id)}
+                        onClick={() => selectTab(id)}
                         role="tab"
                         aria-selected={tab === id}
                         className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm font-medium transition-colors ${

@@ -28,6 +28,8 @@ import {
   isTutorLocation,
   isConnectionsLocation,
   isLibraryLocation,
+  parseSettingsTabFromLocation,
+  settingsPath,
 } from "./lib/router";
 import { fetchPublicChat } from "./lib/cloudSync";
 import { ProjectView } from "./components/ProjectView";
@@ -87,7 +89,7 @@ export default function App() {
   const activeProject = projects.find((p) => p.id === activeProjectId);
   const inProject = !!activeProjectId && !!activeProject;
 
-  const [settingsTab, setSettingsTab] = useState<SettingsTab | null>(null);
+  const [settingsTab, setSettingsTab] = useState<SettingsTab | null>(() => parseSettingsTabFromLocation() as SettingsTab | null);
   const [pending, setPending] = useState<InitialPrompt | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [announcementsOpen, setAnnouncementsOpen] = useState(false);
@@ -129,6 +131,10 @@ export default function App() {
   // "we just entered fresh-compose" apart from "the user picked a different chat", which
   // otherwise look identical (both are just an activeChatId change).
   const suppressFreshComposeClearRef = useRef(false);
+  // A direct /storage-style link has no in-app history entry to return to;
+  // settings opened from the sidebar does. This keeps the close button safe in
+  // both cases while tab switches simply replace the current settings URL.
+  const openedSettingsFromAppRef = useRef(false);
 
   // Point activeChatId at a blank chat for the fresh "/" compose screen, before the
   // browser paints. A plain useEffect would paint whatever chat was active last for
@@ -257,6 +263,12 @@ export default function App() {
     []
   );
 
+  useEffect(() => {
+    const listener = () => setSettingsTab(parseSettingsTabFromLocation() as SettingsTab | null);
+    window.addEventListener("popstate", listener);
+    return () => window.removeEventListener("popstate", listener);
+  }, []);
+
   // Docs is a separate section entirely (see pages/DocsPage.tsx) — track its own slug
   // ("" = index, null = not in docs) so back/forward through /docs/{model} pages works.
   useEffect(() => {
@@ -316,16 +328,16 @@ export default function App() {
   // 404 page (the URL there must stay exactly what the visitor typed/followed, not get
   // silently swapped for whatever chat happens to still be active underneath).
   useEffect(() => {
-    if (shareState.status !== "idle" || !activeChatId || docsSlug !== null || freshCompose || notFound || activeProjectId || adminRoute || usageRoute || tutorRoute || connectionsRoute || libraryRoute) return;
+    if (shareState.status !== "idle" || !activeChatId || docsSlug !== null || freshCompose || notFound || activeProjectId || adminRoute || usageRoute || tutorRoute || connectionsRoute || libraryRoute || settingsTab) return;
     syncUrlToChat(activeChatId);
-  }, [activeChatId, shareState.status, docsSlug, freshCompose, notFound, activeProjectId, adminRoute, usageRoute, tutorRoute, connectionsRoute, libraryRoute]);
+  }, [activeChatId, shareState.status, docsSlug, freshCompose, notFound, activeProjectId, adminRoute, usageRoute, tutorRoute, connectionsRoute, libraryRoute, settingsTab]);
 
   // A project's own "/p/{id}" URL — takes precedence over the per-chat URL above
   // while a project is open (its chats don't get their own address bar entry).
   useEffect(() => {
-    if (shareState.status !== "idle" || docsSlug !== null || notFound || adminRoute || usageRoute || tutorRoute || connectionsRoute || libraryRoute || !activeProjectId) return;
+    if (shareState.status !== "idle" || docsSlug !== null || notFound || adminRoute || usageRoute || tutorRoute || connectionsRoute || libraryRoute || settingsTab || !activeProjectId) return;
     syncUrlToProject(activeProjectId);
-  }, [activeProjectId, shareState.status, docsSlug, notFound, adminRoute, usageRoute, tutorRoute, connectionsRoute, libraryRoute]);
+  }, [activeProjectId, shareState.status, docsSlug, notFound, adminRoute, usageRoute, tutorRoute, connectionsRoute, libraryRoute, settingsTab]);
 
   // Picking a chat from the sidebar (or starting a new one) while viewing a shared/unresolved
   // chat should always drop back into the normal app — those actions only ever fire from
@@ -515,7 +527,12 @@ export default function App() {
         Skip to content
       </a>
       <Sidebar
-        onOpenSettings={(tab) => setSettingsTab(tab ?? "general")}
+        onOpenSettings={(tab) => {
+          const nextTab = tab ?? "general";
+          openedSettingsFromAppRef.current = true;
+          window.history.pushState({ settingsTab: nextTab }, "", settingsPath(nextTab));
+          setSettingsTab(nextTab);
+        }}
         onOpenAnnouncements={() => setAnnouncementsOpen(true)}
         mobileOpen={mobileMenuOpen}
         onCloseMobile={() => setMobileMenuOpen(false)}
@@ -622,7 +639,23 @@ export default function App() {
       {announcementsOpen && <AnnouncementCenter onClose={() => setAnnouncementsOpen(false)} />}
       {settingsTab && (
         <Suspense fallback={null}>
-          <SettingsModal initialTab={settingsTab} onClose={() => setSettingsTab(null)} />
+          <SettingsModal
+            initialTab={settingsTab}
+            onTabChange={(nextTab: SettingsTab) => {
+              window.history.replaceState({ settingsTab: nextTab }, "", settingsPath(nextTab));
+              setSettingsTab(nextTab);
+            }}
+            onClose={() => {
+              if (openedSettingsFromAppRef.current) {
+                openedSettingsFromAppRef.current = false;
+                window.history.back();
+              }
+              else {
+                window.history.replaceState(null, "", import.meta.env.BASE_URL);
+                setSettingsTab(null);
+              }
+            }}
+          />
         </Suspense>
       )}
     </div>

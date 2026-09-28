@@ -40,6 +40,27 @@ export function parseProjectIdFromLocation(): string | null {
   return match ? normalizeId(match[1]) : null;
 }
 
+/** Settings sections have direct paths such as "/general" and "/storage" so
+ * they can be bookmarked and used with browser back/forward navigation. */
+const SETTINGS_TABS = new Set([
+  "general", "appearance", "notifications", "personalization", "privacy",
+  "account", "models", "memory", "storage", "advanced",
+]);
+
+export function parseSettingsTabFromLocation(): string | null {
+  const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+  const path = window.location.pathname.replace(/\/$/, "");
+  const prefix = `${base}/`;
+  if (!path.startsWith(prefix)) return null;
+  const tab = path.slice(prefix.length);
+  return SETTINGS_TABS.has(tab) ? tab : null;
+}
+
+export function settingsPath(tab: string): string {
+  const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+  return `${base}/${encodeURIComponent(tab)}`;
+}
+
 /** True only for the bare app root ("/" or "<base>/"), where the app shows a fresh
  * compose screen rather than any particular chat. */
 export function isRootLocation(): boolean {
@@ -55,6 +76,7 @@ export function isKnownAppLocation(): boolean {
   if (isRootLocation()) return true;
   if (parseChatIdFromLocation() !== null) return true;
   if (parseProjectIdFromLocation() !== null) return true;
+  if (parseSettingsTabFromLocation() !== null) return true;
   if (parseDocsSlugFromLocation() !== null) return true;
   if (isAdminLocation()) return true;
   if (isUsageLocation()) return true;
