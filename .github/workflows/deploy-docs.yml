@@ -49,7 +49,7 @@ jobs:
           docs_domains=$(curl --fail-with-body \
             "https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/pages/projects/lofin-docs/domains" \
             --header "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}")
-          if echo "$docs_domains" | grep -q '"name":"docs.lofin.dev"'; then
+          if echo "$docs_domains" | jq -e '.result[] | select(.name == "docs.lofin.dev")' > /dev/null; then
             exit 0
           fi
           curl --fail-with-body --request POST \
