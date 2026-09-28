@@ -155,6 +155,15 @@ Once live, open the deployed site, go to **Settings**, and paste your
 Worker's URL (and password, if you set one). Settings are stored in
 `localStorage`, so this is a one-time step per browser.
 
+### Preventing iframe embedding
+
+Lofin includes a client-side fallback that hides the site when it is loaded in
+an iframe. Since GitHub Pages cannot set security response headers, configure
+this in Cloudflare too for enforceable protection: add a **Response Header
+Transform Rule** for `lofin.dev` that sets both
+`X-Frame-Options: DENY` and `Content-Security-Policy: frame-ancestors 'none'`.
+The Cloudflare rule prevents framing before any page JavaScript can run.
+
 ## Notes
 
 - **Chat history** lives in the browser's `localStorage` by default. Signing in
