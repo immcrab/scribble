@@ -31,6 +31,13 @@ export function mergeChats(local: Chat[], remote: Chat[]): Chat[] {
 export function mergeSettings(local: LofinSettings, remote: LofinSettings | null): LofinSettings {
   if (!remote) return local;
   const winner = remote.updatedAt > local.updatedAt ? remote : local;
+  // Unlike ordinary preferences, a seen announcement is monotonic: losing an
+  // id during a last-write-wins settings merge makes an old popup reappear.
+  // Keep the union so an update from another device cannot resurrect it.
+  const seenAnnouncementIds = [...new Set([
+    ...(local.seenAnnouncementIds ?? []),
+    ...(remote.seenAnnouncementIds ?? []),
+  ])].slice(-100);
   // Credentials and custom-provider configuration never leave this browser.
   // Normalizing here preserves settings added by a newer app version when the
   // cloud document was saved by an older deployment.
@@ -39,6 +46,7 @@ export function mergeSettings(local: LofinSettings, remote: LofinSettings | null
     password: local.password,
     customProviders: local.customProviders,
     customModels: local.customModels,
+    seenAnnouncementIds,
   });
 }
 

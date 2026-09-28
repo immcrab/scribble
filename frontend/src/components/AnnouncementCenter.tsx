@@ -37,26 +37,20 @@ export function AnnouncementLaunch() {
   const [current, setCurrent] = useState<Announcement | null>(null);
   useEffect(() => {
     if (!enabled) return setCurrent(null);
-    // Keep the card mounted while it is being presented. Recording it as seen is
-    // deliberately handled by the next effect, after React has committed the
-    // launch card to the page.
     if (current) return;
     const seen = new Set([...readSeen(), ...(settings.seenAnnouncementIds ?? [])]);
     const next = announcements.find((item) => !seen.has(item.id)) ?? null;
-    setCurrent(next);
+    // Persist before showing the card. The previous post-render write left a
+    // small window where a reload could reopen an announcement the user had
+    // already seen. Local storage is written first so this also works while a
+    // signed-in account's cloud settings are still loading.
+    if (next) {
+      markSeen(next.id);
+      const ids = [...new Set([...(settings.seenAnnouncementIds ?? []), next.id])].slice(-100);
+      updateSettings({ seenAnnouncementIds: ids });
+      setCurrent(next);
+    }
   }, [announcements, enabled, settings.seenAnnouncementIds, updateSettings, current]);
-
-  useEffect(() => {
-    if (!current) return;
-    const seen = new Set([...readSeen(), ...(settings.seenAnnouncementIds ?? [])]);
-    if (seen.has(current.id)) return;
-    // “Seen” means the card made it onto the page, not that a catalog update
-    // merely selected it. Save it both locally and in account settings so it
-    // stays dismissed after a reload and follows signed-in users to another device.
-    markSeen(current.id);
-    const ids = [...new Set([...(settings.seenAnnouncementIds ?? []), current.id])].slice(-100);
-    updateSettings({ seenAnnouncementIds: ids });
-  }, [current, settings.seenAnnouncementIds, updateSettings]);
   if (!current) return null;
   const close = () => { markSeen(current.id); setCurrent(null); };
   return <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4 backdrop-blur-md animate-fade-in" role="dialog" aria-modal="true" aria-label="New announcement">
