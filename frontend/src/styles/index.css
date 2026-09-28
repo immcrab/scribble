@@ -748,10 +748,10 @@ select {
   position: absolute;
   bottom: 15px;
   left: 6px;
-  animation: imggen-walk 9s ease-in-out infinite;
+  animation: imggen-walk 6s ease-in-out infinite;
 }
 .imggen-buddy-flip {
-  animation: imggen-flip 9s step-end infinite;
+  animation: imggen-flip 6s step-end infinite;
 }
 .imggen-body {
   position: relative;
@@ -852,7 +852,7 @@ select {
   /* The buddy is the image generator's working indicator, just like a
      spinner. Keep that status visible, but make its travel more gradual. */
   .imggen-buddy {
-    animation-duration: 14s !important;
+    animation-duration: 9s !important;
     animation-iteration-count: infinite !important;
   }
   .imggen-spark { opacity: 0.55; }
@@ -904,7 +904,7 @@ select {
   animation-iteration-count: 1 !important;
 }
 .motion-reduce-force .imggen-buddy {
-  animation-duration: 14s !important;
+  animation-duration: 9s !important;
   animation-iteration-count: infinite !important;
 }
 .motion-reduce-force .imggen-spark { opacity: 0.55; }

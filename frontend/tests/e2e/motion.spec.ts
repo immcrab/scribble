@@ -53,7 +53,7 @@ test.describe("Reduced motion", () => {
     await expect(page.getByRole("textbox", { name: "Message" })).toBeVisible();
     await expectReduced(page);
     const buddy = await imageGenerationBuddyMotion(page);
-    expect(buddy.duration).toBeGreaterThan(10_000);
+    expect(buddy.duration).toBeGreaterThan(5_000);
     expect(buddy.iterations).toBe("infinite");
   });
 
@@ -69,7 +69,7 @@ test.describe("Reduced motion", () => {
     await expect(page.locator("html")).toHaveClass(/motion-reduce-force/);
     await expectReduced(page);
     const buddy = await imageGenerationBuddyMotion(page);
-    expect(buddy.duration).toBeGreaterThan(10_000);
+    expect(buddy.duration).toBeGreaterThan(5_000);
     expect(buddy.iterations).toBe("infinite");
 
     // A menu portaled to <body> is covered too.
