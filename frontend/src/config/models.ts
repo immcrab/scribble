@@ -9,8 +9,8 @@ import { isLocalDev } from "../lib/devMode";
  * modelId listed here is sent as-is to https://api.xkiro.com/v1/chat/completions
  * by the Worker's xkiro adapter.
  *
- * This is every model xKiro's public catalog marks `access_tier: "free"`
- * (Aug 2026) — GET /v1/models is public/unauthenticated and now carries that
+ * This is every chat model xKiro's public catalog marks `access_tier: "free"`
+ * (Sep 2026) — GET /v1/models is public/unauthenticated and now carries that
  * field directly, so no per-key probing is needed to know what's free:
  *   curl -s https://api.xkiro.com/v1/models | jq '[.data[] | select(.access_tier=="free") | .id]'
  * Some vendors (Qwen) only expose a `:free` id — a same-named bare id exists
@@ -431,10 +431,10 @@ const XKIRO_MODELS: ModelDef[] = [
     displayName: "DeepSeek V4.1 Flash",
     icon: "Sparkles",
     contextLength: 1048576,
-    capabilities: ["text", "reasoning"],
+    capabilities: ["text", "reasoning", "vision"],
     free: true,
     supportsStreaming: true,
-    supportsVision: false,
+    supportsVision: true,
   },
   {
     provider: "xkiro",
@@ -468,6 +468,61 @@ const XKIRO_MODELS: ModelDef[] = [
     free: true,
     supportsStreaming: true,
     supportsVision: false,
+  },
+  {
+    provider: "xkiro",
+    modelId: "xiaomi/mimo-v2.6-flash:free",
+    displayName: "MiMo v2.6 Flash",
+    icon: "Sparkles",
+    contextLength: 1048576,
+    capabilities: ["text", "reasoning", "vision"],
+    free: true,
+    supportsStreaming: true,
+    supportsVision: true,
+  },
+  {
+    provider: "xkiro",
+    modelId: "dots-studio/dots-3-note-preview:free",
+    displayName: "Dots3-Note Preview",
+    icon: "Sparkles",
+    contextLength: 512000,
+    capabilities: ["text", "reasoning", "vision"],
+    free: true,
+    supportsStreaming: true,
+    supportsVision: true,
+  },
+  {
+    provider: "xkiro",
+    modelId: "inclusionai/ling-3.0-flash-sante:free",
+    displayName: "Ling 3.0 Flash Sante",
+    icon: "Sparkles",
+    contextLength: 262144,
+    capabilities: ["text", "reasoning"],
+    free: true,
+    supportsStreaming: true,
+    supportsVision: false,
+  },
+  {
+    provider: "xkiro",
+    modelId: "liquid/lfm-2.5-2.6b:free",
+    displayName: "LFM2.5-2.6B",
+    icon: "Sparkles",
+    contextLength: 65536,
+    capabilities: ["text", "reasoning"],
+    free: true,
+    supportsStreaming: true,
+    supportsVision: false,
+  },
+  {
+    provider: "xkiro",
+    modelId: "meta/muse-spark-1.3-contributor:free",
+    displayName: "Muse Spark 1.3",
+    icon: "Sparkles",
+    contextLength: 1048576,
+    capabilities: ["text", "reasoning", "vision"],
+    free: true,
+    supportsStreaming: true,
+    supportsVision: true,
   },
   {
     provider: "xkiro",
