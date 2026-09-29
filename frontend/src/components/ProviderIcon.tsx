@@ -3,7 +3,8 @@ import type { ModelDef, Provider } from "../types";
 
 const LOBEHUB = "https://raw.githubusercontent.com/lobehub/lobe-icons/refs/heads/master/packages/static-png/dark";
 
-/** Real brand logos — lobehub's icon set for anything without a specific CDN source of its own. */
+/** Brand logos. The vendor-hosted entries below are used where a public, official
+ * asset is available; the remaining entries use the maintained Lobe icon set. */
 const LOGO_URLS = {
   gemini: `${LOBEHUB}/gemini-color.png`,
   mistral: `${LOBEHUB}/mistral-color.png`,
@@ -21,8 +22,9 @@ const LOGO_URLS = {
   together: `${LOBEHUB}/together-color.png`,
   openrouter: `${LOBEHUB}/openrouter-color.png`,
   qwen: "https://raw.githubusercontent.com/lobehub/lobe-icons/refs/heads/master/packages/static-png/dark/qwen-color.png",
-  mimo: "https://cdn.xtrouter.com/tag-images/0fe99040-c983-4e95-a208-d5ef6072cf83.png",
-  minimax: "https://cdn.xtrouter.com/tag-images/minimax-logo.png",
+  // Use the maintained vendor marks rather than the previous third-party xtrouter copies.
+  mimo: `${LOBEHUB}/xiaomimimo.png`,
+  minimax: `${LOBEHUB}/minimax-color.png`,
   xkiro: "https://xkiro.com/images/logo/logo-xt-green.png",
   // Zhipu AI's chat models ship under the "GLM" brand (z-ai/glm-* ids) — lobehub files the logo under the company name.
   zhipu: `${LOBEHUB}/zhipu-color.png`,
@@ -31,6 +33,12 @@ const LOGO_URLS = {
   gemma: `${LOBEHUB}/gemma-color.png`,
   // No lobehub entry for Puter — pulled straight from Puter's own CDN, same as xkiro above.
   puter: "https://puter.com/logo.png",
+  // These families previously inherited the xKiro/OpenRouter fallback despite having their own marks.
+  thinkingmachines: "https://thinkingmachines.ai/images/favicon-32x32.png",
+  liquid: "https://www.liquid.ai/logos/liquid-ai-black.svg",
+  inclusionai: "https://www.inclusion-ai.org/img/logo_head.png",
+  dotsstudio: `${LOBEHUB}/dotsstudio.png`,
+  sensenova: `${LOBEHUB}/sensenova-color.png`,
 } as const;
 
 /** Guesses a known brand's logo for a user-added custom provider from its name/base URL — falls back to the generic plug icon when nothing matches. */
@@ -52,7 +60,13 @@ export function detectCustomProviderLogo(name: string, baseUrl: string): string 
   if (hay.includes("x.ai") || hay.includes("xai") || hay.includes("grok")) return LOGO_URLS.grok;
   if (hay.includes("meta") || hay.includes("llama")) return LOGO_URLS.meta;
   if (hay.includes("dashscope") || hay.includes("alibaba") || hay.includes("qwen")) return LOGO_URLS.qwen;
+  if (hay.includes("thinkingmachines") || hay.includes("thinking machines") || hay.includes("inkling")) return LOGO_URLS.thinkingmachines;
+  if (hay.includes("liquid.ai") || hay.includes("liquid ai") || hay.includes("lfm-")) return LOGO_URLS.liquid;
+  if (hay.includes("inclusion") || hay.includes("ling-")) return LOGO_URLS.inclusionai;
+  if (hay.includes("dots-studio") || hay.includes("dots3")) return LOGO_URLS.dotsstudio;
+  if (hay.includes("sensenova") || hay.includes("sensetime")) return LOGO_URLS.sensenova;
   if (hay.includes("minimax")) return LOGO_URLS.minimax;
+  if (hay.includes("zhipu") || hay.includes("z.ai") || hay.includes("glm-")) return LOGO_URLS.zhipu;
   if (hay.includes("xkiro")) return LOGO_URLS.xkiro;
   return undefined;
 }
@@ -165,6 +179,26 @@ export function PuterIcon({ size = 16, className = "" }: { size?: number; classN
   return <LogoImage src={LOGO_URLS.puter} size={size} className={className} />;
 }
 
+function ThinkingMachinesIcon({ size = 16, className = "" }: { size?: number; className?: string }) {
+  return <LogoImage src={LOGO_URLS.thinkingmachines} size={size} className={className} />;
+}
+
+function LiquidIcon({ size = 16, className = "" }: { size?: number; className?: string }) {
+  return <LogoImage src={LOGO_URLS.liquid} size={size} className={className} />;
+}
+
+function InclusionAiIcon({ size = 16, className = "" }: { size?: number; className?: string }) {
+  return <LogoImage src={LOGO_URLS.inclusionai} size={size} className={className} />;
+}
+
+function DotsStudioIcon({ size = 16, className = "" }: { size?: number; className?: string }) {
+  return <LogoImage src={LOGO_URLS.dotsstudio} size={size} className={className} />;
+}
+
+function SenseNovaIcon({ size = 16, className = "" }: { size?: number; className?: string }) {
+  return <LogoImage src={LOGO_URLS.sensenova} size={size} className={className} />;
+}
+
 export function ProviderFavicon({
   provider,
   logoUrl,
@@ -254,6 +288,21 @@ export function ModelFavicon({
   if (idLower.startsWith("nvidia/") || idLower.includes("nemotron")) {
     return <NvidiaIcon size={size} className={className} />;
   }
+  if (idLower.startsWith("thinkingmachines/") || idLower.includes("inkling")) {
+    return <ThinkingMachinesIcon size={size} className={className} />;
+  }
+  if (idLower.startsWith("liquid/") || idLower.includes("lfm-")) {
+    return <LiquidIcon size={size} className={className} />;
+  }
+  if (idLower.startsWith("inclusionai/") || idLower.includes("ling-")) {
+    return <InclusionAiIcon size={size} className={className} />;
+  }
+  if (idLower.startsWith("dots-studio/") || idLower.includes("dots3")) {
+    return <DotsStudioIcon size={size} className={className} />;
+  }
+  if (idLower.startsWith("sensenova/")) {
+    return <SenseNovaIcon size={size} className={className} />;
+  }
   if (idLower.includes("mimo")) {
     return <XiaomiIcon size={size} className={className} />;
   }
@@ -267,6 +316,10 @@ export function ModelFavicon({
     return <MiniMaxIcon size={size} className={className} />;
   }
   if (idLower.startsWith("z-ai/") || idLower.startsWith("zhipu") || idLower.includes("glm-") || idLower.includes("chatglm")) {
+    return <GlmIcon size={size} className={className} />;
+  }
+  // OpenRouter identifies the former stealth/ox-alpha preview as Z.ai GLM-5.3 Flash.
+  if (idLower.startsWith("stealth/ox-alpha")) {
     return <GlmIcon size={size} className={className} />;
   }
   if (idLower.startsWith("poolside/") || idLower.includes("laguna")) {
