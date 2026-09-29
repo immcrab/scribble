@@ -23,6 +23,9 @@ function SignInForms() {
       >
         <GoogleLogo size={15} /> Continue with Google
       </button>
+      <p className="text-center text-xs text-slate-500">
+        Sign in to keep your chats and preferences in sync across your devices.
+      </p>
     </div>
   );
 }
@@ -84,6 +87,9 @@ export function AccountSection() {
                 <LogOut size={13} /> Sign out
               </button>
             </div>
+            <p className="mt-1 text-xs text-slate-500">
+              Chats and preferences sync automatically across devices. Passwords and custom-provider API keys stay on this device.
+            </p>
           </>
         ) : (
           <SignInForms />
@@ -141,14 +147,14 @@ export function AccountSection() {
                   <Trash2 size={15} className="shrink-0" />
                   <span>
                     <span className="block font-medium">Delete account</span>
-                    <span className="block text-xs text-red-400/70">Removes your synced chats and signs you out everywhere.</span>
+                    <span className="block text-xs text-red-400/70">Removes your synced chats and preferences, then signs you out everywhere.</span>
                   </span>
                 </button>
               ) : (
                 <div className="flex flex-col gap-2">
                   <p className="flex items-start gap-2 text-xs text-red-300">
                     <AlertTriangle size={13} className="mt-0.5 shrink-0" />
-                    This permanently deletes your account and synced chats. You'll be asked to sign in again to confirm.
+                    This permanently deletes your account and synced chats and preferences. You'll be asked to sign in again to confirm.
                   </p>
                   {deleteError && <p className="text-xs text-red-400">{deleteError}</p>}
                   <div className="flex gap-2">
