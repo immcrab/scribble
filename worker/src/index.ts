@@ -47,6 +47,28 @@ function json(body: unknown, status: number, headers: HeadersInit): Response {
   });
 }
 
+/**
+ * Favicons are fetched through the Worker rather than from a student's browser.
+ * School network filters often allow Lofin but block the separate third-party
+ * favicon request, leaving an otherwise usable search result with a blank icon.
+ */
+function faviconUrl(origin: string, resultUrl: string): string | undefined {
+  try {
+    const hostname = new URL(resultUrl).hostname;
+    return hostname ? `${origin}/api/favicon?domain=${encodeURIComponent(hostname)}` : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+const FALLBACK_FAVICON = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="12" fill="#334155"/><circle cx="32" cy="32" r="19" fill="none" stroke="#cbd5e1" stroke-width="4"/><path d="M13 32h38M32 13c7 8 7 30 0 38M32 13c-7 8-7 30 0 38" fill="none" stroke="#cbd5e1" stroke-width="4" stroke-linecap="round"/></svg>`;
+
+function fallbackFaviconResponse(cors: HeadersInit): Response {
+  return new Response(FALLBACK_FAVICON, {
+    headers: { ...cors, "Content-Type": "image/svg+xml", "Cache-Control": "public, max-age=86400" },
+  });
+}
+
 const VALID_EFFORTS = ["low", "medium", "high", "extra", "ultra"];
 
 function isValidBody(body: unknown): body is ChatRequestBody {
@@ -91,6 +113,38 @@ export default {
 
     if (url.pathname === "/api/health") {
       return json({ ok: true }, 200, cors);
+    }
+
+    // Google serves a compact favicon for nearly any public hostname. Proxy it
+    // so a filtered client network only needs to load an image from Lofin.
+    if (url.pathname === "/api/favicon" && request.method === "GET") {
+      const domain = url.searchParams.get("domain")?.trim().toLowerCase() ?? "";
+      if (!/^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/.test(domain)) {
+        return fallbackFaviconResponse(cors);
+      }
+
+      const cacheKey = new Request(url.toString());
+      try {
+        const cached = await caches.default.match(cacheKey);
+        if (cached) return cached;
+
+        const googleUrl = new URL("https://www.google.com/s2/favicons");
+        googleUrl.searchParams.set("domain", domain);
+        googleUrl.searchParams.set("sz", "64");
+        const upstream = await fetch(googleUrl, { headers: { Accept: "image/avif,image/webp,image/png,image/*,*/*;q=0.8" } });
+        const contentType = upstream.headers.get("Content-Type") ?? "";
+        const contentLength = Number(upstream.headers.get("Content-Length") ?? 0);
+        if (!upstream.ok || !contentType.startsWith("image/") || contentLength > 512 * 1024) return fallbackFaviconResponse(cors);
+
+        const response = new Response(upstream.body, {
+          headers: { ...cors, "Content-Type": contentType, "Cache-Control": "public, max-age=604800, s-maxage=2592000" },
+        });
+        await caches.default.put(cacheKey, response.clone());
+        return response;
+      } catch {
+        // A neutral icon is better than a broken image if Google or the cache is unavailable.
+        return fallbackFaviconResponse(cors);
+      }
     }
 
     // Site-wide bot check: the browser posts the Turnstile token here before the app loads.
@@ -316,7 +370,9 @@ export default {
                         url: r.link,
                         snippet: r.snippet,
                         thumbnailUrl: r.thumbnailUrl,
-                        faviconUrl: r.faviconUrl,
+                        // Never expose the search provider's icon URL directly:
+                        // filtered school networks frequently block those image hosts.
+                        faviconUrl: faviconUrl(url.origin, r.link),
                       })),
                     },
                   })
