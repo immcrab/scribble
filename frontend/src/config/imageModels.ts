@@ -34,17 +34,24 @@ export const IMAGE_MODELS: ImageModelDef[] = [
     provider: "xkiro",
     model: "sensenova/sensenova-u1.5-lite",
     displayName: "SenseNova U1.5 Lite",
-    desc: "Cheap and quick — generation only, no edits",
+    desc: "Cheap and quick — supports image generation and editing",
     billing: "xkiro-free",
   },
 ];
 
 export const DEFAULT_IMAGE_MODEL_ID = "cf-flux-schnell";
 
-/** Image editing is disabled: it has no verified free backend. Kept as a
- * compatibility fallback for stored settings; the Worker rejects edit calls. */
-export const EDIT_IMAGE_MODEL: ImageModelDef =
-  IMAGE_MODELS[0];
+/** Image edits use the free SenseNova backend, regardless of the generation
+ * model selected in the Image-mode header. */
+export const EDIT_IMAGE_MODEL: ImageModelDef = {
+  id: "xkiro-sensenova-u1.5-lite-edit",
+  provider: "xkiro",
+  model: "sensenova/sensenova-u1.5-lite",
+  displayName: "SenseNova U1.5 Lite",
+  desc: "Free image editing and re-framing",
+  supportsEdit: true,
+  billing: "xkiro-free",
+};
 
 export function findImageModel(id: string | undefined): ImageModelDef {
   return IMAGE_MODELS.find((m) => m.id === id) ?? IMAGE_MODELS[0];

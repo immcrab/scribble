@@ -8,18 +8,13 @@ const MODES: { id: Mode; label: string; desc: string; icon: typeof Swords; gated
   { id: "battle", label: "Battle Mode", desc: "Two hidden models answer — you vote", icon: Swords, gated: true },
   { id: "agent", label: "Agent Mode", desc: "Tool-using tasks with live web search", icon: Bot, gated: true },
   { id: "side-by-side", label: "Side by Side", desc: "Compare two models you pick, side by side", icon: Columns2, gated: true },
-  { id: "image", label: "Image", desc: "Generate images with the free SenseNova model", icon: ImageIcon },
+  { id: "image", label: "Image", desc: "Generate and edit images with the free SenseNova model", icon: ImageIcon, gated: true },
+  { id: "speech", label: "Text to Speech", desc: "Turn text into audio with an xKiro voice", icon: AudioLines, gated: true },
   { id: "direct", label: "Direct", desc: "A normal one-on-one chat with one model", icon: MessageCircle },
 ];
 
-/** Modes no longer offered in the menu but still used by existing chats — they must keep
- * rendering a trigger label rather than crash when such a chat is opened. */
-const RETIRED_MODES: typeof MODES = [
-  { id: "speech", label: "Text to Speech", desc: "Turn text into audio you can download", icon: AudioLines },
-];
-
 export function ModeSelector({ mode, onChange }: { mode: Mode; onChange: (m: Mode) => void }) {
-  const current = MODES.find((m) => m.id === mode) ?? RETIRED_MODES.find((m) => m.id === mode) ?? MODES[MODES.length - 1];
+  const current = MODES.find((m) => m.id === mode) ?? MODES[MODES.length - 1];
   const user = useAuthStore((s) => s.user);
   const signInWithGoogle = useAuthStore((s) => s.signInWithGoogle);
 

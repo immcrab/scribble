@@ -18,10 +18,9 @@ test.describe("Signed-out locked states", () => {
   test("gated modes show a lock and don't switch", async ({ page, gotoApp }) => {
     await gotoApp("/");
     await page.getByTestId("mode-selector").click();
-    for (const id of ["battle", "agent", "side-by-side"]) {
+    for (const id of ["battle", "agent", "side-by-side", "image", "speech"]) {
       await expect(page.getByTestId(`mode-option-${id}`).getByText("Sign in to unlock")).toBeVisible();
     }
-    await expect(page.getByTestId("mode-option-image").getByText("Sign in to unlock")).toHaveCount(0);
     await page.getByTestId("mode-option-battle").click();
     await expect(page.getByTestId("mode-selector")).toHaveAccessibleName(/Mode: Direct/);
   });
@@ -63,13 +62,14 @@ test.describe("Signed-in modes", () => {
 });
 
 test.describe("Image mode", () => {
-  test("generates an image from a prompt (mocked Worker)", async ({ page, gotoApp }) => {
+  test("generates an image from a prompt (mocked Worker)", async ({ page, gotoApp, signIn }) => {
     let body: Record<string, unknown> | null = null;
     await page.route(`${WORKER}/api/image/generate`, async (route) => {
       body = route.request().postDataJSON();
       await route.fulfill({ json: { dataUrl: PNG } });
     });
     await gotoApp("/");
+    await signIn();
     await pickMode(page, "image");
     await expect(page.getByRole("heading", { name: /Make a direction/ })).toBeVisible();
     await page.getByPlaceholder("Describe the image you want...").fill("a red fox in snow");
@@ -79,13 +79,35 @@ test.describe("Image mode", () => {
     expect(String(body!.prompt)).toContain("a red fox in snow");
   });
 
-  test("surfaces a generation error", async ({ page, gotoApp }) => {
+  test("surfaces a generation error", async ({ page, gotoApp, signIn }) => {
     await page.route(`${WORKER}/api/image/generate`, (route) => route.fulfill({ status: 400, json: { error: "Prompt was rejected by the image model." } }));
     await gotoApp("/");
+    await signIn();
     await pickMode(page, "image");
     await page.getByPlaceholder("Describe the image you want...").fill("something");
     await page.getByPlaceholder("Describe the image you want...").press("Enter");
     await expect(page.getByText("Prompt was rejected by the image model.")).toBeVisible();
+  });
+
+  test("edits a generated image through the edit endpoint", async ({ page, gotoApp, signIn }) => {
+    let body: Record<string, unknown> | null = null;
+    await page.route(`${WORKER}/api/image/generate`, (route) => route.fulfill({ json: { dataUrl: PNG } }));
+    await page.route(`${WORKER}/api/image/edit`, async (route) => {
+      body = route.request().postDataJSON();
+      await route.fulfill({ json: { dataUrl: PNG } });
+    });
+    await gotoApp("/");
+    await signIn();
+    await pickMode(page, "image");
+    await page.getByPlaceholder("Describe the image you want...").fill("a red square");
+    await page.getByPlaceholder("Describe the image you want...").press("Enter");
+    await page.getByTitle("Edit this image").click();
+    await expect(page.getByText("Editing this image")).toBeVisible();
+    await page.getByPlaceholder("Describe the change you want...").fill("make it blue");
+    await page.getByPlaceholder("Describe the change you want...").press("Enter");
+    await expect(page.locator('img[src^="data:image"]').last()).toBeVisible({ timeout: 10_000 });
+    expect(body).toMatchObject({ prompt: "make it blue", model: "sensenova/sensenova-u1.5-lite", size: "1024x1024" });
+    expect(String(body?.image)).toMatch(/^data:image\/png;base64,/);
   });
 });
 

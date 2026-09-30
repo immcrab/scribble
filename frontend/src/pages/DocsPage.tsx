@@ -386,23 +386,17 @@ function WorkerGuidePage({ onOpen }: { onOpen: (slug: string) => void }) {
 
         <GuideStep n={6} title="(Optional) Enable image generation">
           <p>
-            Image mode has three models, picked from the selector in its header. The default,{" "}
+            Image mode has two models, picked from the selector in its header. The default,{" "}
             <strong className="text-slate-300">Cloudflare Flux</strong>, uses Cloudflare Workers AI directly and needs two
             secrets: your Cloudflare account ID and a Workers AI-scoped API token (create one under My Profile → API
             Tokens in the Cloudflare dashboard).
           </p>
           <CodeBlock>{"npx wrangler secret put CF_ACCOUNT_ID\nnpx wrangler secret put CF_AI_TOKEN"}</CodeBlock>
           <p>
-            <strong className="text-slate-300">GPT Image</strong> (served via xKiro) reuses the same{" "}
-            <code className="rounded bg-base-800 px-1 py-0.5 text-xs text-slate-300">XKIRO_API_KEY</code> as chat — no
-            extra secret. Set either backend, or both. GPT Image can also{" "}
-            <strong className="text-slate-300">edit</strong> a picture — attach an image in Image mode (or hit{" "}
-            <span className="whitespace-nowrap">"Edit"</span> on one you already made) and describe the change.
-          </p>
-          <p className="mt-2">
             <strong className="text-slate-300">SenseNova U1.5 Lite</strong> runs on the same{" "}
             <code className="rounded bg-base-800 px-1 py-0.5 text-xs text-slate-300">XKIRO_API_KEY</code> and is the
-            cheap middle option — generation only, so edits still fall back to GPT Image.
+            free option for image generation and editing. Attach an image in Image mode (or hit{" "}
+            <span className="whitespace-nowrap">"Edit"</span> on one you already made) and describe the change.
           </p>
           <p className="mt-2">
             <strong className="text-slate-300">Text to Speech</strong> mode also runs on{" "}

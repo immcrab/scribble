@@ -9,7 +9,8 @@ import { groqStreamChat } from "./adapters/groq";
 import { openrouterStreamChat } from "./adapters/openrouter";
 import { zaiStreamChat } from "./adapters/zai";
 import { generateImage } from "./adapters/image";
-import { generateXkiroImage } from "./adapters/xkiroImage";
+import { generateXkiroImage, editXkiroImage } from "./adapters/xkiroImage";
+import { generateXkiroSpeech, listXkiroVoices } from "./adapters/xkiroSpeech";
 import {
   searchWeb,
   shouldSearchWeb,
@@ -30,6 +31,10 @@ import { FREE_PROVIDER_MODEL_IDS } from "./freeProviderModels";
 
 const ADMIN_EMAIL = "imcrabfr@gmail.com";
 const FREE_XKIRO_IMAGE_MODEL = "sensenova/sensenova-u1.5-lite";
+// Keep image editing on the same free SenseNova backend as the image picker.
+const XKIRO_EDIT_IMAGE_MODEL = FREE_XKIRO_IMAGE_MODEL;
+const SPEECH_INPUT_MAX_CHARS = 4000;
+const SPEECH_FORMATS = new Set(["mp3", "wav", "opus", "aac", "flac"]);
 
 const ADAPTERS: Partial<Record<Provider, ProviderAdapter>> = {
   xkiro: xkiroStreamChat,
@@ -537,15 +542,122 @@ export default {
     }
 
     if (url.pathname === "/api/image/edit" && request.method === "POST") {
-      return json({ error: "Image editing is unavailable because it requires a paid model." }, 410, cors);
+      if (!checkPassword(request, env)) {
+        return json({ error: "Invalid or missing Lofin password." }, 401, cors);
+      }
+
+      const clientKey = request.headers.get("CF-Connecting-IP") ?? "unknown";
+      if (isRateLimited(clientKey)) {
+        return json({ error: "Rate limit exceeded. Slow down and try again shortly." }, 429, cors);
+      }
+
+      let body: unknown;
+      try {
+        body = await request.json();
+      } catch {
+        return json({ error: "Malformed JSON body." }, 400, cors);
+      }
+
+      const b = body as Record<string, unknown>;
+      if (!b || typeof b.prompt !== "string" || !b.prompt.trim()) {
+        return json({ error: "Request must include a non-empty prompt." }, 400, cors);
+      }
+      if (typeof b.image !== "string" || !b.image.startsWith("data:")) {
+        return json({ error: "Request must include the source image as a data: URL." }, 400, cors);
+      }
+      if (b.model !== undefined && b.model !== XKIRO_EDIT_IMAGE_MODEL) {
+        return json({ error: "Unsupported image editing model." }, 400, cors);
+      }
+      // About 9 MB after base64 decoding, matching the frontend upload limit.
+      if (b.image.length > 12_000_000) {
+        return json({ error: "Source image is too large. Use one under about 9MB." }, 413, cors);
+      }
+      if (!env.XKIRO_API_KEY) {
+        return json({ error: "Image editing is not configured on this Worker (missing XKIRO_API_KEY)." }, 500, cors);
+      }
+
+      try {
+        const result = await editXkiroImage({
+          apiKey: env.XKIRO_API_KEY,
+          model: XKIRO_EDIT_IMAGE_MODEL,
+          prompt: b.prompt,
+          size: typeof b.size === "string" ? b.size : undefined,
+          imageDataUrl: b.image,
+        });
+        return json(result, 200, cors);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Image editing failed.";
+        return json({ error: message }, 502, cors);
+      }
     }
 
     if (url.pathname === "/api/speech/voices" && request.method === "GET") {
-      return json({ error: "Text-to-speech is unavailable because it requires a paid model." }, 410, cors);
+      if (!checkPassword(request, env)) {
+        return json({ error: "Invalid or missing Lofin password." }, 401, cors);
+      }
+
+      try {
+        const voices = await listXkiroVoices(url.searchParams.toString());
+        return new Response(JSON.stringify(voices), {
+          status: 200,
+          headers: { ...cors, "Content-Type": "application/json", "Cache-Control": "public, max-age=300" },
+        });
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Fetching voices failed.";
+        return json({ error: message }, 502, cors);
+      }
     }
 
     if (url.pathname === "/api/speech/generate" && request.method === "POST") {
-      return json({ error: "Text-to-speech is unavailable because it requires a paid model." }, 410, cors);
+      if (!checkPassword(request, env)) {
+        return json({ error: "Invalid or missing Lofin password." }, 401, cors);
+      }
+
+      const clientKey = request.headers.get("CF-Connecting-IP") ?? "unknown";
+      if (isRateLimited(clientKey)) {
+        return json({ error: "Rate limit exceeded. Slow down and try again shortly." }, 429, cors);
+      }
+
+      let body: unknown;
+      try {
+        body = await request.json();
+      } catch {
+        return json({ error: "Malformed JSON body." }, 400, cors);
+      }
+
+      const b = body as Record<string, unknown>;
+      if (!b || typeof b.input !== "string" || !b.input.trim()) {
+        return json({ error: "Request must include a non-empty input string." }, 400, cors);
+      }
+      if (b.input.length > SPEECH_INPUT_MAX_CHARS) {
+        return json({ error: `Input must be at most ${SPEECH_INPUT_MAX_CHARS} characters.` }, 400, cors);
+      }
+      if (typeof b.voice !== "string" || !b.voice.trim()) {
+        return json({ error: "Request must include a voice id." }, 400, cors);
+      }
+      if (b.format !== undefined && (typeof b.format !== "string" || !SPEECH_FORMATS.has(b.format))) {
+        return json({ error: "Unsupported speech format." }, 400, cors);
+      }
+      if (b.speed !== undefined && (typeof b.speed !== "number" || !Number.isFinite(b.speed) || b.speed < 0.25 || b.speed > 4)) {
+        return json({ error: "Speech speed must be between 0.25 and 4." }, 400, cors);
+      }
+      if (!env.XKIRO_API_KEY) {
+        return json({ error: "Text-to-speech is not configured on this Worker (missing XKIRO_API_KEY)." }, 500, cors);
+      }
+
+      try {
+        const result = await generateXkiroSpeech({
+          apiKey: env.XKIRO_API_KEY,
+          input: b.input,
+          voice: b.voice,
+          format: b.format,
+          speed: b.speed,
+        });
+        return json(result, 200, cors);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Speech generation failed.";
+        return json({ error: message }, 502, cors);
+      }
     }
 
     if (url.pathname === "/api/chat/title" && request.method === "POST") {

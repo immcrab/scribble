@@ -12,6 +12,7 @@ import { IMAGE_MODELS, findImageModel, EDIT_IMAGE_MODEL } from "../config/imageM
 import { IMAGE_STYLES, findImageStyle, applyImageStyle } from "../config/imageStyles";
 import { recordImageUsage, mediaUsageGate } from "../lib/usage";
 import { auth } from "../lib/firebase";
+import { isLocalDev } from "../lib/devMode";
 import { saveToLibrary } from "../lib/libraryClient";
 import { useAutoScroll } from "../lib/useAutoScroll";
 import { uid } from "../lib/id";
@@ -126,6 +127,14 @@ export function ImageMode({
       thinkingStartedAt: Date.now(),
     };
     addMessage(chat.id, assistantMsg);
+
+    if (!auth.currentUser && !isLocalDev()) {
+      updateMessage(chat.id, assistantMsg.id, {
+        streaming: false,
+        error: editingSource ? "Sign in to edit images." : "Sign in to generate images.",
+      });
+      return;
+    }
 
     const gate = mediaUsageGate("image");
     if (!gate.ok) {
