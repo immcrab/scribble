@@ -1,5 +1,6 @@
 import { useAuthStore } from "../state/authStore";
 import { useChatStore } from "../state/chatStore";
+import type { Attachment, Chat } from "../types";
 
 /** One saved image in the signed-in user's library (stored privately in Cloudflare R2). */
 export interface LibraryItem {
@@ -9,6 +10,7 @@ export interface LibraryItem {
   createdAt: number;
   size: number;
   type: string;
+  name?: string;
 }
 
 const THUMB_MAX_EDGE = 512;
@@ -46,7 +48,7 @@ async function makeThumbnail(blob: Blob): Promise<Blob | null> {
 
 /** Saves a generated/edited image (data: URL) to the user's library. Throws with a
  * user-facing message; callers that save in the background should swallow it. */
-export async function saveToLibrary({ dataUrl, prompt, model }: { dataUrl: string; prompt: string; model: string }): Promise<string> {
+export async function saveToLibrary({ dataUrl, prompt, model, id, name }: { dataUrl: string; prompt: string; model: string; id?: string; name?: string }): Promise<string> {
   const blob = await (await fetch(dataUrl)).blob();
   const form = new FormData();
   form.append("image", new File([blob], "image", { type: blob.type }));
@@ -54,11 +56,57 @@ export async function saveToLibrary({ dataUrl, prompt, model }: { dataUrl: strin
   if (thumb && thumb.type === "image/webp") form.append("thumb", new File([thumb], "thumb.webp", { type: "image/webp" }));
   form.append("prompt", prompt);
   form.append("model", model);
+  if (id) form.append("id", id);
+  if (name) form.append("name", name);
 
   const res = await fetch(`${workerBase()}/api/library`, { method: "POST", headers: await authHeader(), body: form });
   if (!res.ok) throw await errorFrom(res, "Could not save image");
   const data = (await res.json()) as { id: string };
   return data.id;
+}
+
+/** Saves any chat attachment into the signed-in user's private R2 storage. */
+export async function saveAttachmentToStorage(attachment: Attachment): Promise<string> {
+  const blob = await (await fetch(attachment.dataUrl)).blob();
+  const form = new FormData();
+  form.append("file", new File([blob], attachment.name || "attachment", { type: attachment.type || blob.type }));
+  form.append("id", attachment.id);
+  form.append("name", attachment.name);
+  const res = await fetch(`${workerBase()}/api/storage`, { method: "POST", headers: await authHeader(), body: form });
+  if (!res.ok) throw await errorFrom(res, "Could not save file");
+  return ((await res.json()) as { id: string }).id;
+}
+
+export async function listStorage(cursor?: string | null): Promise<{ items: LibraryItem[]; cursor: string | null }> {
+  const qs = cursor ? `?cursor=${encodeURIComponent(cursor)}` : "";
+  const res = await fetch(`${workerBase()}/api/storage${qs}`, { headers: await authHeader() });
+  if (!res.ok) throw await errorFrom(res, "Could not load your storage");
+  return (await res.json()) as { items: LibraryItem[]; cursor: string | null };
+}
+
+/** Backfills attachments already saved inside chats. Stable attachment ids make this
+ * idempotent, so it is safe to run on each sign-in and after offline periods. */
+export async function backfillChatAttachments(chats: Chat[]): Promise<void> {
+  const seen = new Set<string>();
+  // Older releases gave generated images a server-assigned library id. Match
+  // those by their near-identical creation time so the migration doesn't turn
+  // eight existing generations into sixteen stored objects.
+  const existing = await listStorage().then((page) => page.items).catch(() => [] as LibraryItem[]);
+  const attachments = chats.flatMap((chat) => chat.messages.flatMap((message) =>
+    (message.attachments ?? []).map((attachment) => ({ attachment, message }))
+  ));
+  for (const { attachment, message } of attachments) {
+    if (seen.has(attachment.id) || !attachment.dataUrl.startsWith("data:")) continue;
+    seen.add(attachment.id);
+    const legacyGeneratedCopy = message.role === "assistant" && attachment.type.startsWith("image/") &&
+      existing.some((item) => item.type === attachment.type && Math.abs(item.createdAt - message.createdAt) < 5 * 60 * 1000);
+    if (legacyGeneratedCopy) continue;
+    try {
+      await saveAttachmentToStorage(attachment);
+    } catch {
+      // Keep the chat usable offline; a future sign-in/retry will pick it up.
+    }
+  }
 }
 
 export async function listLibrary(cursor?: string | null): Promise<{ items: LibraryItem[]; cursor: string | null }> {

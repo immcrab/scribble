@@ -34,6 +34,16 @@ const MAX_MEMORIES = 200;
 let persistTimer: ReturnType<typeof setTimeout> | null = null;
 let lastLocalSave = 0;
 
+/** Attachment bytes remain in the chat for immediate model access, while a private
+ * R2 copy is made in the background for signed-in users. Dynamic import keeps the
+ * storage client out of the initial chat bundle and avoids making sending wait. */
+function backupAttachments(attachments?: import("../types").Attachment[]) {
+  if (!attachments?.length) return;
+  void import("../lib/libraryClient").then(({ saveAttachmentToStorage }) =>
+    Promise.all(attachments.map((attachment) => saveAttachmentToStorage(attachment).catch(() => undefined)))
+  );
+}
+
 /**
  * The model the user last picked in a chat this session. Seeds the model of the
  * *next* new chat so a deliberate switch carries forward while you keep working.
@@ -423,6 +433,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       persistChats(chats);
       return { chats };
     });
+    backupAttachments(message.attachments);
   },
 
   updateMessage: (chatId, messageId, patch) => {
@@ -439,6 +450,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       persistChats(chats);
       return { chats };
     });
+    backupAttachments(patch.attachments);
   },
 
   appendMessageContent: (chatId, messageId, delta) => {

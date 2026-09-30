@@ -109,6 +109,16 @@ onAuthStateChanged(auth, (user) => {
   useAuthStore.setState({ user, loading: false });
   if (user) {
     useChatStore.getState().startCloudSync(user.uid);
+    // Upload attachments that predate private object storage (including prior
+    // generated images). The routine is idempotent and quietly retries later
+    // if the user is offline or the Worker has not been deployed yet.
+    void import("../lib/libraryClient").then(({ backfillChatAttachments }) =>
+      backfillChatAttachments(useChatStore.getState().chats).then(() => {
+        // Cloud chat merging completes asynchronously; run once more after it
+        // settles so attachments that existed only on another device are kept.
+        window.setTimeout(() => void backfillChatAttachments(useChatStore.getState().chats), 3000);
+      })
+    );
     startUsageSync(user.uid);
     useTutorStore.getState().startSync(user.uid);
   } else {

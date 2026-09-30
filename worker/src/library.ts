@@ -20,6 +20,15 @@ const EXT_BY_TYPE: Record<string, string> = {
   "image/jpeg": "jpg",
   "image/webp": "webp",
   "image/gif": "gif",
+  "application/pdf": "pdf",
+  "text/plain": "txt",
+  "text/markdown": "md",
+  "application/json": "json",
+  "text/javascript": "js",
+  "application/typescript": "ts",
+  "text/csv": "csv",
+  "text/html": "html",
+  "text/css": "css",
 };
 const TYPE_BY_EXT = Object.fromEntries(Object.entries(EXT_BY_TYPE).map(([t, e]) => [e, t]));
 
@@ -30,6 +39,7 @@ export interface LibraryItem {
   createdAt: number;
   size: number;
   type: string;
+  name?: string;
 }
 
 type Json = (body: unknown, status: number, headers: HeadersInit) => Response;
@@ -51,7 +61,7 @@ function safeUid(uid: string): boolean {
 }
 
 function safeId(id: string): boolean {
-  return /^[0-9]{10,16}-[a-f0-9]{8}$/.test(id);
+  return /^[A-Za-z0-9_-]{1,128}$/.test(id);
 }
 
 function decodeMeta(value: string | undefined): string {
@@ -65,7 +75,7 @@ function decodeMeta(value: string | undefined): string {
 
 /** True for a /api/library or /api/library/{id} request the handler below should own. */
 export function isLibraryPath(pathname: string): boolean {
-  return pathname === "/api/library" || pathname.startsWith("/api/library/");
+  return pathname === "/api/library" || pathname.startsWith("/api/library/") || pathname === "/api/storage" || pathname.startsWith("/api/storage/");
 }
 
 export async function handleLibrary(request: Request, env: Env, url: URL, cors: HeadersInit, json: Json): Promise<Response> {
@@ -77,7 +87,9 @@ export async function handleLibrary(request: Request, env: Env, url: URL, cors: 
   if (!safeUid(auth.uid)) return json({ error: "Invalid account." }, 403, cors);
   const prefix = `library/${auth.uid}/`;
 
-  const rest = url.pathname.slice("/api/library".length).replace(/^\//, "");
+  const storageApi = url.pathname === "/api/storage" || url.pathname.startsWith("/api/storage/");
+  const apiRoot = storageApi ? "/api/storage" : "/api/library";
+  const rest = url.pathname.slice(apiRoot.length).replace(/^\//, "");
 
   // GET /api/library — newest first, one page at a time.
   if (rest === "" && request.method === "GET") {
@@ -90,49 +102,58 @@ export async function handleLibrary(request: Request, env: Env, url: URL, cors: 
       const dot = name.lastIndexOf(".");
       const id = name.slice(0, dot);
       if (!safeId(id)) continue;
+      const type = TYPE_BY_EXT[name.slice(dot + 1)] ?? "application/octet-stream";
+      // The Library page is intentionally image-only. Storage includes every file.
+      if (!storageApi && !type.startsWith("image/")) continue;
       items.push({
         id,
         prompt: decodeMeta(obj.customMetadata?.prompt),
         model: decodeMeta(obj.customMetadata?.model),
-        createdAt: Number(id.split("-")[0]),
+        createdAt: Number(obj.customMetadata?.createdAt) || Number(id.split("-")[0]) || obj.uploaded.getTime(),
         size: obj.size,
-        type: TYPE_BY_EXT[name.slice(dot + 1)] ?? "image/png",
+        type,
+        name: decodeMeta(obj.customMetadata?.name),
       });
     }
     items.sort((a, b) => b.createdAt - a.createdAt);
     return json({ items, cursor: listed.truncated ? listed.cursor : null }, 200, cors);
   }
 
-  // POST /api/library — multipart: image, thumb (optional), prompt, model.
+  // POST /api/library or /api/storage — multipart: image/file, thumb (optional), metadata.
   if (rest === "" && request.method === "POST") {
     const len = Number(request.headers.get("Content-Length") ?? 0);
     if (len > MAX_FORM_BYTES) return json({ error: "Image is too large to save (10 MB max)." }, 413, cors);
     const form = await request.formData().catch(() => null);
-    const image: unknown = form?.get("image");
-    if (!form || !(image instanceof File)) return json({ error: "Attach the image to save." }, 400, cors);
-    const ext = EXT_BY_TYPE[image.type];
-    if (!ext) return json({ error: "Unsupported image type." }, 400, cors);
-    if (image.size === 0 || image.size > 10 * 1024 * 1024) return json({ error: "Image is too large to save (10 MB max)." }, 413, cors);
+    const file: unknown = form?.get(storageApi ? "file" : "image");
+    if (!form || !(file instanceof File)) return json({ error: storageApi ? "Attach a file to save." : "Attach the image to save." }, 400, cors);
+    const ext = EXT_BY_TYPE[file.type];
+    if (!ext || (!storageApi && !file.type.startsWith("image/"))) return json({ error: "Unsupported file type." }, 400, cors);
+    if (file.size === 0 || file.size > 10 * 1024 * 1024) return json({ error: "File is too large to save (10 MB max)." }, 413, cors);
 
-    // Cap storage per account so the library can't be used as free bulk hosting.
+    const requestedId = typeof form.get("id") === "string" ? String(form.get("id")) : "";
+    const id = safeId(requestedId) ? requestedId : `${Date.now()}-${crypto.randomUUID().slice(0, 8)}`;
+    // Cap storage per account so it can't be used as free bulk hosting. A
+    // stable attachment id can overwrite its existing object even at capacity.
     const existing = await bucket.list({ prefix, limit: MAX_ITEMS_PER_USER * 2 });
     const count = existing.objects.filter((o) => !o.key.includes(".thumb.")).length;
-    if (count >= MAX_ITEMS_PER_USER || existing.truncated) {
-      return json({ error: `Your library is full (${MAX_ITEMS_PER_USER} images). Delete some to save more.` }, 409, cors);
+    const replacing = existing.objects.some((o) => Object.values(EXT_BY_TYPE).some((oldExt) => o.key === `${prefix}${id}.${oldExt}`));
+    if (!replacing && (count >= MAX_ITEMS_PER_USER || existing.truncated)) {
+      return json({ error: `Your storage is full (${MAX_ITEMS_PER_USER} files). Delete some to save more.` }, 409, cors);
     }
-
-    const id = `${Date.now()}-${crypto.randomUUID().slice(0, 8)}`;
     const meta = (value: unknown, max: number): string => {
       const encoded = encodeURIComponent(typeof value === "string" ? value.slice(0, max) : "");
       return encoded.length > 900 ? "" : encoded;
     };
     const cacheControl = "private, max-age=31536000, immutable";
-    await bucket.put(`${prefix}${id}.${ext}`, await image.arrayBuffer(), {
-      httpMetadata: { contentType: image.type, cacheControl },
-      customMetadata: { prompt: meta(form.get("prompt"), 240), model: meta(form.get("model"), 60) },
+    await bucket.put(`${prefix}${id}.${ext}`, await file.arrayBuffer(), {
+      httpMetadata: { contentType: file.type, cacheControl },
+      customMetadata: { prompt: meta(form.get("prompt"), 240), model: meta(form.get("model"), 60), name: meta(form.get("name") || file.name, 180), createdAt: String(Date.now()) },
     });
+    // A client can re-upload the same attachment after its MIME type changed.
+    // Keep the stable id unambiguous by removing an obsolete extension.
+    await bucket.delete(Object.values(EXT_BY_TYPE).filter((oldExt) => oldExt !== ext).map((oldExt) => `${prefix}${id}.${oldExt}`));
     const thumb: unknown = form.get("thumb");
-    if (thumb instanceof File && thumb.type === "image/webp" && thumb.size > 0 && thumb.size <= MAX_THUMB_BYTES) {
+    if (file.type.startsWith("image/") && thumb instanceof File && thumb.type === "image/webp" && thumb.size > 0 && thumb.size <= MAX_THUMB_BYTES) {
       await bucket.put(`${prefix}${id}.thumb.webp`, await thumb.arrayBuffer(), {
         httpMetadata: { contentType: "image/webp", cacheControl },
       });
@@ -160,6 +181,7 @@ export async function handleLibrary(request: Request, env: Env, url: URL, cors: 
         "Content-Type": object.httpMetadata?.contentType ?? "application/octet-stream",
         "Cache-Control": "private, max-age=31536000, immutable",
         "X-Content-Type-Options": "nosniff",
+        ...(!object.httpMetadata?.contentType?.startsWith("image/") ? { "Content-Disposition": "attachment" } : {}),
       },
     });
   }

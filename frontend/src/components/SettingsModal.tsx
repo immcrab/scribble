@@ -48,6 +48,7 @@ import type { ModelDef } from "../types";
 import type { LofinSettings } from "../lib/storage";
 import { clearAllLocalData } from "../lib/storage";
 import type { Attachment } from "../types";
+import { listStorage, type LibraryItem } from "../lib/libraryClient";
 
 function SectionLabel({ children }: { children: string }) {
   return <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">{children}</h3>;
@@ -409,8 +410,16 @@ type StoredAttachment = Attachment & { chatTitle: string; messageId: string };
 
 function StorageSection() {
   const { chats, memories, projects } = useChatStore();
+  const user = useAuthStore((s) => s.user);
   const [view, setView] = useState<"files" | "images" | null>(null);
   const [confirmingClear, setConfirmingClear] = useState(false);
+  const [cloudItems, setCloudItems] = useState<LibraryItem[] | null>(null);
+  useEffect(() => {
+    if (!user) { setCloudItems(null); return; }
+    let cancelled = false;
+    void listStorage().then((page) => { if (!cancelled) setCloudItems(page.items); }).catch(() => { if (!cancelled) setCloudItems([]); });
+    return () => { cancelled = true; };
+  }, [user]);
   const encoder = new TextEncoder();
   const attachments: StoredAttachment[] = chats.flatMap((chat) =>
     (chat.messages ?? []).flatMap((message) =>
@@ -424,6 +433,8 @@ function StorageSection() {
   const localBytes = [chats, memories, projects].reduce((total, value) => total + encoder.encode(JSON.stringify(value)).length, 0);
   const usedBytes = Math.max(localBytes, imageBytes + fileBytes);
   const usedPercent = Math.min(100, (usedBytes / INCLUDED_STORAGE_BYTES) * 100);
+  const cloudImages = cloudItems?.filter((item) => item.type.startsWith("image/")) ?? [];
+  const cloudFiles = cloudItems?.filter((item) => !item.type.startsWith("image/")) ?? [];
 
   const Item = ({ label, detail, onView }: { label: string; detail: string; onView?: () => void }) => (
     <div className="flex items-center justify-between gap-4 border-b border-base-700/60 px-4 py-3 last:border-b-0">
@@ -439,6 +450,13 @@ function StorageSection() {
       <p className="mt-5 text-sm font-semibold text-slate-200">{formatStorage(usedBytes)} of 70 MB used</p>
       <div className="mt-3 h-3 overflow-hidden rounded-full bg-base-700/80"><div className="h-full min-w-1 rounded-full bg-accent-400 transition-all" style={{ width: `${Math.max(usedPercent, usedBytes ? 0.4 : 0)}%` }} /></div>
       <div className="mt-10">
+        {user && (
+          <div className="mb-5 overflow-hidden rounded-2xl border border-accent-500/25 bg-accent-500/[0.04]">
+            <div className="px-4 py-3"><h4 className="text-sm font-semibold text-slate-100">Private cloud storage</h4><p className="mt-0.5 text-xs text-slate-400">Files and generated images are backed up to your account and available across devices.</p></div>
+            <Item label="Cloud images" detail={cloudItems === null ? "Loading…" : `${cloudImages.length} ${cloudImages.length === 1 ? "image" : "images"} saved`} />
+            <Item label="Cloud files" detail={cloudItems === null ? "Loading…" : `${cloudFiles.length} ${cloudFiles.length === 1 ? "file" : "files"} saved`} />
+          </div>
+        )}
         <h4 className="text-base font-semibold text-white">Manage storage</h4>
         <p className="mt-1 text-sm text-slate-400">Review data saved in this browser.</p>
         <div className="mt-3 overflow-hidden rounded-2xl border border-base-600/70 bg-base-900/35">
