@@ -48,7 +48,7 @@ import type { ModelDef } from "../types";
 import type { LofinSettings } from "../lib/storage";
 import { clearAllLocalData } from "../lib/storage";
 import type { Attachment } from "../types";
-import { listStorage, type LibraryItem } from "../lib/libraryClient";
+import { libraryImageUrl, listStorage, type LibraryItem } from "../lib/libraryClient";
 
 function SectionLabel({ children }: { children: string }) {
   return <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">{children}</h3>;
@@ -408,10 +408,38 @@ function formatStorage(bytes: number): string {
 
 type StoredAttachment = Attachment & { chatTitle: string; messageId: string };
 
+function CloudImageCard({ item }: { item: LibraryItem }) {
+  const [url, setUrl] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    void libraryImageUrl(item.id, true).then((next) => { if (!cancelled) setUrl(next); });
+    return () => { cancelled = true; };
+  }, [item.id]);
+  return (
+    <a href={url ?? undefined} download={item.name || "image"} className="overflow-hidden rounded-xl border border-base-600/70 bg-base-900/40 hover:border-accent-500/50" title={`Download ${item.name || "image"}`}>
+      {url ? <img src={url} alt={item.name || "Saved image"} className="aspect-square w-full object-cover" /> : <div className="aspect-square animate-pulse bg-base-800/70" />}
+      <span className="block truncate px-2.5 py-2 text-xs text-slate-300">{item.name || "Generated image"}</span>
+    </a>
+  );
+}
+
+function CloudFileRow({ item }: { item: LibraryItem }) {
+  const [url, setUrl] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    void libraryImageUrl(item.id, false).then((next) => { if (!cancelled) setUrl(next); });
+    return () => { cancelled = true; };
+  }, [item.id]);
+  return <a href={url ?? undefined} download={item.name || "file"} className="flex items-center justify-between gap-3 rounded-xl border border-base-600/70 bg-base-900/40 px-3 py-2.5 transition-colors hover:border-accent-500/50 hover:bg-base-700/40">
+    <span className="min-w-0"><span className="block truncate text-sm text-slate-200">{item.name || "Saved file"}</span><span className="block text-xs text-slate-500">{formatStorage(item.size)}</span></span>
+    <span className="shrink-0 text-xs text-accent-300">{url ? "Download" : "Loading…"}</span>
+  </a>;
+}
+
 function StorageSection() {
   const { chats, memories, projects } = useChatStore();
   const user = useAuthStore((s) => s.user);
-  const [view, setView] = useState<"files" | "images" | null>(null);
+  const [view, setView] = useState<"files" | "images" | "cloud-files" | "cloud-images" | null>(null);
   const [confirmingClear, setConfirmingClear] = useState(false);
   const [cloudItems, setCloudItems] = useState<LibraryItem[] | null>(null);
   useEffect(() => {
@@ -443,6 +471,8 @@ function StorageSection() {
     </div>
   );
   const viewedAttachments = view === "images" ? images : fileAttachments;
+  const isCloudView = view === "cloud-images" || view === "cloud-files";
+  const viewedCloudItems = view === "cloud-images" ? cloudImages : cloudFiles;
 
   return (
     <div className="mx-auto max-w-2xl">
@@ -453,8 +483,8 @@ function StorageSection() {
         {user && (
           <div className="mb-5 overflow-hidden rounded-2xl border border-accent-500/25 bg-accent-500/[0.04]">
             <div className="px-4 py-3"><h4 className="text-sm font-semibold text-slate-100">Private cloud storage</h4><p className="mt-0.5 text-xs text-slate-400">Files and generated images are backed up to your account and available across devices.</p></div>
-            <Item label="Cloud images" detail={cloudItems === null ? "Loading…" : `${cloudImages.length} ${cloudImages.length === 1 ? "image" : "images"} saved`} />
-            <Item label="Cloud files" detail={cloudItems === null ? "Loading…" : `${cloudFiles.length} ${cloudFiles.length === 1 ? "file" : "files"} saved`} />
+            <Item label="Cloud images" detail={cloudItems === null ? "Loading…" : `${cloudImages.length} ${cloudImages.length === 1 ? "image" : "images"} saved`} onView={cloudItems === null ? undefined : () => setView(view === "cloud-images" ? null : "cloud-images")} />
+            <Item label="Cloud files" detail={cloudItems === null ? "Loading…" : `${cloudFiles.length} ${cloudFiles.length === 1 ? "file" : "files"} saved`} onView={cloudItems === null ? undefined : () => setView(view === "cloud-files" ? null : "cloud-files")} />
           </div>
         )}
         <h4 className="text-base font-semibold text-white">Manage storage</h4>
@@ -467,8 +497,8 @@ function StorageSection() {
       </div>
       {view && (
         <div className="mt-5">
-          <div className="mb-2 flex items-center justify-between"><h4 className="text-sm font-semibold text-white">{view === "images" ? "Images" : "Files"}</h4><button onClick={() => setView(null)} className="text-xs text-slate-400 hover:text-white">Close</button></div>
-          {viewedAttachments.length === 0 ? <p className="rounded-xl border border-dashed border-base-700/60 px-3 py-5 text-center text-xs text-slate-500">No {view} saved in this browser.</p> : (
+          <div className="mb-2 flex items-center justify-between"><h4 className="text-sm font-semibold text-white">{view === "images" || view === "cloud-images" ? "Images" : "Files"}{isCloudView ? " in cloud storage" : ""}</h4><button onClick={() => setView(null)} className="text-xs text-slate-400 hover:text-white">Close</button></div>
+          {isCloudView ? (viewedCloudItems.length === 0 ? <p className="rounded-xl border border-dashed border-base-700/60 px-3 py-5 text-center text-xs text-slate-500">No {view === "cloud-images" ? "images" : "files"} saved in cloud storage.</p> : <div className={view === "cloud-images" ? "grid grid-cols-2 gap-3 sm:grid-cols-3" : "space-y-2"}>{viewedCloudItems.map((item) => view === "cloud-images" ? <CloudImageCard key={item.id} item={item} /> : <CloudFileRow key={item.id} item={item} />)}</div>) : viewedAttachments.length === 0 ? <p className="rounded-xl border border-dashed border-base-700/60 px-3 py-5 text-center text-xs text-slate-500">No {view} saved in this browser.</p> : (
             <div className={view === "images" ? "grid grid-cols-2 gap-3 sm:grid-cols-3" : "space-y-2"}>
               {viewedAttachments.map((attachment) => view === "images" ? (
                 <a key={`${attachment.messageId}:${attachment.id}`} href={attachment.dataUrl} download={attachment.name} className="overflow-hidden rounded-xl border border-base-600/70 bg-base-900/40 hover:border-accent-500/50" title={`Download ${attachment.name}`}><img src={attachment.dataUrl} alt={attachment.name} className="aspect-square w-full object-cover" /><span className="block truncate px-2.5 py-2 text-xs text-slate-300">{attachment.name}</span></a>
