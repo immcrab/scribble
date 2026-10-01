@@ -1,5 +1,6 @@
 import type { Env } from "./types";
 import { verifyFirebaseIdToken } from "./firebaseVerifyToken";
+import { listStoredWebsites } from "./websites";
 
 /**
  * Per-user image library. Generated images are stored in R2 under
@@ -29,6 +30,7 @@ const EXT_BY_TYPE: Record<string, string> = {
   "text/csv": "csv",
   "text/html": "html",
   "text/css": "css",
+  "application/octet-stream": "bin",
 };
 const TYPE_BY_EXT = Object.fromEntries(Object.entries(EXT_BY_TYPE).map(([t, e]) => [e, t]));
 
@@ -40,6 +42,9 @@ export interface LibraryItem {
   size: number;
   type: string;
   name?: string;
+  kind?: "website";
+  url?: string;
+  expiresAt?: number;
 }
 
 type Json = (body: unknown, status: number, headers: HeadersInit) => Response;
@@ -78,6 +83,10 @@ export function isLibraryPath(pathname: string): boolean {
   return pathname === "/api/library" || pathname.startsWith("/api/library/") || pathname === "/api/storage" || pathname.startsWith("/api/storage/");
 }
 
+function storedType(obj: R2Object): string {
+  return decodeMeta(obj.customMetadata?.type) || TYPE_BY_EXT[obj.key.split(".").pop() ?? ""] || "application/octet-stream";
+}
+
 export async function handleLibrary(request: Request, env: Env, url: URL, cors: HeadersInit, json: Json): Promise<Response> {
   const bucket = env.ANNOUNCEMENT_ASSETS;
   if (!bucket) return json({ error: "Image library storage is not configured." }, 503, cors);
@@ -102,7 +111,7 @@ export async function handleLibrary(request: Request, env: Env, url: URL, cors: 
       const dot = name.lastIndexOf(".");
       const id = name.slice(0, dot);
       if (!safeId(id)) continue;
-      const type = TYPE_BY_EXT[name.slice(dot + 1)] ?? "application/octet-stream";
+      const type = storedType(obj);
       // The Library page is intentionally image-only. Storage includes every file.
       if (!storageApi && !type.startsWith("image/")) continue;
       items.push({
@@ -115,6 +124,14 @@ export async function handleLibrary(request: Request, env: Env, url: URL, cors: 
         name: decodeMeta(obj.customMetadata?.name),
       });
     }
+    // Website artifacts use their own R2 prefix and public origin, but they are
+    // still user-owned cloud files. Include them only in /api/storage, never in
+    // the image-focused Library page.
+    if (storageApi) {
+      const origin = env.PUBLIC_WEBSITE_ORIGIN?.trim() || url.origin;
+      const websites = await listStoredWebsites(bucket, auth.uid, origin);
+      items.push(...websites.map((site): LibraryItem => ({ ...site, prompt: "", model: "" })));
+    }
     items.sort((a, b) => b.createdAt - a.createdAt);
     return json({ items, cursor: listed.truncated ? listed.cursor : null }, 200, cors);
   }
@@ -126,8 +143,11 @@ export async function handleLibrary(request: Request, env: Env, url: URL, cors: 
     const form = await request.formData().catch(() => null);
     const file: unknown = form?.get(storageApi ? "file" : "image");
     if (!form || !(file instanceof File)) return json({ error: storageApi ? "Attach a file to save." : "Attach the image to save." }, 400, cors);
-    const ext = EXT_BY_TYPE[file.type];
-    if (!ext || (!storageApi && !file.type.startsWith("image/"))) return json({ error: "Unsupported file type." }, 400, cors);
+    // Chat uploads may be any browser-provided MIME type. Known types keep a
+    // readable extension; the private .bin fallback preserves the real type in
+    // metadata and response headers.
+    const ext = EXT_BY_TYPE[file.type] ?? "bin";
+    if (!storageApi && !file.type.startsWith("image/")) return json({ error: "Attach an image to save." }, 400, cors);
     if (file.size === 0 || file.size > 10 * 1024 * 1024) return json({ error: "File is too large to save (10 MB max)." }, 413, cors);
 
     const requestedId = typeof form.get("id") === "string" ? String(form.get("id")) : "";
@@ -146,8 +166,14 @@ export async function handleLibrary(request: Request, env: Env, url: URL, cors: 
     };
     const cacheControl = "private, max-age=31536000, immutable";
     await bucket.put(`${prefix}${id}.${ext}`, await file.arrayBuffer(), {
-      httpMetadata: { contentType: file.type, cacheControl },
-      customMetadata: { prompt: meta(form.get("prompt"), 240), model: meta(form.get("model"), 60), name: meta(form.get("name") || file.name, 180), createdAt: String(Date.now()) },
+      httpMetadata: { contentType: file.type || "application/octet-stream", cacheControl },
+      customMetadata: {
+        prompt: meta(form.get("prompt"), 240),
+        model: meta(form.get("model"), 60),
+        name: meta(form.get("name") || file.name, 180),
+        type: meta(file.type || "application/octet-stream", 120),
+        createdAt: String(Date.now()),
+      },
     });
     // A client can re-upload the same attachment after its MIME type changed.
     // Keep the stable id unambiguous by removing an obsolete extension.

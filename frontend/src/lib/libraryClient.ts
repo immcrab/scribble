@@ -11,6 +11,10 @@ export interface LibraryItem {
   size: number;
   type: string;
   name?: string;
+  /** Temporary AI website published from the code workspace. */
+  kind?: "website";
+  url?: string;
+  expiresAt?: number;
 }
 
 const THUMB_MAX_EDGE = 512;
@@ -65,16 +69,25 @@ export async function saveToLibrary({ dataUrl, prompt, model, id, name }: { data
   return data.id;
 }
 
-/** Saves any chat attachment into the signed-in user's private R2 storage. */
-export async function saveAttachmentToStorage(attachment: Attachment): Promise<string> {
-  const blob = await (await fetch(attachment.dataUrl)).blob();
+/** Saves a browser file into the signed-in user's private R2 storage. */
+export async function saveFileToStorage(file: File, id?: string, name?: string): Promise<string> {
   const form = new FormData();
-  form.append("file", new File([blob], attachment.name || "attachment", { type: attachment.type || blob.type }));
-  form.append("id", attachment.id);
-  form.append("name", attachment.name);
+  form.append("file", file);
+  if (id) form.append("id", id);
+  form.append("name", name || file.name || "attachment");
   const res = await fetch(`${workerBase()}/api/storage`, { method: "POST", headers: await authHeader(), body: form });
   if (!res.ok) throw await errorFrom(res, "Could not save file");
   return ((await res.json()) as { id: string }).id;
+}
+
+/** Saves any chat attachment into the signed-in user's private R2 storage. */
+export async function saveAttachmentToStorage(attachment: Attachment): Promise<string> {
+  const blob = await (await fetch(attachment.dataUrl)).blob();
+  return saveFileToStorage(
+    new File([blob], attachment.name || "attachment", { type: attachment.type || blob.type }),
+    attachment.id,
+    attachment.name,
+  );
 }
 
 export async function listStorage(cursor?: string | null): Promise<{ items: LibraryItem[]; cursor: string | null }> {

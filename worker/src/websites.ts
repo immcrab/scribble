@@ -20,7 +20,19 @@ interface WebsiteManifest {
   slug: string;
   createdAt: number;
   expiresAt: number;
-  files: { name: string; contentType: string }[];
+  files: { name: string; contentType: string; size?: number }[];
+}
+
+/** A published site is represented as one managed item in private storage. */
+export interface StoredWebsite {
+  id: string;
+  name: string;
+  createdAt: number;
+  expiresAt: number;
+  size: number;
+  type: "application/x-lofin-website";
+  kind: "website";
+  url: string;
 }
 
 type Json = (body: unknown, status: number, headers: HeadersInit) => Response;
@@ -59,6 +71,10 @@ function keyFor(uid: string, slug: string, name: string): string {
 
 function manifestKey(uid: string, slug: string): string {
   return keyFor(uid, slug, MANIFEST);
+}
+
+function storageId(slug: string): string {
+  return `website-${slug}`;
 }
 
 function siteUrl(origin: string, uid: string, slug: string): string {
@@ -123,7 +139,11 @@ export async function handleWebsiteApi(request: Request, env: Env, url: URL, cor
   const now = Date.now();
   const manifest: WebsiteManifest = {
     uid, slug, createdAt: now, expiresAt: now + TTL_MS,
-    files: files.map((file) => ({ name: file.name, contentType: contentType(file.name) })),
+    files: files.map((file) => ({
+      name: file.name,
+      contentType: contentType(file.name),
+      size: new TextEncoder().encode(file.content).byteLength,
+    })),
   };
   const bucket = env.ANNOUNCEMENT_ASSETS;
   try {
@@ -142,6 +162,40 @@ export async function handleWebsiteApi(request: Request, env: Env, url: URL, cor
   const configuredOrigin = env.PUBLIC_WEBSITE_ORIGIN?.trim();
   const origin = configuredOrigin || url.origin;
   return json({ url: siteUrl(origin, uid, slug), expiresAt: manifest.expiresAt, slug }, 201, cors);
+}
+
+/**
+ * Lists the temporary sites a user owns so Settings > Storage is a complete
+ * inventory of their cloud-backed files. Site contents remain on their
+ * isolated public origin; this exposes only the user's own site records.
+ */
+export async function listStoredWebsites(bucket: R2Bucket, uid: string, origin: string): Promise<StoredWebsite[]> {
+  const listed = await bucket.list({ prefix: `${PREFIX}${uid}/`, limit: 1000 });
+  const manifests = listed.objects.filter((object) => object.key.endsWith(`/${MANIFEST}`));
+  const sizes = new Map(listed.objects.map((object) => [object.key, object.size]));
+  const now = Date.now();
+  const sites = await Promise.all(manifests.map(async (object) => {
+    const raw = await bucket.get(object.key);
+    const manifest = raw ? await raw.json<WebsiteManifest>().catch(() => null) : null;
+    if (!manifest || manifest.uid !== uid || !validSlug(manifest.slug) || !Array.isArray(manifest.files)) return null;
+    if (now >= manifest.expiresAt) return null;
+    return {
+      id: storageId(manifest.slug),
+      name: `Published website · ${manifest.slug}`,
+      createdAt: manifest.createdAt,
+      expiresAt: manifest.expiresAt,
+      // Size was added after the first release of temporary sites. Fall back to
+      // the R2 listing so those older manifests still report their footprint.
+      size: manifest.files.reduce(
+        (total, file) => total + (typeof file.size === "number" ? file.size : sizes.get(keyFor(uid, manifest.slug, file.name)) ?? 0),
+        0,
+      ),
+      type: "application/x-lofin-website" as const,
+      kind: "website" as const,
+      url: siteUrl(origin, uid, manifest.slug),
+    };
+  }));
+  return sites.filter((site): site is StoredWebsite => site !== null);
 }
 
 /** Serves a public site only from its dedicated hostname, never from the app origin. */

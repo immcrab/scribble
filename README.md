@@ -136,7 +136,9 @@ served by the same `lofin` Worker.
 When a signed-in user asks Lofin to create a website and the reply contains an
 `index.html` artifact, Lofin saves the original generated files in the
 `scribble-announcements` R2 bucket under a separate `sites/<uid>/<site>/`
-prefix. It automatically shows a public link in the code workspace:
+prefix. Each active site is also listed in **Settings → Storage → Published
+websites**, alongside the user's uploaded files and generated images. It
+automatically shows a public link in the code workspace:
 
 ```
 https://api.lofin.dev/<firebase-user-id>/<site-id>

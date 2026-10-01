@@ -68,6 +68,21 @@ const SAMPLE_THUMB_PX = 512;
 
 const isImageAttachment = (a: Attachment) => a.type?.startsWith("image/") || a.dataUrl?.startsWith("data:image/");
 
+/** Tutor data lives in its own cloud record, so mirror its uploads to the same
+ * private object storage used by chat attachments as well. */
+function backupTutorFile(file: File, id?: string): void {
+  void import("../lib/libraryClient").then(({ saveFileToStorage }) =>
+    saveFileToStorage(file, id).catch(() => undefined)
+  );
+}
+
+function backupTutorAttachments(attachments: Attachment[]): void {
+  if (!attachments.length) return;
+  void import("../lib/libraryClient").then(({ saveAttachmentToStorage }) =>
+    Promise.all(attachments.map((attachment) => saveAttachmentToStorage(attachment).catch(() => undefined)))
+  );
+}
+
 /** Re-encodes a data URL at a smaller size — the whole tutor blob is rewritten on every
  * save, so full-size photos would make each one needlessly expensive. */
 function shrinkDataUrl(dataUrl: string, maxEdge: number, quality = 0.72): Promise<string> {
@@ -432,10 +447,12 @@ export function TutorPage({ onExit }: { onExit: () => void }) {
   const handleTextFiles = async (files: FileList | null) => {
     if (!files) return;
     for (const file of Array.from(files)) {
+      const id = uid();
+      backupTutorFile(file, id);
       const text = await file.text().catch(() => "");
       if (!text.trim()) continue;
       useTutorStore.getState().addSample({
-        id: uid(),
+        id,
         title: file.name,
         text: text.slice(0, MAX_SAMPLE_CHARS),
         source: "file",
@@ -446,14 +463,15 @@ export function TutorPage({ onExit }: { onExit: () => void }) {
 
   /**
    * An uploaded photo of the user's work: transcribed by a vision model, then kept as a
-   * text sample. Only a small thumbnail of the photo is stored — the full-size copy is
-   * used for the transcription and then dropped.
+ * text sample. Only a small thumbnail stays in the tutor record; the original is
+ * mirrored separately to the user's private cloud storage.
    */
   const handleImageFiles = async (files: FileList | null) => {
     if (!files) return;
     for (const file of Array.from(files)) {
       if (!file.type.startsWith("image/")) continue;
       const id = uid();
+      backupTutorFile(file, id);
       try {
         const prepared = await fileToPreparedDataUrl(file, 2048);
         const thumb = await shrinkDataUrl(prepared.dataUrl, SAMPLE_THUMB_PX);
@@ -519,6 +537,7 @@ export function TutorPage({ onExit }: { onExit: () => void }) {
       createdAt: Date.now(),
       attachments: stored.length ? stored : undefined,
     });
+    backupTutorAttachments(stored);
     const assistantId = uid();
     store.addMessage({
       id: assistantId,
