@@ -131,6 +131,25 @@ For the production lofin deployment, the custom API endpoint is
 `https://ai.lofin.dev`; it is the default in Advanced Settings and is
 served by the same `lofin` Worker.
 
+### Temporary AI-generated websites
+
+When a signed-in user asks Lofin to create a website and the reply contains an
+`index.html` artifact, Lofin saves the original generated files in the
+`scribble-announcements` R2 bucket under a separate `sites/<uid>/<site>/`
+prefix. It automatically shows a public link in the code workspace:
+
+```
+https://api.lofin.dev/<firebase-user-id>/<site-id>
+```
+
+Published sites use the isolated `api.lofin.dev` origin, are available for
+seven days, and are then removed by the Worker's hourly scheduled cleanup (or
+immediately after an expired link is visited). The Worker validates Firebase
+sign-in before accepting an upload, limits each site to 100 text files / 10 MB,
+and rejects traversal paths. Keep the `ANNOUNCEMENT_ASSETS` R2 binding and the
+`api.lofin.dev` custom-domain route in `worker/wrangler.toml` when deploying
+this feature.
+
 ## 6. Deploy the frontend to GitHub Pages
 
 ```bash

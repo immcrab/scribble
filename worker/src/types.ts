@@ -25,6 +25,8 @@ export interface Env {
   TURNSTILE_QA_MODE?: string;
   /** R2 bucket for admin announcement artwork, served through the Worker. */
   ANNOUNCEMENT_ASSETS?: R2Bucket;
+  /** Optional canonical origin used in links to temporary published websites. */
+  PUBLIC_WEBSITE_ORIGIN?: string;
   FIREBASE_PROJECT_ID?: string;
 }
 

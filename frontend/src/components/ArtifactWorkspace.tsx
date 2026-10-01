@@ -10,6 +10,8 @@ import {
   FileCode,
   Blocks,
   Folder,
+  Globe2,
+  LoaderCircle,
   Minus,
   X,
 } from "lucide-react";
@@ -18,6 +20,8 @@ import type { Artifact } from "../lib/codeArtifact";
 import type { Vote, ModelDef } from "../types";
 import { Markdown } from "../lib/markdown";
 import { ModelFavicon } from "./ProviderIcon";
+import { publishWebsite, type PublishedWebsite } from "../lib/websiteClient";
+import { useAuthStore } from "../state/authStore";
 
 /** VS Code-ish per-extension tint so the file explorer reads at a glance. */
 const EXT_COLORS: Record<string, string> = {
@@ -48,6 +52,17 @@ const EXT_COLORS: Record<string, string> = {
 function extColor(name: string): string {
   const ext = name.slice(name.lastIndexOf(".") + 1).toLowerCase();
   return EXT_COLORS[ext] ?? "text-slate-400";
+}
+
+/** Small stable identifier used to avoid re-uploading the same generated response on re-render. */
+function artifactKey(artifact: Artifact): string {
+  let hash = 2166136261;
+  const input = artifact.files.map((file) => `${file.name}\0${file.content}`).join("\u0001");
+  for (let i = 0; i < input.length; i++) {
+    hash ^= input.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return `lofin:website:${(hash >>> 0).toString(36)}`;
 }
 
 /**
@@ -106,7 +121,11 @@ export function ArtifactWorkspace({
   const [activeFile, setActiveFile] = useState(0);
   const [reloadKey, setReloadKey] = useState(0);
   const [copied, setCopied] = useState(false);
+  const [published, setPublished] = useState<PublishedWebsite | null>(null);
+  const [publishError, setPublishError] = useState<string | null>(null);
+  const [publishing, setPublishing] = useState(false);
   const controls = useWorkspaceControls();
+  const user = useAuthStore((state) => state.user);
 
   const pane = panes[Math.min(activeIndex, panes.length - 1)];
   const artifact = pane?.artifact ?? null;
@@ -117,6 +136,65 @@ export function ArtifactWorkspace({
   // writes, just not re-parsed on literally every chunk. Once the response finishes this
   // snaps straight to the final content (see the `active` arg).
   const throttledCode = useThrottledValue(file?.content ?? "", 200, !!pane?.streaming);
+
+  const publishable = !!artifact?.previewHtml && !pane?.streaming;
+  const currentArtifactKey = artifact && publishable ? artifactKey(artifact) : null;
+
+  const publish = async (force = false) => {
+    if (!artifact || !artifact.previewHtml || pane?.streaming || publishing) return;
+    const key = artifactKey(artifact);
+    if (!user) {
+      setPublishError("Sign in to publish this website.");
+      return;
+    }
+    if (!force) {
+      try {
+        const saved = sessionStorage.getItem(key);
+        if (saved) {
+          setPublished(JSON.parse(saved) as PublishedWebsite);
+          setPublishError(null);
+          return;
+        }
+      } catch {
+        // Session storage is optional; publishing still works in restricted browsers.
+      }
+    }
+    setPublishing(true);
+    setPublishError(null);
+    try {
+      const site = await publishWebsite(artifact.files);
+      setPublished(site);
+      try { sessionStorage.setItem(key, JSON.stringify(site)); } catch { /* non-essential */ }
+    } catch (err) {
+      setPublishError(err instanceof Error ? err.message : "Could not publish website.");
+    } finally {
+      setPublishing(false);
+    }
+  };
+
+  // A completed HTML artifact is a website request in practice. Publish it as
+  // soon as it has finished streaming, while keeping a visible retry button if
+  // the user is signed out or storage is temporarily unavailable.
+  useEffect(() => {
+    if (!currentArtifactKey || !user || publishing) return;
+    void publish();
+    // `currentArtifactKey` changes only when the response's files change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentArtifactKey, user?.uid]);
+
+  useEffect(() => {
+    if (!currentArtifactKey) {
+      setPublished(null);
+      setPublishError(null);
+      return;
+    }
+    try {
+      const saved = sessionStorage.getItem(currentArtifactKey);
+      setPublished(saved ? JSON.parse(saved) as PublishedWebsite : null);
+    } catch {
+      setPublished(null);
+    }
+  }, [currentArtifactKey]);
 
   const previewBlobUrl = useMemo(() => {
     if (!artifact?.previewHtml) return null;
@@ -223,6 +301,31 @@ export function ArtifactWorkspace({
         </div>
 
         <div className="flex shrink-0 items-center gap-1">
+          {publishable && (
+            <div className="flex items-center gap-1">
+              {published ? (
+                <a
+                  href={published.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  title={`Published until ${new Date(published.expiresAt).toLocaleString()}`}
+                  className="flex items-center gap-1 rounded-md bg-emerald-500/15 px-2 py-1 text-xs font-medium text-emerald-300 hover:bg-emerald-500/25"
+                >
+                  <Globe2 size={12} /> Live · 7 days
+                </a>
+              ) : (
+                <button
+                  onClick={() => void publish(true)}
+                  disabled={publishing}
+                  title={publishError ?? "Publish this temporary website"}
+                  className="flex items-center gap-1 rounded-md bg-accent-500/15 px-2 py-1 text-xs font-medium text-accent-200 hover:bg-accent-500/25 disabled:opacity-60"
+                >
+                  {publishing ? <LoaderCircle size={12} className="animate-spin" /> : <Globe2 size={12} />}
+                  {publishing ? "Publishing" : "Publish"}
+                </button>
+              )}
+            </div>
+          )}
           {view === "code" && (
             <button onClick={copyCode} title="Copy code" className="rounded-md p-1.5 text-slate-400 hover:bg-base-700/60 hover:text-white">
               {copied ? <Check size={13} /> : <Copy size={13} />}
@@ -263,6 +366,14 @@ export function ArtifactWorkspace({
           )}
         </div>
       </div>
+
+      {publishable && (published || publishError) && (
+        <div className={`border-b px-3 py-1.5 text-xs ${publishError ? "border-red-500/20 bg-red-500/5 text-red-200" : "border-emerald-500/20 bg-emerald-500/5 text-emerald-200"}`}>
+          {published ? (
+            <>Live for 7 days: <a href={published.url} target="_blank" rel="noreferrer" className="underline underline-offset-2">{published.url}</a></>
+          ) : publishError}
+        </div>
+      )}
 
       <div className="flex min-h-0 flex-1">
         {view === "code" && artifact && artifact.files.length > 1 && (

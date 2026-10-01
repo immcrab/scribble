@@ -26,6 +26,12 @@ custom_domain = true
 pattern = "ai.lofin.dev"
 custom_domain = true
 
+# Temporary AI-generated websites. This remains a separate origin from the
+# Lofin app, and is served dynamically from the existing R2 binding.
+[[routes]]
+pattern = "api.lofin.dev"
+custom_domain = true
+
 # Comma-separated list of allowed origins for CORS, e.g. your GitHub Pages
 # domain. Set with: wrangler secret put ALLOWED_ORIGINS  (or as a plain var
 # below if you don't mind it being public — it's not sensitive).
@@ -37,11 +43,15 @@ TURNSTILE_HOSTNAMES = "lofin.dev,www.lofin.dev,ai.lofin.dev"
 # Announcement artwork storage. Images are served through this Worker, so no
 # separate public R2 domain is needed.
 FIREBASE_PROJECT_ID = "rypotic-playground"
+PUBLIC_WEBSITE_ORIGIN = "https://api.lofin.dev"
 [[r2_buckets]]
 binding = "ANNOUNCEMENT_ASSETS"
 # Existing storage resource retained so previously published announcement art
 # remains available; public URLs are served from the Lofin Worker.
 bucket_name = "scribble-announcements"
+
+[triggers]
+crons = ["0 * * * *"]
 # Secrets (never commit real values — set these with `wrangler secret put NAME`):
 #   XKIRO_API_KEY       (chat provider + GPT Image backend + text-to-speech)
 #   EXA_API_KEY         (live web search)

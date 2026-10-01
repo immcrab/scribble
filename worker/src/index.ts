@@ -26,6 +26,7 @@ import { ndjsonLine } from "./adapters/base";
 import { verifyFirebaseIdToken } from "./firebaseVerifyToken";
 import { verifyTurnstileToken } from "./turnstile";
 import { handleLibrary, isLibraryPath } from "./library";
+import { deleteExpiredWebsites, handleWebsiteApi, serveWebsite } from "./websites";
 import { FREE_XKIRO_MODEL_IDS } from "./freeXkiroModels";
 import { FREE_PROVIDER_MODEL_IDS } from "./freeProviderModels";
 
@@ -108,9 +109,14 @@ function isValidBody(body: unknown): body is ChatRequestBody {
 }
 
 export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
+  async fetch(request: Request, env: Env, execution: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
     const cors = corsHeaders(request, env);
+
+    // User-created pages get their own origin, so generated markup can never
+    // access Lofin's application-origin data. This runs before static assets.
+    const publicSite = await serveWebsite(request, env, url, execution);
+    if (publicSite) return publicSite;
 
     if (request.method === "OPTIONS") {
       return new Response(null, { status: 204, headers: cors });
@@ -203,6 +209,10 @@ export default {
     // Per-user saved images (R2, private, Firebase-token gated) — see library.ts.
     if (isLibraryPath(url.pathname)) {
       return handleLibrary(request, env, url, cors, json);
+    }
+
+    if (url.pathname === "/api/websites") {
+      return handleWebsiteApi(request, env, url, cors, json);
     }
 
     if (url.pathname === "/api/chat/stream" && request.method === "POST") {
@@ -668,5 +678,8 @@ export default {
     // keeps /api/* dynamic while allowing the Worker to host the React app,
     // deep links, and its static assets on the same custom domain.
     return env.ASSETS.fetch(request);
+  },
+  async scheduled(_controller: ScheduledController, env: Env, execution: ExecutionContext): Promise<void> {
+    execution.waitUntil(deleteExpiredWebsites(env));
   },
 };
