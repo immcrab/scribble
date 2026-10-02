@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, AudioLines, Download, File, FileCode2, Image as ImageIcon, ImageOff, Images, Loader2, LogIn, Trash2, X } from "lucide-react";
 import { LogoMark } from "../components/Logo";
 import { useAuthStore } from "../state/authStore";
+import { useChatStore } from "../state/chatStore";
 import { deleteLibraryItem, libraryImageUrl, listStorage, type LibraryItem } from "../lib/libraryClient";
 
 type LibraryTab = "generated" | "uploaded" | "speech" | "files";
@@ -15,9 +16,13 @@ const TABS: Array<{ id: LibraryTab; label: string; icon: typeof Images }> = [
 function formatDate(ms: number): string { return new Date(ms).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }); }
 function extension(item: LibraryItem): string { return item.name?.includes(".") ? item.name.slice(item.name.lastIndexOf(".") + 1) : item.type === "image/jpeg" ? "jpg" : item.type.split("/")[1] || "file"; }
 function titleFor(item: LibraryItem): string { return item.name || item.prompt || (item.category === "speech" ? "Generated speech" : "Generated file"); }
-function inTab(item: LibraryItem, tab: LibraryTab): boolean {
-  if (tab === "generated") return item.category === "generated" && item.type.startsWith("image/");
-  if (tab === "uploaded") return item.category === "uploaded" && item.type.startsWith("image/");
+function inTab(item: LibraryItem, tab: LibraryTab, isKnownUpload: boolean): boolean {
+  // Older object-store entries predate source categories. Chat attachment ids
+  // are stable, so recognize those uploads immediately while the background
+  // backfill updates their cloud metadata for every device.
+  const category = isKnownUpload ? "uploaded" : item.category;
+  if (tab === "generated") return category === "generated" && item.type.startsWith("image/");
+  if (tab === "uploaded") return category === "uploaded" && item.type.startsWith("image/");
   if (tab === "speech") return item.category === "speech" || item.type.startsWith("audio/");
   return item.kind === "website" || item.category === "file" || (!item.type.startsWith("image/") && !item.type.startsWith("audio/"));
 }
@@ -49,6 +54,7 @@ function LibraryAudio({ item }: { item: LibraryItem }) {
 export function LibraryPage({ onExit }: { onExit: () => void }) {
   const user = useAuthStore((s) => s.user);
   const authLoading = useAuthStore((s) => s.loading);
+  const chats = useChatStore((s) => s.chats);
   const [tab, setTab] = useState<LibraryTab>("generated");
   const [items, setItems] = useState<LibraryItem[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
@@ -67,7 +73,12 @@ export function LibraryPage({ onExit }: { onExit: () => void }) {
   useEffect(() => { if (user) void load(null); }, [user, load]);
   useEffect(() => { if (!open) return; const onKey = (event: KeyboardEvent) => event.key === "Escape" && setOpen(null); window.addEventListener("keydown", onKey); return () => window.removeEventListener("keydown", onKey); }, [open]);
 
-  const shown = items.filter((item) => inTab(item, tab));
+  const uploadedImageIds = useMemo(() => new Set(
+    chats.flatMap((chat) => chat.messages.flatMap((message) =>
+      message.role === "user" ? (message.attachments ?? []).filter((attachment) => attachment.type.startsWith("image/")).map((attachment) => attachment.id) : []
+    ))
+  ), [chats]);
+  const shown = items.filter((item) => inTab(item, tab, uploadedImageIds.has(item.id)));
   const download = async (item: LibraryItem) => {
     if (item.kind === "website") { window.open(item.url, "_blank", "noopener,noreferrer"); return; }
     const url = await libraryImageUrl(item.id, false);
