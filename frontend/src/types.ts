@@ -162,6 +162,16 @@ export interface Attachment {
   size: number;
   /** data URL, kept small — this is a local-first demo, not a file store */
   dataUrl: string;
+  /**
+   * Private-storage details for output created by a Lofin mode.  This stays
+   * out of provider payloads, but lets the cloud library distinguish a
+   * generated result from something the user attached.
+   */
+  library?: {
+    category: "generated" | "uploaded" | "speech" | "file";
+    prompt?: string;
+    model?: string;
+  };
 }
 
 export interface ToolCallRecord {

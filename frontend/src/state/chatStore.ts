@@ -37,10 +37,23 @@ let lastLocalSave = 0;
 /** Attachment bytes remain in the chat for immediate model access, while a private
  * R2 copy is made in the background for signed-in users. Dynamic import keeps the
  * storage client out of the initial chat bundle and avoids making sending wait. */
-function backupAttachments(attachments?: import("../types").Attachment[]) {
+function backupAttachments(
+  attachments: import("../types").Attachment[] | undefined,
+  context?: { mode: Mode; role: import("../types").Role; prompt?: string },
+) {
   if (!attachments?.length) return;
   void import("../lib/libraryClient").then(({ saveAttachmentToStorage }) =>
-    Promise.all(attachments.map((attachment) => saveAttachmentToStorage(attachment).catch(() => undefined)))
+    Promise.all(attachments.map((attachment) => {
+      const category = attachment.library?.category
+        ?? (context?.mode === "image" && context.role === "assistant" ? "generated"
+          : context?.mode === "speech" && context.role === "assistant" ? "speech"
+            : context?.role === "user" && attachment.type.startsWith("image/") ? "uploaded" : "file");
+      return saveAttachmentToStorage(attachment, {
+        category,
+        prompt: attachment.library?.prompt ?? (category === "generated" ? context?.prompt : undefined),
+        model: attachment.library?.model,
+      }).catch(() => undefined);
+    }))
   );
 }
 
@@ -433,7 +446,8 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       persistChats(chats);
       return { chats };
     });
-    backupAttachments(message.attachments);
+    const chat = get().chats.find((candidate) => candidate.id === chatId);
+    backupAttachments(message.attachments, { mode: chat?.mode ?? "direct", role: message.role });
   },
 
   updateMessage: (chatId, messageId, patch) => {
@@ -450,7 +464,10 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       persistChats(chats);
       return { chats };
     });
-    backupAttachments(patch.attachments);
+    const chat = get().chats.find((candidate) => candidate.id === chatId);
+    const message = chat?.messages.find((candidate) => candidate.id === messageId);
+    const previousUserPrompt = chat?.messages.slice(0, message ? chat.messages.indexOf(message) : 0).reverse().find((candidate) => candidate.role === "user")?.content;
+    backupAttachments(patch.attachments, { mode: chat?.mode ?? "direct", role: message?.role ?? "assistant", prompt: previousUserPrompt });
   },
 
   appendMessageContent: (chatId, messageId, delta) => {

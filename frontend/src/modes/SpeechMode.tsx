@@ -234,6 +234,7 @@ export function SpeechMode({
             type: speechMimeType(format),
             dataUrl,
             size: dataUrl.length,
+            library: { category: "speech", prompt: trimmed, model: voice },
           },
         ],
       });

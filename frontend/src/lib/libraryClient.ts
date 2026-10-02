@@ -2,6 +2,8 @@ import { useAuthStore } from "../state/authStore";
 import { useChatStore } from "../state/chatStore";
 import type { Attachment, Chat } from "../types";
 
+export type StorageCategory = "generated" | "uploaded" | "speech" | "file";
+
 /** One saved image in the signed-in user's library (stored privately in Cloudflare R2). */
 export interface LibraryItem {
   id: string;
@@ -11,6 +13,7 @@ export interface LibraryItem {
   size: number;
   type: string;
   name?: string;
+  category?: StorageCategory;
   /** Temporary AI website published from the code workspace. */
   kind?: "website";
   url?: string;
@@ -60,6 +63,7 @@ export async function saveToLibrary({ dataUrl, prompt, model, id, name }: { data
   if (thumb && thumb.type === "image/webp") form.append("thumb", new File([thumb], "thumb.webp", { type: "image/webp" }));
   form.append("prompt", prompt);
   form.append("model", model);
+  form.append("category", "generated");
   if (id) form.append("id", id);
   if (name) form.append("name", name);
 
@@ -70,23 +74,35 @@ export async function saveToLibrary({ dataUrl, prompt, model, id, name }: { data
 }
 
 /** Saves a browser file into the signed-in user's private R2 storage. */
-export async function saveFileToStorage(file: File, id?: string, name?: string): Promise<string> {
+export async function saveFileToStorage(
+  file: File,
+  id?: string,
+  name?: string,
+  details?: { category?: StorageCategory; prompt?: string; model?: string },
+): Promise<string> {
   const form = new FormData();
   form.append("file", file);
   if (id) form.append("id", id);
   form.append("name", name || file.name || "attachment");
+  if (details?.category) form.append("category", details.category);
+  if (details?.prompt) form.append("prompt", details.prompt);
+  if (details?.model) form.append("model", details.model);
   const res = await fetch(`${workerBase()}/api/storage`, { method: "POST", headers: await authHeader(), body: form });
   if (!res.ok) throw await errorFrom(res, "Could not save file");
   return ((await res.json()) as { id: string }).id;
 }
 
 /** Saves any chat attachment into the signed-in user's private R2 storage. */
-export async function saveAttachmentToStorage(attachment: Attachment): Promise<string> {
+export async function saveAttachmentToStorage(
+  attachment: Attachment,
+  details?: { category?: StorageCategory; prompt?: string; model?: string },
+): Promise<string> {
   const blob = await (await fetch(attachment.dataUrl)).blob();
   return saveFileToStorage(
     new File([blob], attachment.name || "attachment", { type: attachment.type || blob.type }),
     attachment.id,
     attachment.name,
+    { category: details?.category ?? attachment.library?.category, prompt: details?.prompt ?? attachment.library?.prompt, model: details?.model ?? attachment.library?.model },
   );
 }
 
@@ -114,8 +130,15 @@ export async function backfillChatAttachments(chats: Chat[]): Promise<void> {
     const legacyGeneratedCopy = message.role === "assistant" && attachment.type.startsWith("image/") &&
       existing.some((item) => item.type === attachment.type && Math.abs(item.createdAt - message.createdAt) < 5 * 60 * 1000);
     if (legacyGeneratedCopy) continue;
+    const chat = chats.find((candidate) => candidate.messages.includes(message));
+    const category: StorageCategory = attachment.library?.category
+      ?? (chat?.mode === "image" && message.role === "assistant" ? "generated"
+        : chat?.mode === "speech" && message.role === "assistant" ? "speech"
+          : message.role === "user" && attachment.type.startsWith("image/") ? "uploaded" : "file");
+    const prompt = attachment.library?.prompt
+      ?? (category === "generated" ? chat?.messages.slice(0, chat.messages.indexOf(message)).reverse().find((candidate) => candidate.role === "user")?.content : undefined);
     try {
-      await saveAttachmentToStorage(attachment);
+      await saveAttachmentToStorage(attachment, { category, prompt, model: attachment.library?.model });
     } catch {
       // Keep the chat usable offline; a future sign-in/retry will pick it up.
     }

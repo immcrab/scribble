@@ -25,10 +25,10 @@ test.describe("Standalone pages", () => {
 
   test("Library: signed-out prompt, signed-in empty and error states", async ({ page, signIn }) => {
     await page.goto("/library");
-    await expect(page.getByText("Sign in to see the images you've generated.")).toBeVisible();
+    await expect(page.getByText("Sign in to see your saved generations and files.")).toBeVisible();
 
     let fail = true;
-    await page.route(`${WORKER}/api/library*`, (route) =>
+    await page.route(`${WORKER}/api/storage*`, (route) =>
       fail ? route.fulfill({ status: 500, json: { error: "Storage is unavailable." } }) : route.fulfill({ json: { items: [], cursor: null } })
     );
     await signIn();

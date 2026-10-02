@@ -42,6 +42,7 @@ export interface LibraryItem {
   size: number;
   type: string;
   name?: string;
+  category?: "generated" | "uploaded" | "speech" | "file";
   kind?: "website";
   url?: string;
   expiresAt?: number;
@@ -87,6 +88,15 @@ function storedType(obj: R2Object): string {
   return decodeMeta(obj.customMetadata?.type) || TYPE_BY_EXT[obj.key.split(".").pop() ?? ""] || "application/octet-stream";
 }
 
+function storedCategory(obj: R2Object, type: string): "generated" | "uploaded" | "speech" | "file" {
+  const category = decodeMeta(obj.customMetadata?.category);
+  if (category === "generated" || category === "uploaded" || category === "speech" || category === "file") return category;
+  // Files saved before categories were introduced included generated images in
+  // the image-only library. Keep that useful default while the client backfill
+  // upgrades any old uploads that still exist in chat history.
+  return type.startsWith("image/") ? "generated" : type.startsWith("audio/") ? "speech" : "file";
+}
+
 export async function handleLibrary(request: Request, env: Env, url: URL, cors: HeadersInit, json: Json): Promise<Response> {
   const bucket = env.ANNOUNCEMENT_ASSETS;
   if (!bucket) return json({ error: "Image library storage is not configured." }, 503, cors);
@@ -122,6 +132,7 @@ export async function handleLibrary(request: Request, env: Env, url: URL, cors: 
         size: obj.size,
         type,
         name: decodeMeta(obj.customMetadata?.name),
+        category: storedCategory(obj, type),
       });
     }
     // Website artifacts use their own R2 prefix and public origin, but they are
@@ -164,6 +175,10 @@ export async function handleLibrary(request: Request, env: Env, url: URL, cors: 
       const encoded = encodeURIComponent(typeof value === "string" ? value.slice(0, max) : "");
       return encoded.length > 900 ? "" : encoded;
     };
+    const requestedCategory = form.get("category");
+    const category = requestedCategory === "generated" || requestedCategory === "uploaded" || requestedCategory === "speech" || requestedCategory === "file"
+      ? requestedCategory
+      : !storageApi ? "generated" : file.type.startsWith("audio/") ? "speech" : file.type.startsWith("image/") ? "uploaded" : "file";
     const cacheControl = "private, max-age=31536000, immutable";
     await bucket.put(`${prefix}${id}.${ext}`, await file.arrayBuffer(), {
       httpMetadata: { contentType: file.type || "application/octet-stream", cacheControl },
@@ -172,6 +187,7 @@ export async function handleLibrary(request: Request, env: Env, url: URL, cors: 
         model: meta(form.get("model"), 60),
         name: meta(form.get("name") || file.name, 180),
         type: meta(file.type || "application/octet-stream", 120),
+        category,
         createdAt: String(Date.now()),
       },
     });

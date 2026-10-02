@@ -65,6 +65,18 @@ function artifactKey(artifact: Artifact): string {
   return `lofin:website:${(hash >>> 0).toString(36)}`;
 }
 
+function artifactFileType(name: string): string {
+  const ext = name.split(".").pop()?.toLowerCase();
+  if (ext === "html" || ext === "htm") return "text/html";
+  if (ext === "css") return "text/css";
+  if (ext === "js" || ext === "mjs") return "text/javascript";
+  if (ext === "ts" || ext === "tsx") return "application/typescript";
+  if (ext === "json") return "application/json";
+  if (ext === "md") return "text/markdown";
+  if (ext === "csv") return "text/csv";
+  return "text/plain";
+}
+
 /**
  * Leading-edge + trailing-edge throttle: updates immediately if `intervalMs` has already
  * elapsed since the last update, otherwise schedules exactly one trailing update at the
@@ -139,6 +151,7 @@ export function ArtifactWorkspace({
 
   const publishable = !!artifact?.previewHtml && !pane?.streaming;
   const currentArtifactKey = artifact && publishable ? artifactKey(artifact) : null;
+  const completedArtifactKey = artifact && !pane?.streaming ? artifactKey(artifact) : null;
 
   const publish = async (force = false) => {
     if (!artifact || !artifact.previewHtml || pane?.streaming || publishing) return;
@@ -181,6 +194,24 @@ export function ArtifactWorkspace({
     // `currentArtifactKey` changes only when the response's files change.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentArtifactKey, user?.uid]);
+
+  // Keep the original source files for every completed AI artifact in the
+  // private library. The stable id makes this safe to run after remounts, and
+  // means a user can download the files even after a temporary website expires.
+  useEffect(() => {
+    if (!completedArtifactKey || !artifact || !user) return;
+    const baseId = completedArtifactKey.replace("lofin:website:", "artifact-");
+    void import("../lib/libraryClient").then(({ saveFileToStorage }) =>
+      Promise.all(artifact.files.map((generated, index) =>
+        saveFileToStorage(
+          new File([generated.content], generated.name, { type: artifactFileType(generated.name) }),
+          `${baseId}-${index}`,
+          generated.name,
+          { category: "file", prompt: "AI-generated file", model: pane?.model?.displayName },
+        ).catch(() => undefined)
+      ))
+    );
+  }, [completedArtifactKey, artifact, pane?.model?.displayName, user]);
 
   useEffect(() => {
     if (!currentArtifactKey) {

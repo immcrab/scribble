@@ -166,7 +166,14 @@ export function ImageMode({
       // user's private storage without delaying the result.
       updateMessage(chat.id, assistantMsg.id, {
         streaming: false,
-        attachments: [{ id: uid(), name: "generated.png", type: "image/png", dataUrl, size: dataUrl.length }],
+        attachments: [{
+          id: uid(), name: "generated.png", type: "image/png", dataUrl, size: dataUrl.length,
+          library: {
+            category: "generated",
+            prompt: trimmed,
+            model: editingSource ? EDIT_IMAGE_MODEL.displayName : imageModel.displayName,
+          },
+        }],
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : "Image generation failed.";
