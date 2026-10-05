@@ -87,6 +87,7 @@ function isValidBody(body: unknown): body is ChatRequestBody {
   if (!Array.isArray(b.messages) || b.messages.length === 0) return false;
   if (b.effort !== undefined && !VALID_EFFORTS.includes(b.effort as string)) return false;
   if (b.webSearch !== undefined && typeof b.webSearch !== "boolean") return false;
+  if (b.forceWebSearch !== undefined && typeof b.forceWebSearch !== "boolean") return false;
   if (b.memoryEnabled !== undefined && typeof b.memoryEnabled !== "boolean") return false;
   if (b.clientContext !== undefined) {
     if (typeof b.clientContext !== "object" || b.clientContext === null) return false;
@@ -322,7 +323,7 @@ export default {
             // A person can explicitly ask to preview a site; treat that as a
             // lookup even if the general-purpose classifier would have judged
             // the short request as conversational rather than factual.
-            const wantsWeb = userRequestedWeb;
+            const wantsWeb = userRequestedWeb || body.forceWebSearch === true;
             let worthSearching =
               !looksLikeArithmetic(query) && !isOwnLocationAlreadyKnown(query, body.clientContext?.location);
             if (wantsWeb) worthSearching = true;

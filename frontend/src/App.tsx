@@ -30,11 +30,14 @@ import {
   isLibraryLocation,
   parseSettingsTabFromLocation,
   settingsPath,
+  libraryPath,
 } from "./lib/router";
 import { fetchPublicChat } from "./lib/cloudSync";
 import { ProjectView } from "./components/ProjectView";
 import { DirectMode } from "./modes/DirectMode";
 import { RouteFallback } from "./components/RouteFallback";
+import { CommandPalette } from "./components/CommandPalette";
+import { DeleteUndoToast, WorkspaceStatus } from "./components/WorkspaceStatus";
 import { preloadMarkdown } from "./lib/markdown";
 
 // Route-level code splitting: Direct chat (the first screen almost everyone sees) stays
@@ -93,6 +96,7 @@ export default function App() {
   const [pending, setPending] = useState<InitialPrompt | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [announcementsOpen, setAnnouncementsOpen] = useState(false);
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [docsSlug, setDocsSlug] = useState<string | null>(() => parseDocsSlugFromLocation());
   const [adminRoute, setAdminRoute] = useState(() => isAdminLocation());
   const [usageRoute, setUsageRoute] = useState(() => isUsageLocation());
@@ -417,6 +421,9 @@ export default function App() {
       if (mod && e.shiftKey && e.key.toLowerCase() === "o") {
         e.preventDefault();
         startOwnChat();
+      } else if (mod && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setCommandPaletteOpen((open) => !open);
       } else if (mod && e.key === "\\") {
         e.preventDefault();
         useChatStore.getState().toggleSidebar();
@@ -551,6 +558,7 @@ export default function App() {
             <Menu size={19} />
           </button>
           {!inProject && <ModeSelector mode={activeChat?.mode ?? "direct"} onChange={switchMode} />}
+          <WorkspaceStatus />
         </div>
 
         <main id="main-content" tabIndex={-1} className="min-h-0 flex-1 focus:outline-none">
@@ -634,6 +642,22 @@ export default function App() {
       </div>
 
       <PWAInstallPrompt />
+      <DeleteUndoToast />
+      <CommandPalette
+        open={commandPaletteOpen}
+        onClose={() => setCommandPaletteOpen(false)}
+        onNewChat={startOwnChat}
+        onMode={switchMode}
+        onSettings={() => {
+          openedSettingsFromAppRef.current = true;
+          window.history.pushState({ settingsTab: "general" }, "", settingsPath("general"));
+          setSettingsTab("general");
+        }}
+        onLibrary={() => {
+          window.history.pushState(null, "", libraryPath());
+          setLibraryRoute(true);
+        }}
+      />
       <LocationConsentPrompt />
       <AnnouncementLaunch />
       {announcementsOpen && <AnnouncementCenter onClose={() => setAnnouncementsOpen(false)} />}

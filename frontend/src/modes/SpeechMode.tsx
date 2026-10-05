@@ -31,6 +31,17 @@ const SUGGESTIONS = [
 const SPEEDS = [0.75, 1, 1.25, 1.5];
 const MAX_CHARS = 4000;
 
+/** Simple, transparent pronunciation replacements: one `written => spoken`
+ * mapping per line. Kept in the composer because it is specific to the text
+ * the user is currently preparing, rather than an opaque voice-model setting. */
+function applyPronunciations(text: string, rules: string): string {
+  return rules.split("\n").reduce((spoken, rule) => {
+    const [written, replacement] = rule.split("=>").map((part) => part?.trim());
+    if (!written || !replacement) return spoken;
+    return spoken.replaceAll(written, replacement);
+  }, text);
+}
+
 /** xKiro caches its voice list five minutes upstream; cache the fetch here too so
  * switching Speech chats doesn't refetch 148 rows every time. */
 let voicesCache: Promise<Voice[]> | null = null;
@@ -49,11 +60,15 @@ function VoicePicker({
   selectedId,
   loading,
   onSelect,
+  onPreview,
+  previewingId,
 }: {
   voices: Voice[];
   selectedId: string;
   loading: boolean;
   onSelect: (id: string) => void;
+  onPreview: (id: string) => void;
+  previewingId: string | null;
 }) {
   const [filter, setFilter] = useState("");
   const selected = voices.find((v) => v.id === selectedId);
@@ -100,17 +115,13 @@ function VoicePicker({
               <p className="px-3.5 py-3 text-xs text-slate-500">No voices match “{filter}”.</p>
             ) : (
               shown.map((v) => (
-                <button
+                <div
                   key={v.id}
-                  onClick={() => {
-                    onSelect(v.id);
-                    close();
-                  }}
                   className={`flex w-full items-center gap-2 px-3.5 py-2.5 text-left transition-colors ${
                     v.id === selectedId ? "bg-accent-500/10" : "hover:bg-base-700/50"
                   }`}
                 >
-                  <span className="min-w-0 flex-1">
+                  <button onClick={() => { onSelect(v.id); close(); }} className="min-w-0 flex-1 text-left">
                     <span
                       className={`flex items-center gap-1.5 text-sm font-medium ${
                         v.id === selectedId ? "text-white" : "text-slate-200"
@@ -122,8 +133,9 @@ function VoicePicker({
                     <span className="block truncate text-xs text-slate-500">
                       {[v.gender, v.locale].filter(Boolean).join(" · ") || v.id}
                     </span>
-                  </span>
-                </button>
+                  </button>
+                  <button onClick={() => onPreview(v.id)} disabled={previewingId === v.id} className="shrink-0 rounded px-2 py-1 text-[11px] text-accent-300 hover:bg-base-700/70 disabled:opacity-50" title="Play a short sample">{previewingId === v.id ? "…" : "Preview"}</button>
+                </div>
               ))
             )}
           </div>
@@ -149,6 +161,9 @@ export function SpeechMode({
   const [voices, setVoices] = useState<Voice[]>([]);
   const [voicesLoading, setVoicesLoading] = useState(true);
   const [voicesError, setVoicesError] = useState<string | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewingId, setPreviewingId] = useState<string | null>(null);
+  const [pronunciations, setPronunciations] = useState("");
   const chatEndRef = useAutoScroll<HTMLDivElement>(chat?.messages ?? []);
   const sendRef = useRef<(text: string) => void>(() => {});
 
@@ -215,15 +230,16 @@ export function SpeechMode({
     }
 
     try {
+      const spokenText = applyPronunciations(trimmed, pronunciations);
       const dataUrl = await generateSpeech({
         workerUrl: settings.workerUrl,
         password: settings.password,
-        input: trimmed,
+        input: spokenText,
         voice,
         format,
         speed,
       });
-      const words = trimmed.split(/\s+/).filter(Boolean).length;
+      const words = spokenText.split(/\s+/).filter(Boolean).length;
       recordSpeechUsage(words, await audioDurationSeconds(dataUrl));
       updateMessage(chat.id, assistantMsg.id, {
         streaming: false,
@@ -241,6 +257,17 @@ export function SpeechMode({
     } catch (err) {
       const message = err instanceof Error ? err.message : "Speech generation failed.";
       updateMessage(chat.id, assistantMsg.id, { streaming: false, error: message });
+    }
+  };
+  const previewVoice = async (voice: string) => {
+    if (previewingId) return;
+    setPreviewingId(voice);
+    try {
+      setPreviewUrl(await generateSpeech({ workerUrl: settings.workerUrl, password: settings.password, input: "Hello. This is a short preview of my voice.", voice, format: "mp3", speed: 1 }));
+    } catch (err) {
+      setVoicesError(err instanceof Error ? err.message : "Couldn't generate a voice preview.");
+    } finally {
+      setPreviewingId(null);
     }
   };
   sendRef.current = send;
@@ -267,8 +294,11 @@ export function SpeechMode({
           selectedId={selectedVoiceId}
           loading={voicesLoading}
           onSelect={(id) => updateSettings({ speechVoiceId: id })}
+          onPreview={previewVoice}
+          previewingId={previewingId}
         />
       </div>
+      {previewUrl && <div className="border-b border-base-700/60 bg-base-900/30 px-5 py-2"><div className="mx-auto flex max-w-3xl items-center gap-2 text-xs text-slate-400"><span>Voice preview</span><audio autoPlay controls src={previewUrl} className="h-7 min-w-0 flex-1" /></div></div>}
 
       {chat.messages.length === 0 ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-6 px-4 text-center">
@@ -339,6 +369,7 @@ export function SpeechMode({
             ))}
           </div>
         </div>
+        <details className="mb-2 rounded-lg border border-base-700/50 bg-base-900/30 px-3 py-2 text-xs text-slate-400"><summary className="cursor-pointer select-none text-slate-300">Pronunciation replacements</summary><textarea value={pronunciations} onChange={(event) => setPronunciations(event.target.value)} rows={2} placeholder={"One per line, for example:\nLofin => low-fin"} className="mt-2 w-full resize-y rounded-md border border-base-700/60 bg-base-950/50 px-2 py-1.5 text-xs text-slate-200 outline-none focus:border-accent-500/60" /><p className="mt-1 text-[11px] text-slate-500">Only the generated audio uses these replacements; your original text stays unchanged.</p></details>
 
         <div className="flex items-end gap-2 rounded-2xl border border-base-600/60 bg-base-850/70 p-2 shadow-panel">
           <textarea

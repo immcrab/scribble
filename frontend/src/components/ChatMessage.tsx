@@ -22,6 +22,7 @@ import {
   Maximize2,
   Wand2,
   Globe2,
+  GitFork,
   ExternalLink,
 } from "lucide-react";
 import type { Attachment, ChatMessage as ChatMessageType, ToolCallRecord } from "../types";
@@ -303,6 +304,8 @@ export function ChatMessage({
   onContinue,
   onEdit,
   onEditImage,
+  onVaryImage,
+  onBranch,
   suppressCode = false,
 }: {
   message: ChatMessageType;
@@ -319,6 +322,10 @@ export function ChatMessage({
   onEdit?: (newText: string) => void;
   /** Load an image attachment back into the composer as an edit source (Image mode). */
   onEditImage?: (attachment: Attachment) => void;
+  /** Start a variation from an existing image in Image Mode. */
+  onVaryImage?: (attachment: Attachment) => void;
+  /** Create a non-destructive new chat beginning at this message. */
+  onBranch?: () => void;
   /** True when a parent mode is already routing this message's code into the ArtifactWorkspace panel — keeps raw fences out of the bubble even mid-stream. */
   suppressCode?: boolean;
 }) {
@@ -465,6 +472,13 @@ export function ChatMessage({
                           <Wand2 size={12} />
                           Edit
                         </button>
+                      )}
+                      {onVaryImage && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); onVaryImage(a); }}
+                          className="flex items-center gap-1 rounded-md bg-base-950/70 px-2 py-1 text-[11px] font-medium text-slate-200 backdrop-blur-sm transition-colors hover:bg-base-950/90 hover:text-white"
+                          title="Create a variation"
+                        ><Wand2 size={12} /> Vary</button>
                       )}
                       <a
                         href={a.dataUrl}
@@ -641,6 +655,11 @@ export function ChatMessage({
               </button>
             )}
             {onRegenerateWith && <RegenerateWithMenu onPick={onRegenerateWith} />}
+            {onBranch && (
+              <button onClick={onBranch} className="message-action-btn flex items-center justify-center rounded p-1.5 text-xs text-slate-500 transition-colors hover:bg-base-700/60 hover:text-white" title="Branch from this response">
+                <GitFork size={13} />
+              </button>
+            )}
           </div>
         )}
 
@@ -663,6 +682,11 @@ export function ChatMessage({
                 title="Resend"
               >
                 <Send size={13} />
+              </button>
+            )}
+            {onBranch && (
+              <button onClick={onBranch} className="message-action-btn flex items-center justify-center rounded p-1.5 text-xs text-slate-500 transition-colors hover:bg-base-700/60 hover:text-white" title="Branch from this message">
+                <GitFork size={13} />
               </button>
             )}
           </div>

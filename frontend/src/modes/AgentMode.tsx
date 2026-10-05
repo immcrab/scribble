@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { FileSearch, Terminal, Lightbulb } from "lucide-react";
+import { FileSearch, Terminal, Lightbulb, Globe2 } from "lucide-react";
 import { useChatStore } from "../state/chatStore";
 import { getDefaultModel, findModel } from "../config/models";
 import { ChatMessage } from "../components/ChatMessage";
@@ -14,14 +14,11 @@ import { useLiveArtifact, liveArtifactFor } from "../lib/useLiveArtifact";
 import { runAssistantStream, CONTINUE_NUDGE } from "../lib/runStream";
 import { useAutoScroll } from "../lib/useAutoScroll";
 import { uid } from "../lib/id";
+import { analysisContext } from "../lib/fileAnalysis";
+import { CodeRunner } from "../components/CodeRunner";
 import type { Attachment, ChatMessage as ChatMessageType } from "../types";
 import type { WireMessage } from "../providers";
 import type { InitialPrompt } from "../App";
-
-const PLANNED_TOOLS = [
-  { icon: FileSearch, label: "File analysis" },
-  { icon: Terminal, label: "Code execution" },
-];
 
 /**
  * Agent Mode runs a normal streaming chat turn against the selected model,
@@ -44,6 +41,7 @@ export function AgentMode({
   const settings = useChatStore((s) => s.settings);
   const { addMessage, setChatModels, patchChat, maybeAutoTitle, abort, removeMessagesAfter, updateMessage } = useChatStore();
   const [eagerWorkspace, setEagerWorkspace] = useState(false);
+  const [showRunner, setShowRunner] = useState(false);
   const chatEndRef = useAutoScroll<HTMLDivElement>(chat?.messages ?? []);
 
   if (!chat) return null;
@@ -69,6 +67,11 @@ export function AgentMode({
     const activeModel = model;
     if (!chat.modelId) setChatModels(chat.id, { modelId: activeModel.modelId });
 
+    const previousHistory = buildHistory();
+    const fileAnalysis = analysisContext(attachments);
+    const analyzedText = fileAnalysis.context
+      ? `${text}\n\n[Attached text files to analyze:\n${fileAnalysis.context}]${fileAnalysis.skipped.length ? `\n\n[Files attached but not locally readable: ${fileAnalysis.skipped.join(", ")}]` : ""}`
+      : text;
     const userMsg: ChatMessageType = { id: uid(), role: "user", content: text, createdAt: Date.now(), attachments };
     addMessage(chat.id, userMsg);
     maybeAutoTitle(chat.id, text);
@@ -90,10 +93,10 @@ export function AgentMode({
       dataUrl: a.dataUrl,
     }));
     const history: WireMessage[] = [
-      ...buildHistory(),
-      { role: "user", content: text, attachments: userWireAttachments },
+      ...previousHistory,
+      { role: "user", content: analyzedText, attachments: userWireAttachments },
     ];
-    runAssistantStream({ chatId: chat.id, messageId: assistantMsg.id, model: activeModel, history, effort, webSearch: settings.autoWebSearch });
+    runAssistantStream({ chatId: chat.id, messageId: assistantMsg.id, model: activeModel, history, effort, webSearch: chat.researchMode ?? settings.autoWebSearch, forceWebSearch: chat.researchMode === true });
   };
 
   const regenerate = (assistantId: string, withModelId?: string) => {
@@ -111,7 +114,7 @@ export function AgentMode({
       toolCalls: [],
     };
     addMessage(chat.id, newAssistant);
-    runAssistantStream({ chatId: chat.id, messageId: newAssistant.id, model: runModel, history, effort, webSearch: settings.autoWebSearch });
+    runAssistantStream({ chatId: chat.id, messageId: newAssistant.id, model: runModel, history, effort, webSearch: chat.researchMode ?? settings.autoWebSearch, forceWebSearch: chat.researchMode === true });
   };
 
   /** Resume a reply that was cut off at the model's output-token limit, appending in place. */
@@ -131,7 +134,8 @@ export function AgentMode({
       model: runModel,
       history,
       effort,
-      webSearch: settings.autoWebSearch,
+      webSearch: chat.researchMode ?? settings.autoWebSearch,
+      forceWebSearch: chat.researchMode === true,
       appendToExisting: true,
     });
   };
@@ -164,7 +168,7 @@ export function AgentMode({
       toolCalls: [],
     };
     addMessage(chat.id, newAssistant);
-    runAssistantStream({ chatId: chat.id, messageId: newAssistant.id, model, history, effort, webSearch: settings.autoWebSearch });
+    runAssistantStream({ chatId: chat.id, messageId: newAssistant.id, model, history, effort, webSearch: chat.researchMode ?? settings.autoWebSearch, forceWebSearch: chat.researchMode === true });
   };
 
   const stop = () => {
@@ -197,19 +201,18 @@ export function AgentMode({
         <ModelSelector value={model} onChange={(m) => setChatModels(chat.id, { modelId: m.modelId })} />
         <EffortSelector value={effort} onChange={(e) => patchChat(chat.id, { effort: e })} />
         <div className="ml-auto flex items-center gap-1.5">
-          {PLANNED_TOOLS.map((t) => (
-            <span
-              key={t.label}
-              title="Not wired up yet — planned for a future update"
-              className="flex cursor-default items-center gap-1 rounded-lg border border-dashed border-base-700/50 px-2 py-1 text-[11px] text-slate-600"
-            >
-              <t.icon size={11} />
-              {t.label}
-              <span className="ml-0.5 text-[9px] uppercase tracking-wide text-slate-700">soon</span>
-            </span>
-          ))}
+          <button
+            type="button"
+            onClick={() => patchChat(chat.id, { researchMode: chat.researchMode === true ? undefined : true })}
+            aria-pressed={chat.researchMode === true}
+            className={`flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] transition-colors ${chat.researchMode === true ? "bg-accent-500/15 text-accent-200" : "text-slate-500 hover:bg-base-800 hover:text-slate-300"}`}
+            title="Force a live web search for this chat's turns"
+          ><Globe2 size={12} /> Research</button>
+          <span title="Text, code, JSON, CSV, and Markdown attachments are added as bounded analysis context" className="hidden items-center gap-1 rounded-lg border border-base-700/50 px-2 py-1 text-[11px] text-slate-500 sm:flex"><FileSearch size={11} /> File analysis</span>
+          <button onClick={() => setShowRunner((open) => !open)} className={`flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] transition-colors ${showRunner ? "bg-accent-500/15 text-accent-200" : "text-slate-500 hover:bg-base-800 hover:text-slate-300"}`} title="Run JavaScript locally in a sandbox"><Terminal size={11} /> Code runner</button>
         </div>
       </div>
+      {showRunner && <CodeRunner onClose={() => setShowRunner(false)} />}
 
       <ChatWorkspaceSplit
         hasWorkspace={hasWorkspace}
@@ -221,9 +224,7 @@ export function AgentMode({
                 <EmptyState mode="agent" heading="What would you like Lofin to do?" onPick={(p) => send(p, [])} />
                 <div className="mx-auto -mt-8 flex max-w-md items-start gap-2 rounded-xl border border-base-700/50 bg-base-900/40 px-3.5 py-2.5 text-xs text-slate-500">
                   <Lightbulb size={13} className="mt-0.5 shrink-0 text-accent-400" />
-                  Agent Mode is built for multi-step tasks. Replies search the web automatically
-                  when it'd help (toggle in Settings → General) — file analysis and code execution
-                  are still on the way.
+                  Agent Mode can research live sources, read supported text attachments, and run small JavaScript snippets locally.
                 </div>
               </div>
             ) : (
@@ -243,6 +244,7 @@ export function AgentMode({
                         m.role === "assistant" && !m.streaming && m.truncated ? () => continueMessage(m.id) : undefined
                       }
                       onEdit={m.role === "user" && !m.streaming ? (newText) => editMessage(m.id, newText) : undefined}
+                      onBranch={!m.streaming ? () => useChatStore.getState().branchChat(chat.id, m.id) : undefined}
                     />
                   ))}
                 </div>

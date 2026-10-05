@@ -64,6 +64,7 @@ export function sendDirectMessage(chatId: string, text: string, attachments: Att
     model,
     history,
     effort: chat.effort ?? store.settings.effort,
-    webSearch: store.settings.autoWebSearch,
+    webSearch: chat.researchMode ?? store.settings.autoWebSearch,
+    forceWebSearch: chat.researchMode === true,
   });
 }

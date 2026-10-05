@@ -88,6 +88,14 @@ export function ImageMode({
     inputRef.current?.focus();
   };
 
+  const varyFromAttachment = (a: Attachment) => {
+    if (!a.dataUrl) return;
+    setSourceError(null);
+    setSource({ dataUrl: a.dataUrl, name: a.name || "generated.png" });
+    setPrompt("Create a distinct polished variation of this image while preserving its subject and overall direction.");
+    requestAnimationFrame(() => inputRef.current?.focus());
+  };
+
   const send = async (text: string) => {
     const trimmed = text.trim();
     if (!trimmed || generating) return;
@@ -302,7 +310,7 @@ export function ImageMode({
                   <ImageGeneratingLoader startedAt={m.thinkingStartedAt} />
                 </div>
               ) : (
-                <ChatMessage key={m.id} message={m} onEditImage={editFromAttachment} />
+                <ChatMessage key={m.id} message={m} onEditImage={editFromAttachment} onVaryImage={varyFromAttachment} />
               )
             )}
           </div>

@@ -151,6 +151,7 @@ interface ChatStore {
   activeChatId: string | null;
   projects: Project[];
   activeProjectId: string | null;
+  lastDeletedChat: Chat | null;
   sidebarOpen: boolean;
   settings: LofinSettings;
   memories: MemoryEntry[];
@@ -163,15 +164,21 @@ interface ChatStore {
   setChatMode: (id: string, mode: Mode) => void;
   setActiveChat: (id: string) => void;
   deleteChat: (id: string) => void;
+  undoDeleteChat: () => void;
+  dismissDeletedChat: () => void;
   renameChat: (id: string, title: string) => void;
 
   createProject: (name: string) => string;
   renameProject: (id: string, name: string) => void;
+  updateProjectBrief: (id: string, brief: string) => void;
+  addProjectReference: (id: string, name: string, content: string) => void;
+  deleteProjectReference: (id: string, referenceId: string) => void;
   deleteProject: (id: string) => void;
   setActiveProject: (id: string | null) => void;
   moveChatToProject: (chatId: string, projectId: string | null) => void;
   setChatModels: (id: string, patch: Partial<Pick<Chat, "modelId" | "modelAId" | "modelBId">>) => void;
   patchChat: (id: string, patch: Partial<Chat>) => void;
+  branchChat: (id: string, messageId: string) => string | null;
   maybeAutoTitle: (id: string, prompt: string) => void;
 
   addMessage: (chatId: string, message: ChatMessage) => void;
@@ -200,6 +207,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   activeChatId: initialChats[0]?.id ?? null,
   projects: initialProjects,
   activeProjectId: null,
+  lastDeletedChat: null,
   sidebarOpen: true,
   settings: initialSettings,
   memories: initialMemories,
@@ -308,7 +316,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
         saveChats(remaining);
         deleteChatFromCloud(id, remaining);
       };
-      if (s.activeChatId !== id) return { chats: remaining };
+      if (s.activeChatId !== id) return { chats: remaining, lastDeletedChat: gone ?? null };
       // Deleting the active chat: prefer another chat in the same project (stay in
       // its view, even if that leaves zero chats — the view handles empty), else
       // fall back to a History chat.
@@ -316,6 +324,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
         const nextInProject = remaining.find((c) => c.projectId === gone.projectId);
         return {
           chats: remaining,
+          lastDeletedChat: gone ?? null,
           activeChatId: nextInProject?.id ?? null,
           activeProjectId: gone.projectId,
         };
@@ -323,6 +332,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       const next = remaining.find((c) => !c.projectId) ?? remaining[0] ?? null;
       return {
         chats: remaining,
+        lastDeletedChat: gone ?? null,
         activeChatId: next?.id ?? null,
         activeProjectId: next?.projectId ?? null,
       };
@@ -351,6 +361,50 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   renameProject: (id, name) => {
     set((s) => {
       const projects = s.projects.map((p) => (p.id === id ? { ...p, name: name.trim() || p.name, updatedAt: Date.now() } : p));
+      persistProjects(projects);
+      return { projects };
+    });
+  },
+
+  undoDeleteChat: () => {
+    const deleted = get().lastDeletedChat;
+    if (!deleted) return;
+    set((s) => {
+      if (s.chats.some((chat) => chat.id === deleted.id)) return { lastDeletedChat: null };
+      const chats = [deleted, ...s.chats];
+      persistChats(chats);
+      return { chats, activeChatId: deleted.id, activeProjectId: deleted.projectId ?? null, lastDeletedChat: null };
+    });
+  },
+
+  dismissDeletedChat: () => set({ lastDeletedChat: null }),
+
+  updateProjectBrief: (id, brief) => {
+    set((s) => {
+      const projects = s.projects.map((p) => p.id === id ? { ...p, brief, updatedAt: Date.now() } : p);
+      persistProjects(projects);
+      return { projects };
+    });
+  },
+
+  addProjectReference: (id, name, content) => {
+    const trimmed = content.trim();
+    if (!trimmed) return;
+    set((s) => {
+      const now = Date.now();
+      const projects = s.projects.map((p) => p.id === id
+        ? { ...p, references: [...(p.references ?? []), { id: uid(), name: name.trim() || "Reference", content: trimmed, createdAt: now }].slice(-20), updatedAt: now }
+        : p);
+      persistProjects(projects);
+      return { projects };
+    });
+  },
+
+  deleteProjectReference: (id, referenceId) => {
+    set((s) => {
+      const projects = s.projects.map((p) => p.id === id
+        ? { ...p, references: (p.references ?? []).filter((r) => r.id !== referenceId), updatedAt: Date.now() }
+        : p);
       persistProjects(projects);
       return { projects };
     });
@@ -415,6 +469,28 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       persistChats(chats);
       return { chats };
     });
+  },
+
+  branchChat: (id, messageId) => {
+    const source = get().chats.find((c) => c.id === id);
+    const end = source?.messages.findIndex((m) => m.id === messageId);
+    if (!source || end === undefined || end < 0) return null;
+    const now = Date.now();
+    const copy: Chat = {
+      ...source,
+      id: uid(),
+      title: `${source.title} (branch)`,
+      createdAt: now,
+      updatedAt: now,
+      messages: source.messages.slice(0, end + 1).map((m) => ({ ...m, streaming: false })),
+      branch: { chatId: source.id, messageId, createdAt: now },
+    };
+    set((s) => {
+      const chats = [copy, ...s.chats];
+      persistChats(chats);
+      return { chats, activeChatId: copy.id, activeProjectId: copy.projectId ?? null };
+    });
+    return copy.id;
   },
 
   maybeAutoTitle: (id, prompt) => {

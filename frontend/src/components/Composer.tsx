@@ -1,9 +1,16 @@
 import { useRef, useState } from "react";
-import { Paperclip, ArrowUp, Square, X, FileText, Code2, Image as ImageIcon, AlertTriangle, Mic } from "lucide-react";
+import { Paperclip, ArrowUp, Square, X, FileText, Code2, Image as ImageIcon, AlertTriangle, Mic, Sparkles } from "lucide-react";
+import { Dropdown } from "./Dropdown";
 import type { Attachment, ModelDef } from "../types";
 import { uid } from "../lib/id";
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10MB
+const PROMPT_TEMPLATES = [
+  { label: "Summarize", text: "Summarize this clearly. Start with the key takeaway, then give concise supporting points." },
+  { label: "Write email", text: "Write a polished email using the details below. Keep it warm, specific, and concise:\n\n" },
+  { label: "Debug", text: "Help me debug this. Explain the likely cause, propose the smallest safe fix, and show the changed code:\n\n" },
+  { label: "Study", text: "Teach this step by step. Check my understanding with one short question at the end:\n\n" },
+];
 
 /** Chrome/Safari/Edge expose speech recognition under a vendor-prefixed
  * global — Firefox has none, so this is undefined there and the mic button
@@ -284,6 +291,12 @@ export function Composer({
           >
             <X size={13} />
           </button>
+          <Dropdown
+            menuClassName="w-56 p-1"
+            trigger={({ toggle }) => <button type="button" onClick={toggle} className="flex h-11 w-11 items-center justify-center rounded-xl text-slate-400 transition-colors hover:bg-base-700/60 hover:text-white sm:h-auto sm:w-auto sm:rounded-lg sm:px-2.5 sm:py-1.5" title="Prompt templates" aria-label="Prompt templates"><Sparkles size={18} /><span className="hidden sm:inline">Templates</span></button>}
+          >
+            {({ close }) => <>{PROMPT_TEMPLATES.map((template) => <button key={template.label} type="button" onClick={() => { setText((current) => current ? `${template.text}${current}` : template.text); close(); requestAnimationFrame(autoGrow); }} className="flex w-full flex-col items-start rounded-lg px-3 py-2 text-left hover:bg-base-700/60"><span className="text-sm text-slate-200">{template.label}</span><span className="text-[11px] text-slate-500">Insert a guided prompt</span></button>)}</>}
+          </Dropdown>
         </div>
       )}
 

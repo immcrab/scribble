@@ -96,6 +96,8 @@ export async function runAssistantStream(params: {
   history: WireMessage[];
   effort?: Effort;
   webSearch?: boolean;
+  /** Run a live search for this turn even if auto-search would classify it as unnecessary. */
+  forceWebSearch?: boolean;
   /** Resuming a truncated reply: keep the message's existing content/reasoning and
    * append incoming tokens to it, rather than treating the message as brand-new. */
   appendToExisting?: boolean;
@@ -104,7 +106,7 @@ export async function runAssistantStream(params: {
   /** Internal: consecutive auto-continue rounds that produced no new text. */
   stalledContinueRounds?: number;
 }) {
-  const { chatId, messageId, model, history, effort, webSearch, appendToExisting } = params;
+  const { chatId, messageId, model, history, effort, webSearch, forceWebSearch, appendToExisting } = params;
   const store = useChatStore.getState();
 
   if (isModelGated(model) && !useAuthStore.getState().user) {
@@ -137,10 +139,18 @@ export async function runAssistantStream(params: {
   let truncated = false;
 
   const lastUserMessage = [...history].reverse().find((m) => m.role === "user")?.content;
+  const project = store.projects.find((p) => p.id === store.chats.find((c) => c.id === chatId)?.projectId);
+  const projectContext = project && (project.brief?.trim() || project.references?.length)
+    ? [
+        "Project context (follow this when it is relevant):",
+        project.brief?.trim() || "",
+        ...(project.references ?? []).map((r) => `Reference — ${r.name}:\n${r.content}`),
+      ].filter(Boolean).join("\n\n").slice(0, 16_000)
+    : "";
   const clientContext = await getClientContext(
     store.settings.locationConsent,
     lastUserMessage,
-    store.settings.customSystemPrompt,
+    [store.settings.customSystemPrompt, projectContext].filter(Boolean).join("\n\n"),
     store.settings.memoryEnabled ? store.memories.map((m) => m.content) : undefined,
     store.settings.replyLanguage
   );
@@ -222,6 +232,7 @@ export async function runAssistantStream(params: {
           customProvider: customProvider ? { baseUrl: customProvider.baseUrl, apiKey: customProvider.apiKey } : undefined,
           effort,
           webSearch,
+          forceWebSearch,
           memoryEnabled: store.settings.memoryEnabled,
           clientContext,
         })) {

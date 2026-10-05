@@ -93,6 +93,8 @@ export interface ChatRequestBody {
    * Groq classifier whether the latest user message actually needs a live search, and
    * then uses the optional Exa backend or a keyless web-search fallback. */
   webSearch?: boolean;
+  /** A user explicitly chose Research for this turn. */
+  forceWebSearch?: boolean;
   /** The client's "memory" setting. When true, the Worker asks a fast Groq classifier
    * whether the latest user message contains something worth remembering, and if so,
    * reports it back as a "Memory" tool call — see adapters/memory.ts. */

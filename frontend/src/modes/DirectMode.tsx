@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Globe2 } from "lucide-react";
 import { useChatStore } from "../state/chatStore";
 import { getDefaultModel, findModel } from "../config/models";
 import { ChatMessage } from "../components/ChatMessage";
@@ -72,7 +73,7 @@ export function DirectMode({
       streaming: true,
     };
     addMessage(chat.id, newAssistant);
-    runAssistantStream({ chatId: chat.id, messageId: newAssistant.id, model: runModel, history, effort, webSearch: settings.autoWebSearch });
+    runAssistantStream({ chatId: chat.id, messageId: newAssistant.id, model: runModel, history, effort, webSearch: chat.researchMode ?? settings.autoWebSearch, forceWebSearch: chat.researchMode === true });
   };
 
   /** Resume a reply that was cut off at the model's output-token limit, appending in place. */
@@ -92,7 +93,8 @@ export function DirectMode({
       model: runModel,
       history,
       effort,
-      webSearch: settings.autoWebSearch,
+      webSearch: chat.researchMode ?? settings.autoWebSearch,
+      forceWebSearch: chat.researchMode === true,
       appendToExisting: true,
     });
   };
@@ -126,7 +128,7 @@ export function DirectMode({
       streaming: true,
     };
     addMessage(chat.id, newAssistant);
-    runAssistantStream({ chatId: chat.id, messageId: newAssistant.id, model: newAssistant.model!, history, effort, webSearch: settings.autoWebSearch });
+    runAssistantStream({ chatId: chat.id, messageId: newAssistant.id, model: newAssistant.model!, history, effort, webSearch: chat.researchMode ?? settings.autoWebSearch, forceWebSearch: chat.researchMode === true });
   };
 
   const stop = () => {
@@ -161,6 +163,15 @@ export function DirectMode({
           onChange={(m) => setChatModels(chat.id, { modelId: m.modelId })}
         />
         <div className="ml-auto flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => patchChat(chat.id, { researchMode: chat.researchMode === true ? undefined : true })}
+            aria-pressed={chat.researchMode === true}
+            title={chat.researchMode === true ? "Research is on for this chat" : "Research this chat with live web sources"}
+            className={`flex items-center gap-1 rounded-lg px-2 py-1 text-xs transition-colors ${chat.researchMode === true ? "bg-accent-500/15 text-accent-200" : "text-slate-500 hover:bg-base-800 hover:text-slate-300"}`}
+          >
+            <Globe2 size={13} /> Research
+          </button>
           <EffortSelector value={effort} onChange={(e) => patchChat(chat.id, { effort: e })} />
         </div>
       </div>
@@ -191,6 +202,7 @@ export function DirectMode({
                         m.role === "assistant" && !m.streaming && m.truncated ? () => continueMessage(m.id) : undefined
                       }
                       onEdit={m.role === "user" && !m.streaming ? (newText) => editMessage(m.id, newText) : undefined}
+                      onBranch={!m.streaming ? () => useChatStore.getState().branchChat(chat.id, m.id) : undefined}
                     />
                   ))}
                 </div>

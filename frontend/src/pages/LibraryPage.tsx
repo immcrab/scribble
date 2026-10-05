@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, AudioLines, Download, File, FileCode2, Image as ImageIcon, ImageOff, Images, Loader2, LogIn, Trash2, X } from "lucide-react";
+import { ArrowLeft, AudioLines, Download, File, FileCode2, Image as ImageIcon, ImageOff, Images, Loader2, LogIn, Trash2, X, Search, SlidersHorizontal } from "lucide-react";
 import { LogoMark } from "../components/Logo";
 import { useAuthStore } from "../state/authStore";
 import { useChatStore } from "../state/chatStore";
@@ -63,6 +63,8 @@ export function LibraryPage({ onExit }: { onExit: () => void }) {
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState<LibraryItem | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [query, setQuery] = useState("");
+  const [order, setOrder] = useState<"newest" | "oldest">("newest");
 
   const load = useCallback(async (from: string | null) => {
     setLoading(true); setError(null);
@@ -78,7 +80,10 @@ export function LibraryPage({ onExit }: { onExit: () => void }) {
       message.role === "user" ? (message.attachments ?? []).filter((attachment) => attachment.type.startsWith("image/")).map((attachment) => attachment.id) : []
     ))
   ), [chats]);
-  const shown = items.filter((item) => inTab(item, tab, uploadedImageIds.has(item.id)));
+  const shown = items
+    .filter((item) => inTab(item, tab, uploadedImageIds.has(item.id)))
+    .filter((item) => !query.trim() || `${item.name ?? ""} ${item.prompt ?? ""} ${item.model ?? ""}`.toLowerCase().includes(query.trim().toLowerCase()))
+    .sort((a, b) => order === "newest" ? b.createdAt - a.createdAt : a.createdAt - b.createdAt);
   const download = async (item: LibraryItem) => {
     if (item.kind === "website") { window.open(item.url, "_blank", "noopener,noreferrer"); return; }
     const url = await libraryImageUrl(item.id, false);
@@ -95,7 +100,7 @@ export function LibraryPage({ onExit }: { onExit: () => void }) {
   return <div className="flex h-dvh w-full flex-col overflow-y-auto bg-base-950">
     <header className="sticky top-0 z-10 border-b border-base-700/60 bg-base-950/90 px-4 py-3 backdrop-blur">
       <div className="flex items-center gap-3"><button onClick={onExit} className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 hover:bg-base-700/60 hover:text-white" title="Back to Lofin"><ArrowLeft size={17} /></button><LogoMark size={28} /><div className="min-w-0"><h1 className="text-sm font-semibold text-white">Library</h1><p className="truncate text-xs text-slate-500">Private cloud copies, ready whenever you need them</p></div></div>
-      {user && <nav aria-label="Library sections" className="mx-auto mt-3 flex max-w-6xl gap-1 overflow-x-auto">{TABS.map(({ id, label, icon: Icon }) => <button key={id} onClick={() => setTab(id)} className={`flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${tab === id ? "bg-accent-500 text-base-950" : "text-slate-400 hover:bg-base-800 hover:text-slate-200"}`}><Icon size={14} />{label}</button>)}</nav>}
+      {user && <><nav aria-label="Library sections" className="mx-auto mt-3 flex max-w-6xl gap-1 overflow-x-auto">{TABS.map(({ id, label, icon: Icon }) => <button key={id} onClick={() => setTab(id)} className={`flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${tab === id ? "bg-accent-500 text-base-950" : "text-slate-400 hover:bg-base-800 hover:text-slate-200"}`}><Icon size={14} />{label}</button>)}</nav><div className="mx-auto mt-3 flex max-w-6xl gap-2"><label className="flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-base-700/60 bg-base-900/60 px-2.5"><Search size={14} className="text-slate-500" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search names, prompts, or models…" className="h-8 min-w-0 flex-1 bg-transparent text-sm text-slate-200 outline-none placeholder-slate-500" /></label><button onClick={() => setOrder((value) => value === "newest" ? "oldest" : "newest")} className="flex items-center gap-1 rounded-lg border border-base-700/60 px-2.5 text-xs text-slate-400 hover:bg-base-800 hover:text-slate-200" title="Change sort order"><SlidersHorizontal size={13} />{order === "newest" ? "Newest" : "Oldest"}</button></div></>}
     </header>
     <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8">
       {authLoading ? null : !user ? <EmptyLogin onExit={onExit} /> : error && items.length === 0 ? <LoadError error={error} retry={() => load(null)} /> : !loaded ? <div className="flex justify-center py-20 text-slate-500" role="status" aria-label="Loading your library"><Loader2 className="animate-spin" size={22} /></div> : shown.length === 0 ? <EmptyTab tab={tab} /> : <>

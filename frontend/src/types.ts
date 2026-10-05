@@ -266,6 +266,10 @@ export interface Chat {
   /** id of the Project this chat belongs to (see types.ts's Project). When set, the chat
    * lives inside that project's tabbed view and is hidden from the flat History list. */
   projectId?: string;
+  /** Provenance for a non-destructive fork of an earlier point in a chat. */
+  branch?: { chatId: string; messageId: string; createdAt: number };
+  /** Per-chat research preference; undefined follows the global preference. */
+  researchMode?: boolean;
 }
 
 /** A named group of chats. Chats inside a project run in a tabbed workspace with a
@@ -276,4 +280,8 @@ export interface Project {
   name: string;
   createdAt: number;
   updatedAt: number;
+  /** Shared instructions sent with every turn in this project. */
+  brief?: string;
+  /** Small, portable notes which complement the project brief. */
+  references?: Array<{ id: string; name: string; content: string; createdAt: number }>;
 }
