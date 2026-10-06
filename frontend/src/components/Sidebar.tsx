@@ -24,6 +24,7 @@ import {
   FolderInput,
   Bell,
   Menu,
+  Info,
 } from "lucide-react";
 import { LogoMark } from "./Logo";
 import { useMediaQuery } from "../lib/useMediaQuery";
@@ -754,6 +755,7 @@ export function Sidebar({
               items={[
                 { label: "Tutor", icon: <GraduationCap size={16} />, onSelect: () => goTo(tutorPath()) },
                 { label: "Docs", icon: <BookOpen size={16} />, onSelect: () => window.location.assign(docsUrl()) },
+                { label: "About", icon: <Info size={16} />, onSelect: () => window.location.assign("/about") },
                 { label: "Connections", icon: <Globe size={16} />, onSelect: () => goTo(connectionsPath()) },
                 ...(user ? [
                   { label: "Library", icon: <Images size={16} />, onSelect: () => goTo(libraryPath()) },
