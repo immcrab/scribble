@@ -4,156 +4,188 @@
     <script src="/anti-embed.js"></script>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <title>About — Lofin</title>
-    <meta name="description" content="What Lofin is and who runs it." />
+    <title>About Lofin — Multi-Model AI Playground</title>
+    <meta name="description" content="Learn about Lofin, the independently created multi-model AI playground by Owen Lee: chat, compare models, create images, use agents, and more." />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+    <link rel="canonical" href="https://lofin.dev/about" />
+    <link rel="alternate" type="text/plain" href="https://lofin.dev/llms.txt" title="Lofin information for AI systems" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Lofin" />
+    <meta property="og:title" content="About Lofin — Multi-Model AI Playground" />
+    <meta property="og:description" content="An independent place to chat with, compare, and create with AI models." />
+    <meta property="og:url" content="https://lofin.dev/about" />
+    <meta name="twitter:card" content="summary" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="icon" href="/favicon.ico" sizes="48x48" />
 
     <!-- Cloudflare Web Analytics --><script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "8c31e25d6bdc447baa67133c616c0642"}'></script><!-- End Cloudflare Web Analytics -->
 
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "WebApplication",
+            "@id": "https://lofin.dev/#app",
+            "name": "Lofin",
+            "url": "https://lofin.dev/",
+            "applicationCategory": "ProductivityApplication",
+            "operatingSystem": "Web",
+            "description": "An independently created, multi-model AI playground for chatting, comparing responses, using agents, generating images, and turning text into speech.",
+            "creator": { "@id": "https://lofin.dev/about#owen-lee" },
+            "sameAs": ["https://docs.lofin.dev/"]
+          },
+          {
+            "@type": "Person",
+            "@id": "https://lofin.dev/about#owen-lee",
+            "name": "Owen Lee",
+            "description": "Independent creator of Lofin."
+          },
+          {
+            "@type": "AboutPage",
+            "@id": "https://lofin.dev/about#page",
+            "url": "https://lofin.dev/about",
+            "name": "About Lofin",
+            "about": { "@id": "https://lofin.dev/#app" }
+          }
+        ]
+      }
+    </script>
+
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,300;8..60,500;8..60,600&display=swap"
-      rel="stylesheet"
-    />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,300;8..60,500;8..60,600&display=swap" rel="stylesheet" />
     <style>
-      :root {
-        color-scheme: dark;
-      }
-      * {
-        box-sizing: border-box;
-      }
-      html,
-      body {
-        margin: 0;
-      }
-      body {
-        background: #1b1a18;
-        color: #e7e1da;
-        font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
-        line-height: 1.65;
-      }
-      .wrap {
-        max-width: 720px;
-        margin: 0 auto;
-        padding: 56px 24px 96px;
-      }
-      header {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        margin-bottom: 40px;
-      }
-      .mark {
-        width: 28px;
-        height: 28px;
-        flex-shrink: 0;
-      }
-      header a {
-        color: #f5f0eb;
-        text-decoration: none;
-        font-weight: 600;
-        font-size: 1.05rem;
-      }
-      h1 {
-        font-family: "Source Serif 4", ui-serif, Georgia, serif;
-        font-weight: 300;
-        letter-spacing: -0.02em;
-        font-size: 2.4rem;
-        margin: 0 0 8px;
-        color: #f5f0eb;
-      }
-      h2 {
-        font-size: 1.05rem;
-        font-weight: 600;
-        color: #f5f0eb;
-        margin: 2.2em 0 0.6em;
-      }
-      p,
-      li {
-        color: #c7c2bc;
-        font-size: 0.94rem;
-      }
-      ul {
-        padding-left: 1.3em;
-        margin: 0.6em 0;
-      }
-      li {
-        margin: 0.35em 0;
-      }
-      a {
-        color: #f5f0eb;
-        text-decoration: underline;
-        text-underline-offset: 2px;
-      }
-      .note {
-        margin-top: 3em;
-        padding: 14px 16px;
-        border: 1px solid #413d39;
-        border-radius: 10px;
-        background: #23211f;
-        font-size: 0.82rem;
-        color: #827c73;
-      }
-      .links {
-        display: flex;
-        gap: 16px;
-        margin-top: 2.5em;
-        font-size: 0.85rem;
-      }
+      :root { color-scheme: dark; }
+      * { box-sizing: border-box; }
+      html { scroll-behavior: smooth; }
+      body { margin: 0; background: #1b1a18; color: #e7e1da; font-family: "Inter", ui-sans-serif, system-ui, sans-serif; line-height: 1.65; }
+      .wrap { max-width: 860px; margin: 0 auto; padding: 40px 24px 96px; }
+      header { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-bottom: 68px; }
+      .brand { display: inline-flex; align-items: center; gap: 10px; color: #f5f0eb; text-decoration: none; font-weight: 600; font-size: 1.05rem; }
+      .mark { width: 30px; height: 30px; flex-shrink: 0; }
+      .back { color: #a9a29a; font-size: .84rem; text-decoration: none; }
+      .back:hover, a:hover { color: #fff; }
+      .eyebrow { margin: 0 0 12px; color: #aca49a; font-size: .72rem; font-weight: 700; letter-spacing: .13em; text-transform: uppercase; }
+      h1, h2, h3 { color: #f8f3ee; }
+      h1 { max-width: 720px; margin: 0; font-family: "Source Serif 4", ui-serif, Georgia, serif; font-size: clamp(2.65rem, 8vw, 4.8rem); font-weight: 300; letter-spacing: -.04em; line-height: 1.02; }
+      .lede { max-width: 650px; margin: 25px 0 0; color: #c9c2ba; font-family: "Source Serif 4", ui-serif, Georgia, serif; font-size: clamp(1.2rem, 2.5vw, 1.5rem); line-height: 1.5; }
+      .jump-links { display: flex; flex-wrap: wrap; gap: 8px; margin: 38px 0 70px; }
+      .jump-links a { border: 1px solid #46413c; border-radius: 999px; color: #c9c2ba; font-size: .78rem; padding: 7px 12px; text-decoration: none; }
+      .jump-links a:hover { border-color: #8d857c; background: #252320; }
+      section { margin-top: 64px; scroll-margin-top: 24px; }
+      h2 { margin: 0 0 16px; font-size: 1.18rem; font-weight: 600; letter-spacing: -.01em; }
+      h3 { margin: 0 0 7px; font-size: .94rem; font-weight: 600; }
+      p, li { color: #c7c2bc; font-size: .95rem; }
+      p { margin: 0 0 16px; }
+      a { color: #f5f0eb; text-decoration: underline; text-decoration-color: #6c655c; text-underline-offset: 3px; }
+      .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 25px; }
+      .card { min-height: 136px; padding: 19px; border: 1px solid #413d39; border-radius: 13px; background: linear-gradient(145deg, #252320, #201f1c); }
+      .card p { margin: 0; color: #aaa39b; font-size: .85rem; line-height: 1.55; }
+      .card .number { display: block; margin-bottom: 12px; color: #d8d1c9; font-size: .72rem; font-weight: 700; letter-spacing: .1em; }
+      .two-column { display: grid; grid-template-columns: 1.1fr .9fr; gap: 42px; align-items: start; }
+      .list { padding-left: 1.2em; margin: 0; }
+      .list li { margin: .5em 0; }
+      .callout { margin-top: 25px; padding: 18px 20px; border-left: 2px solid #aaa096; background: #23211f; color: #aaa39b; font-size: .88rem; }
+      .callout strong { color: #e7e1da; }
+      .creator { padding: 26px; border: 1px solid #49433d; border-radius: 14px; background: #24221f; }
+      .creator h2 { margin-bottom: 9px; }
+      .creator p:last-child { margin-bottom: 0; }
+      .quiet { color: #89827a; font-size: .84rem; }
+      footer { display: flex; flex-wrap: wrap; gap: 14px 22px; margin-top: 70px; padding-top: 24px; border-top: 1px solid #3a3733; color: #827c73; font-size: .82rem; }
+      footer a { color: #b7b0a8; }
+      @media (max-width: 620px) { .wrap { padding: 28px 18px 64px; } header { margin-bottom: 54px; } .grid, .two-column { grid-template-columns: 1fr; } section { margin-top: 52px; } .card { min-height: 0; } }
     </style>
   </head>
   <body>
-    <div class="wrap">
+    <main class="wrap">
       <header>
-        <svg class="mark" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
-          <rect width="32" height="32" rx="9" fill="#252523" />
-          <path d="M16 6c1 6 3 9 10 10-7 1-9 4-10 10-1-6-3-9-10-10 7-1 9-4 10-10Z" fill="#f5f0eb" />
-        </svg>
-        <a href="/">Lofin</a>
+        <a class="brand" href="/" aria-label="Lofin home">
+          <svg class="mark" viewBox="0 0 32 32" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><rect width="32" height="32" rx="9" fill="#252523" /><path d="M16 6c1 6 3 9 10 10-7 1-9 4-10 10-1-6-3-9-10-10 7-1 9-4 10-10Z" fill="#f5f0eb" /></svg>
+          Lofin
+        </a>
+        <a class="back" href="/">Open Lofin <span aria-hidden="true">↗</span></a>
       </header>
 
-      <h1>About Lofin</h1>
+      <p class="eyebrow">About the project</p>
+      <h1>A better place to think with more than one model.</h1>
+      <p class="lede">Lofin is an independent AI playground for asking questions, comparing answers, making things, and deciding what works for you.</p>
 
-      <p>
-        Lofin is a small, independently run AI playground — a place to chat with, compare, and battle
-        several third-party AI models side by side, in one interface, for free. It isn't a company or a
-        funded product; it's a hobby project built and maintained by one person.
-      </p>
+      <nav class="jump-links" aria-label="On this page">
+        <a href="#what-is-lofin">What it is</a>
+        <a href="#ways-to-use-it">Ways to use it</a>
+        <a href="#how-it-works">How it works</a>
+        <a href="#privacy">Privacy</a>
+        <a href="#creator">Creator</a>
+      </nav>
 
-      <h2>What it does</h2>
-      <ul>
-        <li><strong>Direct</strong> — a normal one-on-one chat with a model of your choice.</li>
-        <li><strong>Battle</strong> — two anonymous models answer the same prompt; you vote on the better response.</li>
-        <li><strong>Side by Side</strong> — compare two named models on the same prompt at once.</li>
-        <li><strong>Agent</strong> — a chat mode built for tool-using workflows, with an optional live web search.</li>
-        <li><strong>Image</strong> — generate images from a text prompt, or edit one you upload.</li>
-        <li><strong>Text to Speech</strong> — turn text into spoken audio you can play or download.</li>
-      </ul>
-      <p>
-        Under the hood, a Cloudflare Worker proxies requests to xKiro, Mistral, Google Gemini, OpenRouter, and
-        Cloudflare Workers AI, so provider API keys never touch your browser. Everything you type stays in
-        your browser's local storage unless you sign in, which enables cross-device sync and unlocks the
-        rest of the models and modes — see the <a href="/privacy">Privacy Policy</a> for the full picture.
-      </p>
+      <section id="what-is-lofin">
+        <p class="eyebrow">The short version</p>
+        <h2>What is Lofin?</h2>
+        <p>Lofin.dev is a web application where people can work with multiple AI models in one calm, focused interface. It is designed for exploring a question from different angles instead of treating one answer as the final word.</p>
+        <p>The product is independently run. It is not presented as a substitute for professional advice, a source of guaranteed-correct information, or an official service of any model provider.</p>
+      </section>
 
-      <h2>Who's behind it</h2>
-      <p>
-        Lofin is run independently by one person, not a company. Support requests go to
-        <a href="mailto:support@lofin.dev">support@lofin.dev</a>.
-      </p>
+      <section id="ways-to-use-it">
+        <p class="eyebrow">Capabilities</p>
+        <h2>Ways to use Lofin</h2>
+        <div class="grid">
+          <article class="card"><span class="number">01</span><h3>Direct chat</h3><p>Have a focused conversation with a model you choose.</p></article>
+          <article class="card"><span class="number">02</span><h3>Battle</h3><p>See anonymous answers to the same prompt and vote for the stronger response.</p></article>
+          <article class="card"><span class="number">03</span><h3>Side by Side</h3><p>Compare two named models on the same task at the same time.</p></article>
+          <article class="card"><span class="number">04</span><h3>Agent</h3><p>Use a tool-oriented workflow with optional live web search and memory features.</p></article>
+          <article class="card"><span class="number">05</span><h3>Image</h3><p>Generate an image from a prompt or edit an image you provide.</p></article>
+          <article class="card"><span class="number">06</span><h3>Text to Speech</h3><p>Turn written text into playable, downloadable spoken audio.</p></article>
+        </div>
+        <p class="callout"><strong>More than chat:</strong> Lofin also includes a writing Tutor, projects and chat history, shareable conversations, code and website artifacts, and a model documentation area. Availability can vary by sign-in state, selected model, provider, and service conditions.</p>
+      </section>
 
-      <p class="note">
-        Lofin is offered "as is," with no uptime or accuracy guarantees — see the
-        <a href="/terms">Terms of Service</a> for details.
-      </p>
+      <section id="how-it-works" class="two-column">
+        <div>
+          <p class="eyebrow">Architecture</p>
+          <h2>One interface, several model providers</h2>
+          <p>Lofin connects its interface to a server-side Cloudflare Worker. The Worker passes requests to supported third-party AI and search providers, including xKiro, Mistral, Google Gemini, OpenRouter, Z.ai / GLM, Groq, Exa, and Cloudflare services where applicable.</p>
+          <p>That design keeps provider API keys out of a visitor’s browser. Models, plans, and availability change over time; the in-product model selector and <a href="https://docs.lofin.dev/">documentation</a> are the best places for the current catalog.</p>
+        </div>
+        <aside>
+          <p class="eyebrow">Useful links</p>
+          <ul class="list">
+            <li><a href="https://docs.lofin.dev/">Product documentation</a></li>
+            <li><a href="/privacy">Privacy Policy</a></li>
+            <li><a href="/terms">Terms of Service</a></li>
+            <li><a href="mailto:support@lofin.dev">Contact support</a></li>
+            <li><a href="/llms.txt">Plain-text guide for AI systems</a></li>
+          </ul>
+        </aside>
+      </section>
 
-      <div class="links">
-        <a href="/privacy">Privacy Policy</a>
-        <a href="/terms">Terms of Service</a>
-        <a href="/">← Back to Lofin</a>
-      </div>
-    </div>
+      <section id="privacy">
+        <p class="eyebrow">Data and control</p>
+        <h2>Privacy, in plain language</h2>
+        <p>By default, chat history and preferences stay in the browser’s local storage. Signing in can enable cross-device syncing and access to additional functionality. Some requests are sent to the selected model or tool provider so it can produce a response.</p>
+        <p>Features that use search, memory, file uploads, image generation, or sharing have their own data implications. Please read the <a href="/privacy">Privacy Policy</a> before using Lofin for sensitive work, and avoid putting confidential or personal information into any AI service unless you understand the relevant provider’s terms.</p>
+      </section>
+
+      <section id="creator" class="creator">
+        <p class="eyebrow">Creator</p>
+        <h2>Owen Lee</h2>
+        <p>Lofin was created and is independently maintained by Owen Lee. The project is built around a simple idea: people should be able to compare AI systems, keep their work organized, and make informed choices about the tools they use.</p>
+        <p class="quiet">For product questions or support, contact <a href="mailto:support@lofin.dev">support@lofin.dev</a>.</p>
+      </section>
+
+      <section>
+        <p class="eyebrow">A note on AI</p>
+        <h2>Use good judgment</h2>
+        <p>AI-generated output can be incomplete, biased, outdated, or wrong. Review important answers, check primary sources, and consult qualified professionals for decisions involving health, law, finance, safety, or other high-stakes matters.</p>
+      </section>
+
+      <footer>
+        <span>© Lofin</span>
+        <a href="/">Open Lofin</a>
+        <a href="/privacy">Privacy</a>
+        <a href="/terms">Terms</a>
+        <a href="/llms.txt">AI system guide</a>
+      </footer>
+    </main>
   </body>
 </html>
