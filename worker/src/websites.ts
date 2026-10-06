@@ -84,6 +84,68 @@ function siteUrl(origin: string, uid: string, slug: string): string {
   return `${base}/${encodeURIComponent(uid)}/${encodeURIComponent(slug)}`;
 }
 
+function sitePath(uid: string, slug: string): string {
+  return `/${encodeURIComponent(uid)}/${encodeURIComponent(slug)}/`;
+}
+
+function encodedFilePath(name: string): string {
+  return name.split("/").map(encodeURIComponent).join("/");
+}
+
+/**
+ * The workspace preview deliberately combines sibling CSS and JS files so an
+ * AI response is useful immediately, even if it forgot the boilerplate tags.
+ * A published site is served as real files instead. Keep the live page just
+ * as forgiving, without replacing author-provided links or scripts.
+ */
+function preparePublishedHtml(html: string, files: WebsiteManifest["files"], uid: string, slug: string): string {
+  const fileNames = new Set(files.map((file) => file.name));
+  const prefix = sitePath(uid, slug);
+  const withFixedRootLinks = html.replace(
+    /\b(href|src|action|poster)\s*=\s*(["'])(\/[^"']*)\2/gi,
+    (whole, attribute: string, quote: string, value: string) => {
+      const match = value.match(/^\/([^?#]*)([?#][\s\S]*)?$/);
+      if (!match) return whole;
+      let name: string;
+      try {
+        name = decodeURIComponent(match[1]);
+      } catch {
+        return whole;
+      }
+      // Only rewrite a path that is one of this site's uploaded files. This
+      // preserves intentional links such as /login and external app routes.
+      if (!fileNames.has(name)) return whole;
+      return `${attribute}=${quote}${prefix}${encodedFilePath(name)}${match[2] ?? ""}${quote}`;
+    },
+  );
+
+  const hasFileReference = (name: string, attribute: "href" | "src") => {
+    const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    return new RegExp(`\\b${attribute}\\s*=\\s*(["'])[^"']*${escaped}(?:[?#][^"']*)?\\1`, "i").test(withFixedRootLinks);
+  };
+  const missingStyles = files
+    .filter((file) => /\.css$/i.test(file.name) && !hasFileReference(file.name, "href"))
+    .map((file) => `<link rel="stylesheet" href="${encodedFilePath(file.name)}">`)
+    .join("\n");
+  const missingScripts = files
+    .filter((file) => /\.(?:js|mjs)$/i.test(file.name) && !hasFileReference(file.name, "src"))
+    .map((file) => `<script src="${encodedFilePath(file.name)}"></script>`)
+    .join("\n");
+
+  let result = withFixedRootLinks;
+  if (missingStyles) {
+    result = /<\/head\s*>/i.test(result)
+      ? result.replace(/<\/head\s*>/i, `${missingStyles}\n</head>`)
+      : `${missingStyles}\n${result}`;
+  }
+  if (missingScripts) {
+    result = /<\/body\s*>/i.test(result)
+      ? result.replace(/<\/body\s*>/i, `${missingScripts}\n</body>`)
+      : `${result}\n${missingScripts}`;
+  }
+  return result;
+}
+
 async function authenticatedUid(request: Request, env: Env): Promise<string | null> {
   const token = request.headers.get("Authorization")?.replace(/^Bearer\s+/i, "");
   if (!token || !env.FIREBASE_PROJECT_ID) return null;
@@ -225,7 +287,11 @@ export async function serveWebsite(request: Request, env: Env, url: URL, executi
   if (!validFileName(requested) || !manifest.files.some((file) => file.name === requested)) return new Response("File not found.", { status: 404 });
   const object = await bucket.get(keyFor(uid, slug, requested));
   if (!object) return new Response("File not found.", { status: 404 });
-  return new Response(object.body, {
+  const isHtml = /\.html?$/i.test(requested);
+  const body = isHtml
+    ? preparePublishedHtml(await object.text(), manifest.files, uid, slug)
+    : object.body;
+  return new Response(body, {
     headers: {
       "Content-Type": object.httpMetadata?.contentType ?? contentType(requested),
       "Cache-Control": "public, max-age=60, s-maxage=60",
