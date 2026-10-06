@@ -1,4 +1,4 @@
-name: Deploy Lofin to Cloudflare Workers
+name: Deploy Lofin app
 
 on:
   push:
@@ -10,14 +10,14 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: cloudflare-workers
   cancel-in-progress: true
 
 jobs:
-  deploy:
+  deploy-worker:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -39,9 +39,41 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-      - name: Publish frontend to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v4
+
+  build-pages:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_branch: gh-pages
-          publish_dir: ./frontend/dist
+          node-version: 20
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+      # The Worker is the primary site at lofin.dev and is built at `/` in the
+      # deploy-worker job. GitHub Pages hosts this repository at `/scribble/`.
+      - name: Build GitHub Pages fallback
+        working-directory: frontend
+        run: npm run build
+        env:
+          VITE_BASE: /scribble/
+          VITE_WORKER_URL: https://ai.lofin.dev
+      - name: Upload GitHub Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./frontend/dist
+
+  deploy-pages:
+    needs: build-pages
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy GitHub Pages fallback
+        id: deployment
+        uses: actions/deploy-pages@v4

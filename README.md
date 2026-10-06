@@ -165,12 +165,15 @@ Worker URL, not a secret. Settings can still override it per-browser.
 
 `vite.config.ts` sets `base: "/"` by default (the live site runs on a custom
 domain at the root). If you deploy under a GitHub Pages subpath instead, pass
-`VITE_BASE=/your-repo-name/` at build time and update the matching
-`segmentCount` in `frontend/public/404.html`.
+`VITE_BASE=/your-repo-name/` at build time; the build automatically configures
+the matching SPA 404 fallback.
 
-Push `frontend/dist` to your repo's `gh-pages` branch (or wire up a GitHub
-Actions workflow that runs `npm run build` and publishes `frontend/dist`),
-then enable GitHub Pages for that branch in the repo settings.
+The deployment workflow builds the primary Worker site at `/` and a separate
+GitHub Pages fallback at `/scribble/`. Enable **Settings → Pages → Source →
+GitHub Actions** once; its public URL is `https://immcrab.github.io/scribble/`.
+Also add `immcrab.github.io` to the production Turnstile widget's allowed
+hostnames before using that fallback, so the existing human-verification gate
+continues to work there.
 
 Once live, open the deployed site, go to **Settings**, and paste your
 Worker's URL (and password, if you set one). Settings are stored in

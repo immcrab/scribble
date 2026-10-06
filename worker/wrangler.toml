@@ -36,7 +36,7 @@ custom_domain = true
 # domain. Set with: wrangler secret put ALLOWED_ORIGINS  (or as a plain var
 # below if you don't mind it being public — it's not sensitive).
 [vars]
-ALLOWED_ORIGINS = "http://localhost:5173,https://lofin.dev,https://www.lofin.dev"
+ALLOWED_ORIGINS = "http://localhost:5173,https://lofin.dev,https://www.lofin.dev,https://immcrab.github.io"
 # Hostnames returned by Turnstile Siteverify. For local development, override
 # this in .dev.vars with localhost and/or 127.0.0.1.
 TURNSTILE_HOSTNAMES = "lofin.dev,www.lofin.dev,ai.lofin.dev"

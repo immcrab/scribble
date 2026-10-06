@@ -1,5 +1,32 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+import { readFile, writeFile } from "node:fs/promises";
+import { resolve } from "node:path";
+
+/**
+ * GitHub Pages serves this repository below `/scribble/`, while the production
+ * Worker serves it at `/`. Vite copies public/404.html verbatim, so replace its
+ * small deployment placeholders after every build rather than leaving deep
+ * links broken on the Pages copy.
+ */
+function configureSpa404() {
+  return {
+    name: "lofin-spa-404",
+    async closeBundle() {
+      const base = process.env.VITE_BASE ?? "/";
+      const normalizedBase = base.endsWith("/") ? base : `${base}/`;
+      const segmentCount = normalizedBase.split("/").filter(Boolean).length;
+      const path = resolve(process.cwd(), "dist", "404.html");
+      const source = await readFile(path, "utf8");
+      await writeFile(
+        path,
+        source
+          .replaceAll("__LOFIN_BASE_PATH__", normalizedBase)
+          .replace("__LOFIN_404_SEGMENT_COUNT__", String(segmentCount)),
+      );
+    },
+  };
+}
 
 // Deployed at the lofin.dev custom-domain root, so base is "/". Override with
 // VITE_BASE at build time if you ever deploy under a GitHub Pages subpath instead
@@ -7,6 +34,7 @@ import react from "@vitejs/plugin-react";
 export default defineConfig({
   plugins: [
     react(),
+    configureSpa404(),
     // Vite warns for an unset %VITE_*% HTML replacement. This token has a
     // stable app-build default while preserving the docs deployment's opt-in.
     {
