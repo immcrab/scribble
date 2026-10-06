@@ -33,6 +33,7 @@ By default, chat history and preferences are stored in the visitor's browser. Si
 
 - Home: https://lofin.dev/
 - About: https://lofin.dev/about
+- Creator: https://lofin.dev/creator
 - Documentation: https://docs.lofin.dev/
 - Privacy Policy: https://lofin.dev/privacy
 - Terms of Service: https://lofin.dev/terms
