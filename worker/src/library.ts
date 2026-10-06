@@ -15,6 +15,7 @@ import { listStoredWebsites } from "./websites";
 const MAX_FORM_BYTES = 12 * 1024 * 1024;
 const MAX_THUMB_BYTES = 1024 * 1024;
 const MAX_ITEMS_PER_USER = 300;
+const ADMIN_EMAIL = "imcrabfr@gmail.com";
 
 const EXT_BY_TYPE: Record<string, string> = {
   "image/png": "png",
@@ -82,6 +83,11 @@ function decodeMeta(value: string | undefined): string {
 /** True for a /api/library or /api/library/{id} request the handler below should own. */
 export function isLibraryPath(pathname: string): boolean {
   return pathname === "/api/library" || pathname.startsWith("/api/library/") || pathname === "/api/storage" || pathname.startsWith("/api/storage/");
+}
+
+/** Admin-only inspection route; kept separate from normal user-owned routes. */
+export function isAdminLibraryPath(pathname: string): boolean {
+  return pathname === "/api/admin/library" || pathname.startsWith("/api/admin/library/");
 }
 
 function storedType(obj: R2Object): string {
@@ -235,5 +241,76 @@ export async function handleLibrary(request: Request, env: Env, url: URL, cors: 
     return json({ ok: true }, 200, cors);
   }
 
+  return json({ error: "Method not allowed." }, 405, cors);
+}
+
+/**
+ * Read-only support view of a user's private R2 library. Both the route and the
+ * object bytes validate a verified Firebase administrator token, preventing an
+ * ordinary signed-in user from swapping a uid into the URL.
+ */
+export async function handleAdminLibrary(request: Request, env: Env, url: URL, cors: HeadersInit, json: Json): Promise<Response> {
+  const bucket = env.ANNOUNCEMENT_ASSETS;
+  if (!bucket) return json({ error: "Image library storage is not configured." }, 503, cors);
+  if (!env.FIREBASE_PROJECT_ID) return json({ error: "Image library is not configured." }, 503, cors);
+  const token = request.headers.get("Authorization")?.replace(/^Bearer\s+/i, "");
+  if (!token) return json({ error: "Sign in as an admin to inspect user storage." }, 401, cors);
+  try {
+    const claims = await verifyFirebaseIdToken(token, env.FIREBASE_PROJECT_ID);
+    if (claims.email !== ADMIN_EMAIL || !claims.emailVerified) return json({ error: "Admin access required." }, 403, cors);
+  } catch {
+    return json({ error: "Your sign-in expired. Please sign in again." }, 401, cors);
+  }
+
+  const rest = url.pathname.slice("/api/admin/library".length).replace(/^\//, "");
+  const [uid, id, ...extra] = rest.split("/");
+  if (!uid || extra.length || !safeUid(uid) || (id !== undefined && !safeId(id))) return json({ error: "Invalid library path." }, 400, cors);
+  const prefix = `library/${uid}/`;
+
+  if (id === undefined && request.method === "GET") {
+    const listed = await bucket.list({ prefix, limit: 1000, include: ["customMetadata"] } as R2ListOptions);
+    const items: LibraryItem[] = [];
+    for (const obj of listed.objects) {
+      const name = obj.key.slice(prefix.length);
+      if (name.includes(".thumb.")) continue;
+      const dot = name.lastIndexOf(".");
+      const itemId = name.slice(0, dot);
+      if (!safeId(itemId)) continue;
+      const type = storedType(obj);
+      items.push({
+        id: itemId,
+        prompt: decodeMeta(obj.customMetadata?.prompt),
+        model: decodeMeta(obj.customMetadata?.model),
+        createdAt: Number(obj.customMetadata?.createdAt) || Number(itemId.split("-")[0]) || obj.uploaded.getTime(),
+        size: obj.size,
+        type,
+        name: decodeMeta(obj.customMetadata?.name),
+        category: storedCategory(obj, type),
+      });
+    }
+    items.sort((a, b) => b.createdAt - a.createdAt);
+    return json({ items, cursor: listed.truncated ? listed.cursor : null }, 200, cors);
+  }
+
+  if (id !== undefined && request.method === "GET") {
+    const wantThumb = url.searchParams.get("thumb") === "1";
+    let object: R2ObjectBody | null = wantThumb ? await bucket.get(`${prefix}${id}.thumb.webp`) : null;
+    if (!object) {
+      for (const ext of Object.values(EXT_BY_TYPE)) {
+        object = await bucket.get(`${prefix}${id}.${ext}`);
+        if (object) break;
+      }
+    }
+    if (!object) return json({ error: "File not found." }, 404, cors);
+    return new Response(object.body, {
+      headers: {
+        ...cors,
+        "Content-Type": object.httpMetadata?.contentType ?? "application/octet-stream",
+        "Cache-Control": "private, max-age=300",
+        "X-Content-Type-Options": "nosniff",
+        ...(!object.httpMetadata?.contentType?.startsWith("image/") ? { "Content-Disposition": "attachment" } : {}),
+      },
+    });
+  }
   return json({ error: "Method not allowed." }, 405, cors);
 }

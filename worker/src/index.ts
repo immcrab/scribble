@@ -25,7 +25,7 @@ import { extractMemory, shouldRecallMemory } from "./adapters/memory";
 import { ndjsonLine } from "./adapters/base";
 import { verifyFirebaseIdToken } from "./firebaseVerifyToken";
 import { verifyTurnstileToken } from "./turnstile";
-import { handleLibrary, isLibraryPath } from "./library";
+import { handleAdminLibrary, handleLibrary, isAdminLibraryPath, isLibraryPath } from "./library";
 import { deleteExpiredWebsites, handleWebsiteApi, serveWebsite } from "./websites";
 import { FREE_XKIRO_MODEL_IDS } from "./freeXkiroModels";
 import { FREE_PROVIDER_MODEL_IDS } from "./freeProviderModels";
@@ -205,6 +205,12 @@ export default {
       const object = await env.ANNOUNCEMENT_ASSETS.get(key);
       if (!object) return json({ error: "Image not found." }, 404, cors);
       return new Response(object.body, { headers: { ...cors, "Content-Type": object.httpMetadata?.contentType ?? "application/octet-stream", "Cache-Control": object.httpMetadata?.cacheControl ?? "public, max-age=31536000, immutable" } });
+    }
+
+    // Admin-only inspection of per-user library objects. This comes before the
+    // normal library route because the latter only permits the caller's own uid.
+    if (isAdminLibraryPath(url.pathname)) {
+      return handleAdminLibrary(request, env, url, cors, json);
     }
 
     // Per-user saved images (R2, private, Firebase-token gated) — see library.ts.

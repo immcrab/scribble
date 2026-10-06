@@ -113,6 +113,14 @@ export async function listStorage(cursor?: string | null): Promise<{ items: Libr
   return (await res.json()) as { items: LibraryItem[]; cursor: string | null };
 }
 
+/** Admin-only: list one account's private cloud library. The Worker verifies the
+ * caller's Firebase token before allowing this; this is not a client-side-only gate. */
+export async function listAdminStorage(uid: string): Promise<{ items: LibraryItem[]; cursor: string | null }> {
+  const res = await fetch(`${workerBase()}/api/admin/library/${encodeURIComponent(uid)}`, { headers: await authHeader() });
+  if (!res.ok) throw await errorFrom(res, "Could not load this user's storage");
+  return (await res.json()) as { items: LibraryItem[]; cursor: string | null };
+}
+
 /** Backfills attachments already saved inside chats. Stable attachment ids make this
  * idempotent, so it is safe to run on each sign-in and after offline periods. */
 export async function backfillChatAttachments(chats: Chat[]): Promise<void> {
@@ -169,6 +177,16 @@ export function libraryImageUrl(id: string, thumb: boolean): Promise<string> {
     blobUrls.set(key, cached);
   }
   return cached;
+}
+
+/** Admin-only object URL for an item returned by listAdminStorage. */
+export async function adminLibraryUrl(uid: string, id: string, thumb: boolean): Promise<string> {
+  const res = await fetch(
+    `${workerBase()}/api/admin/library/${encodeURIComponent(uid)}/${encodeURIComponent(id)}${thumb ? "?thumb=1" : ""}`,
+    { headers: await authHeader() },
+  );
+  if (!res.ok) throw await errorFrom(res, "Could not load this user's file");
+  return URL.createObjectURL(await res.blob());
 }
 
 export async function deleteLibraryItem(id: string): Promise<void> {

@@ -1,9 +1,18 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    function isAdmin() {
+      return request.auth != null
+        && request.auth.token.email == 'imcrabfr@gmail.com'
+        && request.auth.token.email_verified == true;
+    }
+
     // Signed-in users may only read or update their own saved chat blob.
     match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      // The product owner may inspect saved chats from /admin. This is deliberately
+      // read-only: an admin cannot silently alter someone else's private data.
+      allow read: if (request.auth != null && request.auth.uid == userId) || isAdmin();
+      allow write: if request.auth != null && request.auth.uid == userId;
     }
 
     // Share links are intentionally unlisted rather than access-controlled:

@@ -84,6 +84,11 @@ For the admin writes to land, add a rule for that node in the Firebase console
 Until that rule exists the `/admin` page still works but shows a
 "permission denied" banner and nothing publishes.
 
+The **Saved data** tab also reads private saved chats and uploads as the verified
+admin. Deploy the included `firestore.rules` change before using it, then deploy
+the Worker so its `/api/admin/library/*` route is available. Both paths enforce
+the verified admin email server-side; the tab itself is read-only.
+
 ## 4. Configure Cloudflare Worker secrets
 
 Provider API keys and the optional access password are **secrets**, never

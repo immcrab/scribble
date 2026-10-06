@@ -17,6 +17,9 @@ import {
   Globe,
   ArrowUp,
   ArrowDown,
+  MessageSquare,
+  Images,
+  FileText,
 } from "lucide-react";
 import { useAuthStore } from "../state/authStore";
 import { useChatStore } from "../state/chatStore";
@@ -43,6 +46,8 @@ import { modelSlug } from "../lib/modelSlug";
 import { ModelFavicon, ProviderFavicon } from "../components/ProviderIcon";
 import { ToggleSwitch } from "../components/ToggleSwitch";
 import { LogoMark } from "../components/Logo";
+import { fetchAdminSavedChats, type AdminSavedChats } from "../lib/adminData";
+import { adminLibraryUrl, listAdminStorage, type LibraryItem } from "../lib/libraryClient";
 import type { AdminCatalog, Announcement, Connection, ModelDef, Provider, UsageConfig, UsageRecord, WatermarkConfig } from "../types";
 
 /** Providers the admin can publish an official model against — the ones the Worker
@@ -498,6 +503,13 @@ function LimitsTab({
             Discard changes
           </button>
         )}
+        <button
+          onClick={() => setDraft({ ...DEFAULT_USAGE, postLimitKeys: [], modelCredits: {}, blockedUids: [], bonus: {} })}
+          disabled={busy}
+          className="rounded-lg border border-base-600/60 px-3 py-1.5 text-xs text-slate-400 hover:text-white disabled:opacity-40"
+        >
+          Reset limits to default
+        </button>
         {dirty && <span className="text-xs text-amber-400">Unpublished changes</span>}
       </div>
     </>
@@ -529,6 +541,7 @@ function UsersTab({
   const [records, setRecords] = useState<Record<string, UsageRecord> | null>(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
+  const [bulkBusy, setBulkBusy] = useState(false);
 
   const slugToName = useMemo(() => {
     const map = new Map<string, string>();
@@ -594,19 +607,66 @@ function UsersTab({
     }
   };
 
+  const grantAll = () => {
+    if (!records || Object.keys(records).length === 0) return;
+    const raw = window.prompt("Credits to gift every recorded user for today. Enter 0 to clear every gift.");
+    if (raw === null) return;
+    const credits = Math.floor(Number(raw));
+    if (!Number.isFinite(credits) || credits < 0) return;
+    const ids = Object.keys(records);
+    if (!window.confirm(`${credits.toLocaleString()} bonus credits will be applied to ${ids.length} recorded users for ${today}. Continue?`)) return;
+    const bonus = { ...usage.bonus };
+    for (const uid of ids) {
+      if (credits === 0) delete bonus[uid];
+      else bonus[uid] = { day: today, credits };
+    }
+    run({ usage: { ...usage, bonus } });
+  };
+
+  const resetAll = async () => {
+    if (!records || Object.keys(records).length === 0) return;
+    const entries = Object.entries(records);
+    if (!window.confirm(`Reset today's usage for all ${entries.length} recorded users? This cannot be undone for ${today}.`)) return;
+    setBulkBusy(true);
+    setErr(null);
+    const results = await Promise.allSettled(entries.map(([uid, rec]) => resetUserUsage(uid, rec.email ?? null)));
+    const failed = results.filter((result) => result.status === "rejected").length;
+    if (failed) setErr(`${failed} user reset${failed === 1 ? "" : "s"} failed. Check the RTDB admin write rule and try again.`);
+    load();
+    setBulkBusy(false);
+  };
+
   return (
     <>
-      <div className="mb-4 flex items-center justify-between">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <p className="text-xs text-slate-400">
           Everyone who's used a gated model while signed in. Credits shown are for the current UTC day.
         </p>
-        <button
-          onClick={load}
-          disabled={loading}
-          className="flex items-center gap-1.5 rounded-lg border border-base-600/60 px-2.5 py-1.5 text-xs text-slate-300 hover:text-white disabled:opacity-40"
-        >
-          <RefreshCw size={12} className={loading ? "animate-spin" : ""} /> Refresh
-        </button>
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={grantAll}
+            disabled={loading || busy || bulkBusy || !records || Object.keys(records).length === 0}
+            title="Gift every recorded user bonus credits for today"
+            className="flex items-center gap-1.5 rounded-lg border border-base-600/60 px-2.5 py-1.5 text-xs text-slate-300 hover:text-accent-300 disabled:opacity-40"
+          >
+            <Gift size={12} /> Gift all
+          </button>
+          <button
+            onClick={() => void resetAll()}
+            disabled={loading || busy || bulkBusy || !records || Object.keys(records).length === 0}
+            title="Reset today's usage for every recorded user"
+            className="flex items-center gap-1.5 rounded-lg border border-base-600/60 px-2.5 py-1.5 text-xs text-slate-300 hover:text-white disabled:opacity-40"
+          >
+            <RotateCcw size={12} className={bulkBusy ? "animate-spin" : ""} /> Reset all
+          </button>
+          <button
+            onClick={load}
+            disabled={loading || bulkBusy}
+            className="flex items-center gap-1.5 rounded-lg border border-base-600/60 px-2.5 py-1.5 text-xs text-slate-300 hover:text-white disabled:opacity-40"
+          >
+            <RefreshCw size={12} className={loading ? "animate-spin" : ""} /> Refresh
+          </button>
+        </div>
       </div>
 
       {err && (
@@ -691,6 +751,111 @@ function UsersTab({
           );
         })}
       </div>
+    </>
+  );
+}
+
+/* ─────────────────────────── Saved data tab ─────────────────────────── */
+
+function adminDate(value: number | undefined): string {
+  return value ? new Date(value).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }) : "Unknown date";
+}
+
+function AdminLibraryImage({ uid, item }: { uid: string; item: LibraryItem }) {
+  const [src, setSrc] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    setSrc(null);
+    void adminLibraryUrl(uid, item.id, true).then((url) => {
+      if (cancelled) URL.revokeObjectURL(url);
+      else setSrc(url);
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [uid, item.id]);
+  return src ? <img src={src} alt={item.name || item.prompt || "Uploaded image"} className="h-full w-full object-cover" /> : <div className="h-full w-full animate-pulse bg-base-800" />;
+}
+
+function DataTab() {
+  const [saved, setSaved] = useState<AdminSavedChats[]>([]);
+  const [usageRecords, setUsageRecords] = useState<Record<string, UsageRecord>>({});
+  const [selectedUid, setSelectedUid] = useState("");
+  const [items, setItems] = useState<LibraryItem[] | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [loadingItems, setLoadingItems] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = () => {
+    setLoading(true);
+    setError(null);
+    Promise.all([fetchAdminSavedChats(), fetchAllUsage()])
+      .then(([chats, usage]) => {
+        setSaved(chats);
+        setUsageRecords(usage ?? {});
+      })
+      .catch((reason: unknown) => setError(reason instanceof Error ? reason.message : "Could not load private user data."))
+      .finally(() => setLoading(false));
+  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(load, []);
+
+  const users = useMemo(() => {
+    const ids = new Set([...saved.map((entry) => entry.uid), ...Object.keys(usageRecords)]);
+    return [...ids].sort((a, b) => (usageRecords[a]?.email ?? a).localeCompare(usageRecords[b]?.email ?? b));
+  }, [saved, usageRecords]);
+  const chats = useMemo(() => saved.find((entry) => entry.uid === selectedUid)?.chats ?? [], [saved, selectedUid]);
+
+  useEffect(() => {
+    if (!selectedUid || !users.includes(selectedUid)) setSelectedUid(users[0] ?? "");
+  }, [selectedUid, users]);
+
+  useEffect(() => {
+    if (!selectedUid) { setItems(null); return; }
+    let cancelled = false;
+    setLoadingItems(true);
+    setItems(null);
+    void listAdminStorage(selectedUid)
+      .then((result) => { if (!cancelled) setItems(result.items); })
+      .catch((reason: unknown) => { if (!cancelled) setError(reason instanceof Error ? reason.message : "Could not load this user's storage."); })
+      .finally(() => { if (!cancelled) setLoadingItems(false); });
+    return () => { cancelled = true; };
+  }, [selectedUid]);
+
+  const images = (items ?? []).filter((item) => item.type.startsWith("image/"));
+  const files = (items ?? []).filter((item) => !item.type.startsWith("image/"));
+
+  return (
+    <>
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+        <p className="max-w-xl text-xs text-slate-400">
+          Read-only support view of cloud-synced chats and uploads. Private data is fetched only after the admin account is verified by Firebase and the Worker.
+        </p>
+        <button onClick={load} disabled={loading} className="flex items-center gap-1.5 rounded-lg border border-base-600/60 px-2.5 py-1.5 text-xs text-slate-300 hover:text-white disabled:opacity-40">
+          <RefreshCw size={12} className={loading ? "animate-spin" : ""} /> Refresh
+        </button>
+      </div>
+      {error && <p className="mb-4 rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-300">{error}</p>}
+      {loading ? <p className="text-sm text-slate-500">Loading saved data…</p> : users.length === 0 ? <p className="rounded-lg border border-base-700/60 bg-base-900/40 px-3 py-6 text-center text-sm text-slate-500">No cloud-synced user data yet.</p> : <>
+        <label className="mb-5 block">
+          <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">User</span>
+          <select value={selectedUid} onChange={(event) => setSelectedUid(event.target.value)} className={inputClass}>
+            {users.map((uid) => <option key={uid} value={uid}>{usageRecords[uid]?.email ?? uid} · {uid}</option>)}
+          </select>
+        </label>
+
+        <section className="mb-7">
+          <div className="mb-2 flex items-center gap-2"><MessageSquare size={15} className="text-accent-300" /><h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Saved chats ({chats.length})</h2></div>
+          <div className="space-y-1.5">
+            {chats.slice().sort((a, b) => b.updatedAt - a.updatedAt).map((chat) => <details key={chat.id} className="rounded-lg border border-base-600/60 bg-base-900/60 px-3 py-2"><summary className="flex cursor-pointer list-none items-center justify-between gap-3"><span className="min-w-0 truncate text-sm text-slate-200">{chat.title || "Untitled chat"}</span><span className="shrink-0 text-xs text-slate-500">{adminDate(chat.updatedAt)}</span></summary><p className="mt-1 text-xs text-slate-500">{chat.mode} · {chat.messages?.length ?? 0} messages</p><div className="mt-3 max-h-96 space-y-2 overflow-y-auto border-t border-base-700/60 pt-3">{(chat.messages ?? []).map((message) => <div key={message.id} className="rounded bg-base-800/70 px-2.5 py-2"><p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-accent-300">{message.role}</p><p className="whitespace-pre-wrap break-words text-xs text-slate-300">{message.content || "(No text)"}</p>{message.attachments?.length ? <p className="mt-1 text-[10px] text-slate-500">{message.attachments.map((attachment) => attachment.name).join(", ")}</p> : null}</div>)}</div></details>)}
+            {!chats.length && <p className="rounded-lg border border-base-700/60 bg-base-900/40 px-3 py-5 text-sm text-slate-500">No saved chats for this user.</p>}
+          </div>
+        </section>
+
+        <section>
+          <div className="mb-2 flex items-center gap-2"><Images size={15} className="text-accent-300" /><h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Uploaded &amp; generated images ({images.length})</h2></div>
+          {loadingItems ? <p className="text-sm text-slate-500">Loading uploads…</p> : images.length ? <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">{images.map((item) => <div key={item.id} className="overflow-hidden rounded-lg border border-base-600/60 bg-base-900/60"><div className="aspect-square"><AdminLibraryImage uid={selectedUid} item={item} /></div><p className="truncate px-2 py-1.5 text-xs text-slate-400" title={item.prompt || item.name}>{item.prompt || item.name || item.category || "Image"}</p></div>)}</div> : <p className="rounded-lg border border-base-700/60 bg-base-900/40 px-3 py-5 text-sm text-slate-500">No images saved for this user.</p>}
+          {!!files.length && <div className="mt-4"><div className="mb-2 flex items-center gap-2"><FileText size={15} className="text-accent-300" /><h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Other uploads ({files.length})</h2></div><div className="space-y-1.5">{files.map((item) => <div key={item.id} className="flex items-center justify-between gap-3 rounded-lg border border-base-600/60 bg-base-900/60 px-3 py-2"><span className="min-w-0 truncate text-sm text-slate-200">{item.name || item.prompt || "Saved file"}</span><span className="shrink-0 text-xs text-slate-500">{item.category ?? item.type}</span></div>)}</div></div>}
+        </section>
+      </>}
     </>
   );
 }
@@ -1118,6 +1283,7 @@ function ConnectionsTab({ catalog, busy, run }: { catalog: AdminCatalog; busy: b
 const TABS = [
   { id: "models", label: "Models" },
   { id: "users", label: "Users" },
+  { id: "data", label: "Saved data" },
   { id: "limits", label: "Limits" },
   { id: "watermark", label: "Watermark" },
   { id: "announcements", label: "Announcements" },
@@ -1202,6 +1368,7 @@ export function AdminPage({ onExit }: { onExit: () => void }) {
         {tab === "models" && <ModelsTab catalog={catalog} busy={busy} run={run} />}
         {tab === "limits" && <LimitsTab catalog={catalog} busy={busy} run={run} />}
         {tab === "users" && <UsersTab catalog={catalog} busy={busy} run={run} />}
+        {tab === "data" && <DataTab />}
         {tab === "watermark" && <WatermarkTab catalog={catalog} busy={busy} run={run} />}
         {tab === "announcements" && <AnnouncementsTab catalog={catalog} busy={busy} run={run} />}
         {tab === "connections" && <ConnectionsTab catalog={catalog} busy={busy} run={run} />}
