@@ -400,6 +400,12 @@ test.describe("Agent capability prompt", () => {
     expect(prompt).toContain("Google Slides, which is not connected");
     expect(prompt).toContain("Settings → Apps & MCP");
   });
+
+  test("treats Google Slides as a distinct connected app", () => {
+    const prompt = buildCapabilityPrompt(["googleslides"], "can you make a Google slide about cars?");
+    expect(prompt).toContain("Connected accounts: Google Slides");
+    expect(prompt).toContain("Google Drive, Google Docs, and Google Slides are separate connections");
+  });
   test("explains how to connect when nothing is connected yet", () => {
     expect(buildCapabilityPrompt([], "hi")).toContain("no connected accounts yet");
   });

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { FileSearch, Terminal, Lightbulb, Globe2 } from "lucide-react";
+import { FileSearch, Terminal, Lightbulb, Globe2, PlugZap } from "lucide-react";
 import { useChatStore } from "../state/chatStore";
 import { useAuthStore } from "../state/authStore";
 import { getDefaultModel, findModel } from "../config/models";
@@ -20,7 +20,44 @@ import { CodeRunner } from "../components/CodeRunner";
 import type { Attachment, ChatMessage as ChatMessageType } from "../types";
 import type { WireMessage } from "../providers";
 import type { InitialPrompt } from "../App";
+import { fetchComposioOverview, type ComposioOverview } from "../lib/mcpClient";
+import { settingsPath } from "../lib/router";
 
+/** Reads the Worker-owned connection list once per Agent view. This is the same
+ * source used to filter runnable tools, so the status is never guessed from a model reply. */
+function ConnectedAppsStatus() {
+  const user = useAuthStore((state) => state.user);
+  const [overview, setOverview] = useState<ComposioOverview | null>(null);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    if (!user) { setOverview(null); setFailed(false); return () => { active = false; }; }
+    void fetchComposioOverview()
+      .then((next) => { if (active) { setOverview(next); setFailed(false); } })
+      .catch(() => { if (active) setFailed(true); });
+    return () => { active = false; };
+  }, [user?.uid]);
+
+  const connected = overview?.connections.filter((connection) => connection.status === "connected") ?? [];
+  const names = connected.map((connection) => overview?.toolkits.find((toolkit) => toolkit.slug === connection.toolkit)?.name ?? connection.toolkit);
+  const label = !user
+    ? "Sign in to use apps"
+    : failed || (overview && !overview.configured)
+      ? "Apps unavailable"
+      : !overview
+        ? "Checking apps…"
+        : names.length
+          ? `Apps: ${names.join(", ")}`
+          : "No apps connected";
+
+  return (
+    <a href={settingsPath("mcp")} className="hidden max-w-[18rem] items-center gap-1.5 rounded-lg border border-base-700/60 px-2 py-1 text-[11px] text-slate-400 transition-colors hover:border-accent-500/40 hover:bg-accent-500/5 hover:text-accent-200 md:flex" title="Open Apps & MCP settings">
+      <PlugZap size={12} className={names.length ? "text-emerald-400" : "text-slate-500"} />
+      <span className="truncate">{label}</span>
+    </a>
+  );
+}
 /**
  * Agent Mode runs a normal streaming chat turn against the selected model,
  * plus web search: when Settings → General → "Web search" is on (the
@@ -204,6 +241,7 @@ export function AgentMode({
         <span className="text-xs font-medium text-slate-500">Model</span>
         <ModelSelector value={model} onChange={(m) => setChatModels(chat.id, { modelId: m.modelId })} />
         <EffortSelector value={effort} onChange={(e) => patchChat(chat.id, { effort: e })} />
+        <ConnectedAppsStatus />
         <div className="ml-auto flex items-center gap-1.5">
           <button
             type="button"

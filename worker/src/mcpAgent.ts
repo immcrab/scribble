@@ -161,6 +161,7 @@ export function buildCapabilityPrompt(connectedToolkits: readonly string[], quer
     connected.length
       ? `Connected accounts: ${connected.join(", ")}. You CAN do things in these (send email, create GitHub repositories or issues, post messages, create and edit documents or Slides, and similar). Lofin finds the right tool and prepares the action. Actions that change something show the user an Approve button first, and nothing runs until the user approves.`
       : "The user has no connected accounts yet. Lofin can connect Gmail, GitHub, Slack, Notion, Google Drive, Google Docs, Google Slides and many more: they open Settings → Apps & MCP, pick the service, and sign in through Composio.",
+    "Answer questions about availability from the Connected accounts list: say Lofin can use an app only when it is listed, and say it cannot use a requested app when it is not listed. Google Drive, Google Docs, and Google Slides are separate connections; never infer one from another.",
     "Never say you cannot access their accounts or take actions when a connected account fits the request.",
   ];
   if (connected.length && !prepared) {

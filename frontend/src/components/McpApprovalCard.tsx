@@ -16,6 +16,7 @@ function updateToolCall(messageId: string, id: string, patch: Partial<ToolCallRe
  * without trusting any result text as UI markup or exposing provider credentials. */
 function artifactLinks(value: unknown, toolkit: string): NonNullable<ToolCallRecord["links"]> {
   const urls = new Set<string>();
+  const presentationIds = new Set<string>();
   const visit = (candidate: unknown, depth = 0) => {
     if (depth > 5 || urls.size >= 8) return;
     if (typeof candidate === "string") {
@@ -29,13 +30,24 @@ function artifactLinks(value: unknown, toolkit: string): NonNullable<ToolCallRec
       return;
     }
     if (Array.isArray(candidate)) candidate.forEach((item) => visit(item, depth + 1));
-    else if (candidate && typeof candidate === "object") Object.values(candidate).forEach((item) => visit(item, depth + 1));
+    else if (candidate && typeof candidate === "object") {
+      for (const [key, item] of Object.entries(candidate)) {
+        // Google Slides creation responses sometimes return only a presentationId.
+        // Turn that opaque identifier into the normal first-party URL locally; no
+        // credentials or provider data are exposed to do this.
+        if (toolkit === "googleslides" && /presentation_?id|presentationid/i.test(key) && typeof item === "string" && /^[A-Za-z0-9_-]{16,160}$/.test(item)) {
+          presentationIds.add(item);
+        }
+        visit(item, depth + 1);
+      }
+    }
   };
   visit(value);
-  const primary = toolkit === "googleslides" ? "Open presentation" : toolkit === "googledocs" ? "Open document" : "Open result";
-  return [...urls].map((url, index) => ({ url, label: index === 0 ? primary : `${primary} ${index + 1}` }));
+  for (const id of presentationIds) urls.add(`https://docs.google.com/presentation/d/${id}/edit`);
+  const kind = toolkit === "googleslides" ? "presentation" : toolkit === "googledocs" ? "document" : undefined;
+  const primary = kind === "presentation" ? "Open presentation" : kind === "document" ? "Open document" : "Open result";
+  return [...urls].map((url, index) => ({ url, label: index === 0 ? primary : `${primary} ${index + 1}`, kind }));
 }
-
 /** Shown when Agent Mode prepared an action that changes something outside Lofin. */
 export function McpApprovalCard({ toolCall, messageId }: { toolCall: ToolCallRecord; messageId: string }) {
   const [busy, setBusy] = useState(false);

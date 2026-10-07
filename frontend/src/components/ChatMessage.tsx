@@ -28,6 +28,7 @@ import {
 import type { Attachment, ChatMessage as ChatMessageType, ToolCallRecord } from "../types";
 import { Markdown } from "../lib/markdown";
 import { McpApprovalCard } from "./McpApprovalCard";
+import { GoogleSlidesPreview } from "./GoogleSlidesPreview";
 import { ModelFavicon, ProviderFavicon } from "./ProviderIcon";
 import { useLiveArtifact } from "../lib/useLiveArtifact";
 import { modelsByProvider, PROVIDER_LABELS, isModelGated } from "../config/models";
@@ -165,19 +166,23 @@ function SearchResultList({ toolCalls }: { toolCalls: ToolCallRecord[] }) {
 function ConnectedAppArtifactList({ toolCalls }: { toolCalls: ToolCallRecord[] }) {
   const artifacts = toolCalls.flatMap((tool) => (tool.links ?? []).map((link) => ({ ...link, tool: tool.name })));
   if (!artifacts.length) return null;
+  const presentations = artifacts.filter((artifact) => artifact.kind === "presentation");
   return (
-    <div className="mb-2 overflow-hidden rounded-xl border border-accent-500/30 bg-accent-500/5">
-      <div className="border-b border-accent-500/20 px-3 py-2 text-xs font-medium text-accent-200">Created with a connected app</div>
-      <div className="space-y-1 p-1.5">
-        {artifacts.map((artifact) => (
-          <a key={`${artifact.tool}:${artifact.url}`} href={artifact.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 rounded-lg px-2.5 py-2 text-xs text-slate-200 hover:bg-base-700/50">
-            <ExternalLink size={13} className="shrink-0 text-accent-300" />
-            <span className="min-w-0 flex-1 truncate">{artifact.label}</span>
-            <span className="shrink-0 text-slate-500">{artifact.tool}</span>
-          </a>
-        ))}
+    <>
+      {presentations.map((artifact) => <GoogleSlidesPreview key={`preview:${artifact.tool}:${artifact.url}`} url={artifact.url} label={artifact.label} />)}
+      <div className="mb-2 overflow-hidden rounded-xl border border-accent-500/30 bg-accent-500/5">
+        <div className="border-b border-accent-500/20 px-3 py-2 text-xs font-medium text-accent-200">Created with a connected app</div>
+        <div className="space-y-1 p-1.5">
+          {artifacts.map((artifact) => (
+            <a key={`${artifact.tool}:${artifact.url}`} href={artifact.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 rounded-lg px-2.5 py-2 text-xs text-slate-200 hover:bg-base-700/50">
+              <ExternalLink size={13} className="shrink-0 text-accent-300" />
+              <span className="min-w-0 flex-1 truncate">{artifact.label}</span>
+              <span className="shrink-0 text-slate-500">{artifact.tool}</span>
+            </a>
+          ))}
+        </div>
       </div>
-    </div>
+    </>
   );
 }
 function ToolActivity({ toolCalls, messageId }: { toolCalls: ToolCallRecord[]; messageId: string }) {

@@ -181,7 +181,12 @@ export interface ToolCallRecord {
   input?: Record<string, unknown>;
   output?: string;
   /** Safe, provider-returned artifact links discovered after an app action finishes. */
-  links?: { url: string; label: string }[];
+  links?: {
+    url: string;
+    label: string;
+    /** Lets the chat offer an embedded preview for safe, provider-created artifacts. */
+    kind?: "presentation" | "document";
+  }[];
   /** Agent tool call waiting for the user's approval (Composio). The token is a short-lived
    * server-signed approval bound to exactly these arguments; it is not a credential. */
   mcp?: { toolId: string; toolkit: string; confirmationToken: string; arguments: Record<string, unknown> };
