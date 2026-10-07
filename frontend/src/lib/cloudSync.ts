@@ -12,7 +12,7 @@ import type { Chat, MemoryEntry, Project } from "../types";
  * chat that only exists on one device always survives — logging in on a
  * second device unions histories instead of one clobbering the other.
  * Settings merge the same way as one whole-object comparison, except
- * `password`, `customProviders`, and `customModels` always stay local
+ * `password`, `customProviders`, `customModels`, and `mcpServers` always stay local
  * (never round-tripped to the cloud) — the latter two carry the user's own
  * third-party API keys, which is exactly the kind of secret `password` was
  * already being excluded for.
@@ -38,7 +38,7 @@ export function mergeSettings(local: LofinSettings, remote: LofinSettings | null
     ...(local.seenAnnouncementIds ?? []),
     ...(remote.seenAnnouncementIds ?? []),
   ])].slice(-100);
-  // Credentials and custom-provider configuration never leave this browser.
+  // Credentials, custom-provider configuration, and private MCP endpoint lists never leave this browser.
   // Normalizing here preserves settings added by a newer app version when the
   // cloud document was saved by an older deployment.
   return normalizeSettings({
@@ -46,13 +46,14 @@ export function mergeSettings(local: LofinSettings, remote: LofinSettings | null
     password: local.password,
     customProviders: local.customProviders,
     customModels: local.customModels,
+    mcpServers: local.mcpServers,
     seenAnnouncementIds,
   });
 }
 
 /** Remove device-only secrets before settings are persisted to Firestore. */
 function settingsJsonForCloud(settings: LofinSettings): string {
-  const { password: _password, customProviders: _customProviders, customModels: _customModels, ...safeSettings } = settings;
+  const { password: _password, customProviders: _customProviders, customModels: _customModels, mcpServers: _mcpServers, ...safeSettings } = settings;
   return JSON.stringify(safeSettings);
 }
 

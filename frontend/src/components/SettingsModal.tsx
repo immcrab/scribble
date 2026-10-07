@@ -29,10 +29,12 @@ import {
   HardDrive,
   ShieldCheck,
   Globe2,
+  PlugZap,
 } from "lucide-react";
 import { useChatStore } from "../state/chatStore";
 import { useAuthStore } from "../state/authStore";
 import { checkWorkerHealth } from "../lib/workerClient";
+import { inspectMcpServer, type McpInspection } from "../lib/mcpClient";
 import { getAllModels, getDefaultModel, isModelGated } from "../config/models";
 import type { Theme } from "../lib/theme";
 import { FONT_OPTIONS, THEME_PALETTE_OPTIONS, REPLY_LANGUAGE_OPTIONS } from "../lib/appearance";
@@ -46,7 +48,7 @@ import { PuterNoticeModal } from "./PuterNoticeModal";
 import { isPuterSignedIn } from "../lib/puterClient";
 import { requestDesktopNotificationPermission } from "../lib/desktopNotifications";
 import type { ModelDef } from "../types";
-import type { LofinSettings } from "../lib/storage";
+import type { LofinSettings, McpServerConfig } from "../lib/storage";
 import { clearAllLocalData } from "../lib/storage";
 import type { Attachment } from "../types";
 import { libraryImageUrl, listStorage, type LibraryItem } from "../lib/libraryClient";
@@ -55,7 +57,7 @@ function SectionLabel({ children }: { children: string }) {
   return <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">{children}</h3>;
 }
 
-export type SettingsTab = "general" | "appearance" | "notifications" | "personalization" | "privacy" | "account" | "models" | "memory" | "storage" | "advanced";
+export type SettingsTab = "general" | "appearance" | "notifications" | "personalization" | "privacy" | "account" | "models" | "mcp" | "memory" | "storage" | "advanced";
 type Tab = SettingsTab;
 
 const TABS: { id: Tab; label: string; icon: typeof Sliders; group: "Personal" | "Workspace"; keywords: string }[] = [
@@ -67,6 +69,7 @@ const TABS: { id: Tab; label: string; icon: typeof Sliders; group: "Personal" | 
   { id: "memory", label: "Memory", icon: Brain, group: "Personal", keywords: "remember stored memories" },
   { id: "account", label: "Account", icon: UserCircle2, group: "Workspace", keywords: "profile sign in data" },
   { id: "models", label: "Models", icon: Blocks, group: "Workspace", keywords: "providers custom models endpoints" },
+  { id: "mcp", label: "MCP Servers", icon: PlugZap, group: "Workspace", keywords: "mcp composio tools integrations remote servers" },
   { id: "storage", label: "Storage", icon: HardDrive, group: "Workspace", keywords: "space usage files images chats attachments local data" },
   { id: "advanced", label: "Advanced", icon: Server, group: "Workspace", keywords: "worker connection password request spacing" },
 ];
@@ -528,6 +531,78 @@ function StorageSection() {
   );
 }
 
+function McpServersSection() {
+  const { settings, updateSettings } = useChatStore();
+  const [name, setName] = useState("");
+  const [url, setUrl] = useState("");
+  const [results, setResults] = useState<Record<string, McpInspection | { error: string } | { checking: true }>>({});
+
+  const addServer = (kind: McpServerConfig["kind"] = "custom") => {
+    const candidateUrl = kind === "composio" ? "https://connect.composio.dev/mcp" : url.trim();
+    const candidateName = kind === "composio" ? "Composio" : name.trim();
+    try {
+      const parsed = new URL(candidateUrl);
+      if (parsed.protocol !== "https:" || !candidateName) throw new Error();
+    } catch {
+      setResults((current) => ({ ...current, draft: { error: "Enter a name and a public HTTPS MCP URL." } }));
+      return;
+    }
+    if (settings.mcpServers.some((server) => server.url === candidateUrl)) {
+      setResults((current) => ({ ...current, draft: { error: "That MCP server is already connected." } }));
+      return;
+    }
+    updateSettings({ mcpServers: [...settings.mcpServers, { id: crypto.randomUUID(), name: candidateName, url: candidateUrl, enabled: true, kind }] });
+    setName("");
+    setUrl("");
+    setResults((current) => {
+      const { draft: _draft, ...rest } = current;
+      return rest;
+    });
+  };
+
+  const inspect = async (server: McpServerConfig) => {
+    setResults((current) => ({ ...current, [server.id]: { checking: true } }));
+    try {
+      const result = await inspectMcpServer(settings.workerUrl, settings.password, server);
+      setResults((current) => ({ ...current, [server.id]: result }));
+    } catch (err) {
+      setResults((current) => ({ ...current, [server.id]: { error: err instanceof Error ? err.message : "Connection test failed." } }));
+    }
+  };
+
+  const updateServer = (id: string, patch: Partial<McpServerConfig>) => updateSettings({ mcpServers: settings.mcpServers.map((server) => server.id === id ? { ...server, ...patch } : server) });
+  const removeServer = (id: string) => updateSettings({ mcpServers: settings.mcpServers.filter((server) => server.id !== id) });
+  const draftError = results.draft && "error" in results.draft ? results.draft.error : null;
+
+  return (
+    <div className="mx-auto max-w-2xl space-y-6">
+      <div><SectionLabel>Remote MCP servers</SectionLabel><p className="text-sm leading-6 text-slate-400">Add public Streamable HTTP MCP endpoints for Agent tools. Server URLs stay in this browser; the Worker probes them with a restricted handshake and never stores browser-supplied credentials.</p></div>
+      <div className="rounded-2xl border border-base-600/70 bg-base-900/35 p-4">
+        <div className="mb-3 flex items-start justify-between gap-3"><div><h4 className="text-sm font-semibold text-white">Composio</h4><p className="mt-1 text-xs leading-5 text-slate-500">Adds Composio's remote MCP endpoint. Its OAuth consent flow remains with Composio; no token is saved in Lofin.</p></div><button onClick={() => addServer("composio")} disabled={settings.mcpServers.some((server) => server.kind === "composio")} className="shrink-0 rounded-lg border border-base-600/60 px-3 py-1.5 text-xs font-medium text-slate-200 hover:bg-base-700/60 disabled:cursor-not-allowed disabled:opacity-50">Add Composio</button></div>
+      </div>
+      <div className="rounded-2xl border border-base-600/70 bg-base-900/35 p-4">
+        <SectionLabel>Add custom server</SectionLabel>
+        <div className="grid gap-2 sm:grid-cols-[minmax(0,0.7fr)_minmax(0,1.3fr)_auto]"><input value={name} onChange={(event) => setName(event.target.value)} maxLength={80} placeholder="Name" className="rounded-lg border border-base-600/60 bg-base-900 px-3 py-2 text-sm text-white outline-none placeholder:text-slate-500 focus:border-accent-500" /><input value={url} onChange={(event) => setUrl(event.target.value)} maxLength={2048} placeholder="https://example.com/mcp" className="rounded-lg border border-base-600/60 bg-base-900 px-3 py-2 text-sm text-white outline-none placeholder:text-slate-500 focus:border-accent-500" /><button onClick={() => addServer()} className="rounded-lg bg-accent-500 px-3 py-2 text-sm font-medium text-base-950 hover:bg-accent-400">Add server</button></div>
+        {draftError && <p className="mt-2 text-xs text-red-300">{draftError}</p>}
+      </div>
+      <div><SectionLabel>Connected servers</SectionLabel>
+        {settings.mcpServers.length === 0 ? <p className="rounded-xl border border-dashed border-base-700/60 px-4 py-7 text-center text-sm text-slate-500">No MCP servers connected yet.</p> : <div className="space-y-3">{settings.mcpServers.map((server) => {
+          const result = results[server.id];
+          const inspection = result && !("error" in result) && !("checking" in result) ? result : undefined;
+          const message = result && "error" in result ? result.error : result && "checking" in result ? "Testing connection…" : inspection?.authRequired ? "Reachable — authentication required." : inspection?.reachable ? String(inspection.toolCount ?? 0) + " tool" + (inspection.toolCount === 1 ? "" : "s") + " discovered." : inspection?.message;
+          const statusClass = result && "error" in result || inspection?.reachable === false ? "text-red-300" : inspection?.authRequired ? "text-amber-300" : "text-emerald-300";
+          return <article key={server.id} className="rounded-xl border border-base-600/70 bg-base-900/40 p-4">
+            <div className="flex items-start gap-3"><PlugZap size={17} className="mt-0.5 shrink-0 text-accent-300" /><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><h4 className="font-medium text-white">{server.name}</h4>{server.kind === "composio" && <span className="rounded-full border border-base-600/60 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-slate-400">Composio</span>}</div><p className="mt-1 truncate text-xs text-slate-500">{server.url}</p></div><button onClick={() => removeServer(server.id)} className="text-xs text-slate-500 hover:text-red-300">Remove</button></div>
+            <div className="mt-3 flex flex-wrap items-center gap-3"><ToggleSwitch label="Enabled" checked={server.enabled} onChange={(enabled) => updateServer(server.id, { enabled })} /><button onClick={() => void inspect(server)} disabled={!!(result && "checking" in result)} className="rounded-lg border border-base-600/60 px-3 py-1.5 text-xs font-medium text-slate-200 hover:bg-base-700/60 disabled:opacity-50">{result && "checking" in result ? "Testing…" : "Test connection"}</button></div>
+            {message && <p className={"mt-3 text-xs " + statusClass}>{message}</p>}
+            {inspection?.tools && inspection.tools.length > 0 && <div className="mt-3 flex flex-wrap gap-1.5">{inspection.tools.map((tool) => <span key={tool.name} title={tool.description} className="rounded-full border border-base-600/60 bg-base-850 px-2 py-1 text-[11px] text-slate-300">{tool.name}</span>)}</div>}
+          </article>;
+        })}</div>}
+      </div>
+      <p className="text-xs leading-5 text-slate-500">For protected servers, complete the provider's OAuth flow before tools can be listed or used. Local stdio servers are not supported because Lofin runs in the browser and Worker runtime.</p>
+    </div>
+  );
+}
 export function SettingsModal({ onClose, initialTab, onTabChange }: { onClose: () => void; initialTab?: SettingsTab; onTabChange?: (tab: SettingsTab) => void }) {
   const { settings, updateSettings } = useChatStore();
   const user = useAuthStore((s) => s.user);
@@ -852,6 +927,7 @@ export function SettingsModal({ onClose, initialTab, onTabChange }: { onClose: (
           )}
           {tab === "account" && <AccountSection />}
           {tab === "models" && <CustomModelsSection />}
+          {tab === "mcp" && <McpServersSection />}
           {tab === "memory" && <MemorySection />}
           {tab === "storage" && <StorageSection />}
           {tab === "advanced" && (

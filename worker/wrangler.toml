@@ -64,6 +64,9 @@ crons = ["0 * * * *"]
 #   CF_ACCOUNT_ID       (Cloudflare account id — powers /api/image/generate)
 #   CF_AI_TOKEN         (Workers AI-scoped API token — powers /api/image/generate)
 #   TURNSTILE_SECRET    (Cloudflare Turnstile secret — sign-in bot protection)
+#
+# Remote MCP endpoint lists live in each browser. Do not put per-user MCP
+# credentials in wrangler vars or the frontend; OAuth and tokens belong server-side.
 
 # Staging deployment (`wrangler deploy --env staging`). The only place TURNSTILE_QA_MODE
 # may be set: it lets Cloudflare's Turnstile *test* keys through the site gate so QA can

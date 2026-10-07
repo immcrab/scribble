@@ -44,7 +44,7 @@ export function parseProjectIdFromLocation(): string | null {
  * they can be bookmarked and used with browser back/forward navigation. */
 const SETTINGS_TABS = new Set([
   "general", "appearance", "notifications", "personalization", "privacy",
-  "account", "models", "memory", "storage", "advanced",
+  "account", "models", "mcp", "memory", "storage", "advanced",
 ]);
 
 export function parseSettingsTabFromLocation(): string | null {

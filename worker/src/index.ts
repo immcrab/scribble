@@ -29,6 +29,7 @@ import { handleAdminLibrary, handleLibrary, isAdminLibraryPath, isLibraryPath } 
 import { deleteExpiredWebsites, handleWebsiteApi, serveWebsite } from "./websites";
 import { FREE_XKIRO_MODEL_IDS } from "./freeXkiroModels";
 import { FREE_PROVIDER_MODEL_IDS } from "./freeProviderModels";
+import { handleMcpInspect } from "./mcp";
 
 const ADMIN_EMAIL = "imcrabfr@gmail.com";
 const FREE_XKIRO_IMAGE_MODEL = "sensenova/sensenova-u1.5-lite";
@@ -125,6 +126,19 @@ export default {
 
     if (url.pathname === "/api/health") {
       return json({ ok: true }, 200, cors);
+    }
+
+    // Server setup is intentionally an inspection endpoint, not an open proxy.
+    // It only performs MCP initialize/tools-list against public HTTPS hosts.
+    if (url.pathname === "/api/mcp/inspect" && request.method === "POST") {
+      if (!checkPassword(request, env)) {
+        return json({ error: "Invalid or missing Lofin password." }, 401, cors);
+      }
+      const clientKey = request.headers.get("CF-Connecting-IP") ?? "unknown";
+      if (isRateLimited(clientKey)) {
+        return json({ error: "Rate limit exceeded. Slow down and try again shortly." }, 429, cors);
+      }
+      return handleMcpInspect(request, env, cors, json);
     }
 
     // Google serves a compact favicon for nearly any public hostname. Proxy it

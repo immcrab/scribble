@@ -72,6 +72,9 @@ export interface LofinSettings {
   customProviders: CustomProvider[];
   /** User-added models, each pointing at a built-in provider or one of `customProviders` — same local-only treatment as `customProviders`. */
   customModels: ModelDef[];
+  /** Remote HTTPS MCP servers configured on this browser. Authentication material is
+   * deliberately not stored here: the Worker owns credentials and OAuth hand-offs. */
+  mcpServers: McpServerConfig[];
   /** Models the user has starred out of Puter.js's full live catalog (800+, see lib/puterClient.ts's
    * listPuterModels) — only these show under the Puter.js group by default instead of the whole catalog. */
   puterFavoriteModels: ModelDef[];
@@ -136,6 +139,7 @@ const SETTINGS_DEFAULTS: Omit<LofinSettings, "workerUrl" | "password"> = {
   effort: "medium",
   customProviders: [],
   customModels: [],
+  mcpServers: [],
   puterFavoriteModels: [],
   textSize: "medium",
   density: "comfortable",
@@ -255,6 +259,19 @@ export function loadSettings(): LofinSettings {
   } catch {
     return normalizeSettings();
   }
+}
+
+export type McpServerKind = "custom" | "composio";
+
+/** A non-secret remote MCP endpoint. Keep this local-only: a server URL can be
+ * sensitive workspace information, and server authentication never belongs in
+ * browser storage. */
+export interface McpServerConfig {
+  id: string;
+  name: string;
+  url: string;
+  enabled: boolean;
+  kind: McpServerKind;
 }
 
 /**
