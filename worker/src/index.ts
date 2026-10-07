@@ -295,6 +295,34 @@ export default {
           const lastUserIdx = messages.map((m, i) => ({ m, i })).filter((x) => x.m.role === "user").pop()?.i;
           const query = lastUserIdx !== undefined ? messages[lastUserIdx].content.trim() : "";
 
+          // Agent Mode only: use the signed-in user's connected Composio accounts (see mcpAgent.ts).
+          // Side-effecting actions are never run here; they become a confirmation card.
+          let mcpHandled = false;
+          if (body.connectedTools && env.FIREBASE_PROJECT_ID && lastUserIdx !== undefined) {
+            const token = request.headers.get("Authorization")?.replace(/^Bearer\s+/i, "");
+            let toolUid: string | null = null;
+            if (token) {
+              try {
+                toolUid = (await verifyFirebaseIdToken(token, env.FIREBASE_PROJECT_ID)).uid;
+              } catch {
+                toolUid = null;
+              }
+            }
+            if (!toolUid) console.warn("mcp agent", "no-verified-user", JSON.stringify({ hadToken: !!token }));
+            if (toolUid) {
+              const priorTurns = messages.slice(Math.max(0, lastUserIdx - 4), lastUserIdx).map((m) => `${m.role}: ${m.content.slice(0, 400)}`).join("\n");
+              // Search tools against this request plus the user's recent messages, so a short follow-up
+              // ("public, no readme") still finds the tool the conversation is about.
+              const earlierUser = messages.slice(0, lastUserIdx).filter((m) => m.role === "user").slice(-2).map((m) => m.content.slice(0, 400));
+              const searchText = [...earlierUser, query].join(" ");
+              const { note, capability, handled } = await runMcpAgentStep(env, toolUid, query, searchText, priorTurns, (toolCall) => controller.enqueue(ndjsonLine({ toolCall })));
+              mcpHandled = handled;
+              if (note) messages = messages.map((m, i) => (i === lastUserIdx ? { ...m, content: `${m.content}\n\n${note}` } : m));
+              // Tell the model what Agent mode can do on the user's accounts (system prompt, not chat text).
+              if (capability) clientContext = { ...clientContext, customSystemPrompt: [capability, clientContext?.customSystemPrompt].filter(Boolean).join("\n\n") };
+            }
+          }
+
           // Web search is provider-independent: Exa supplies results when its
           // key is configured and the keyless fallback keeps the capability
           // available otherwise. Memory remains independently disabled below.
@@ -305,7 +333,7 @@ export default {
           // search is off: that is an explicit, per-turn instruction from the
           // user rather than an automatic lookup.
           const userRequestedWeb = explicitlyRequestsWeb(query);
-          if (useWebSearch && (body.webSearch || userRequestedWeb)) {
+          if (useWebSearch && !mcpHandled && (body.webSearch || userRequestedWeb)) {
             const pageUrl = publicUrlIn(query);
             if (pageUrl && lastUserIdx !== undefined) {
               const toolId = crypto.randomUUID();
@@ -434,28 +462,6 @@ export default {
                   })
                 );
               }
-            }
-          }
-
-          // Agent Mode only: use the signed-in user's connected Composio accounts (see mcpAgent.ts).
-          // Side-effecting actions are never run here; they become a confirmation card.
-          if (body.connectedTools && env.FIREBASE_PROJECT_ID && lastUserIdx !== undefined) {
-            const token = request.headers.get("Authorization")?.replace(/^Bearer\s+/i, "");
-            let toolUid: string | null = null;
-            if (token) {
-              try {
-                toolUid = (await verifyFirebaseIdToken(token, env.FIREBASE_PROJECT_ID)).uid;
-              } catch {
-                toolUid = null;
-              }
-            }
-            if (!toolUid) console.warn("mcp agent", "no-verified-user", JSON.stringify({ hadToken: !!token }));
-            if (toolUid) {
-              const priorTurns = messages.slice(Math.max(0, lastUserIdx - 4), lastUserIdx).map((m) => `${m.role}: ${m.content.slice(0, 400)}`).join("\n");
-              const { note, capability } = await runMcpAgentStep(env, toolUid, query, priorTurns, (toolCall) => controller.enqueue(ndjsonLine({ toolCall })));
-              if (note) messages = messages.map((m, i) => (i === lastUserIdx ? { ...m, content: `${m.content}\n\n${note}` } : m));
-              // Tell the model what Agent mode can do on the user's accounts (system prompt, not chat text).
-              if (capability) clientContext = { ...clientContext, customSystemPrompt: [capability, clientContext?.customSystemPrompt].filter(Boolean).join("\n\n") };
             }
           }
 

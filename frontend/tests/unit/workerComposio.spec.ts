@@ -403,3 +403,17 @@ test.describe("Agent capability prompt", () => {
     for (const toolkit of COMPOSIO_TOOLKITS) expect(toolkit.group.length).toBeGreaterThan(0);
   });
 });
+
+test.describe("Agent planner: missing details and honesty", () => {
+  const candidates: McpToolDescriptor[] = [{ id: "GITHUB_CREATE_A_REPOSITORY_FOR_THE_AUTHENTICATED_USER", name: "Create a repository", toolkit: "github", readOnly: false }];
+
+  test("keeps the missing-details list from the planner", () => {
+    const plan = parsePlan('{"tool":"GITHUB_CREATE_A_REPOSITORY_FOR_THE_AUTHENTICATED_USER","arguments":{},"missing":["repository name"," ",3]}', candidates);
+    expect(plan).toEqual({ tool: "GITHUB_CREATE_A_REPOSITORY_FOR_THE_AUTHENTICATED_USER", arguments: {}, missing: ["repository name"] });
+  });
+
+  test("tells the model there is no Approve button when nothing was prepared", () => {
+    expect(buildCapabilityPrompt(["github"], "public no readme")).toContain("no Approve button");
+    expect(buildCapabilityPrompt(["github"], "make a repo", true)).not.toContain("no Approve button");
+  });
+});
