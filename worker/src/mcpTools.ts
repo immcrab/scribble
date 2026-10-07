@@ -27,6 +27,9 @@ export interface McpToolProvider {
   readonly id: string;
   listTools(userId: string, options?: { toolkits?: readonly string[]; includeSchemas?: boolean }): Promise<McpResult<McpToolDescriptor[]>>;
   executeTool(userId: string, tool: McpToolDescriptor, args: Record<string, unknown>): Promise<McpResult<unknown>>;
+  /** Finds the few tools most relevant to a task, with argument schemas, so a model never has
+   * to be shown a provider's entire catalog. Optional: providers without search omit it. */
+  searchTools?(userId: string, useCase: string, toolkits: readonly string[]): Promise<McpResult<McpToolDescriptor[]>>;
 }
 
 export const CONFIRMATION_TTL_SECONDS = 300;
@@ -150,14 +153,10 @@ export async function runMcpTool(
 }
 
 /*
- * ── INTEGRATION BOUNDARY (Agent Mode model tool-calling) ─────────────────────────────
- * Everything above is provider-agnostic and finished. Letting a chat model call these
- * tools automatically needs provider-specific tool-call plumbing in the Agent loop that
- * is intentionally NOT wired yet. When it is, the loop should:
- *   1. call getAgentToolDefinitions() once per Agent turn and pass the result to the model;
- *   2. route each model tool call through runMcpTool();
- *   3. on "confirmation_required", surface the tool name and arguments to the user and
- *      only re-invoke runMcpTool() with the returned token after an explicit approval.
+ * ── AGENT INTEGRATION ─────────────────────────────────────────────────────────────
+ * Agent Mode uses these tools through worker/src/mcpAgent.ts: a planner picks one tool, runMcpTool()
+ * runs read-only tools and turns everything else into an approval card. getAgentToolDefinitions()
+ * is the hook for native, provider-specific model tool-calling if that is ever added.
  * Do not call these from Direct, Battle, Side by Side, Image, or Speech handlers.
  */
 export async function getAgentToolDefinitions(provider: McpToolProvider, userId: string, toolkits: readonly string[]): Promise<McpResult<McpToolDescriptor[]>> {

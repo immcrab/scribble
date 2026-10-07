@@ -177,9 +177,12 @@ export interface Attachment {
 export interface ToolCallRecord {
   id: string;
   name: string;
-  status: "pending" | "running" | "done" | "error";
+  status: "pending" | "running" | "done" | "error" | "awaiting_confirmation";
   input?: Record<string, unknown>;
   output?: string;
+  /** Agent tool call waiting for the user's approval (Composio). The token is a short-lived
+   * server-signed approval bound to exactly these arguments; it is not a credential. */
+  mcp?: { toolId: string; toolkit: string; confirmationToken: string; arguments: Record<string, unknown> };
   /** Optional visual cards returned by xKiro web search. These are result
    * thumbnails, not browser screenshots, and let someone judge a page before
    * choosing whether to open it. */

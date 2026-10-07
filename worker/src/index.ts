@@ -31,6 +31,7 @@ import { FREE_XKIRO_MODEL_IDS } from "./freeXkiroModels";
 import { FREE_PROVIDER_MODEL_IDS } from "./freeProviderModels";
 import { handleMcpInspect } from "./mcp";
 import { handleMcpAccountApi, isMcpAccountPath } from "./mcpRoutes";
+import { runMcpAgentStep } from "./mcpAgent";
 
 const ADMIN_EMAIL = "imcrabfr@gmail.com";
 const FREE_XKIRO_IMAGE_MODEL = "sensenova/sensenova-u1.5-lite";
@@ -91,6 +92,7 @@ function isValidBody(body: unknown): body is ChatRequestBody {
   if (b.webSearch !== undefined && typeof b.webSearch !== "boolean") return false;
   if (b.forceWebSearch !== undefined && typeof b.forceWebSearch !== "boolean") return false;
   if (b.memoryEnabled !== undefined && typeof b.memoryEnabled !== "boolean") return false;
+  if (b.connectedTools !== undefined && typeof b.connectedTools !== "boolean") return false;
   if (b.clientContext !== undefined) {
     if (typeof b.clientContext !== "object" || b.clientContext === null) return false;
     const cc = b.clientContext as Record<string, unknown>;
@@ -432,6 +434,25 @@ export default {
                   })
                 );
               }
+            }
+          }
+
+          // Agent Mode only: use the signed-in user's connected Composio accounts (see mcpAgent.ts).
+          // Side-effecting actions are never run here; they become a confirmation card.
+          if (body.connectedTools && env.FIREBASE_PROJECT_ID && lastUserIdx !== undefined) {
+            const token = request.headers.get("Authorization")?.replace(/^Bearer\s+/i, "");
+            let toolUid: string | null = null;
+            if (token) {
+              try {
+                toolUid = (await verifyFirebaseIdToken(token, env.FIREBASE_PROJECT_ID)).uid;
+              } catch {
+                toolUid = null;
+              }
+            }
+            if (toolUid) {
+              const priorTurns = messages.slice(Math.max(0, lastUserIdx - 4), lastUserIdx).map((m) => `${m.role}: ${m.content.slice(0, 400)}`).join("\n");
+              const note = await runMcpAgentStep(env, toolUid, query, priorTurns, (toolCall) => controller.enqueue(ndjsonLine({ toolCall })));
+              if (note) messages = messages.map((m, i) => (i === lastUserIdx ? { ...m, content: `${m.content}\n\n${note}` } : m));
             }
           }
 

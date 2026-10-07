@@ -4,6 +4,7 @@ import {
   composioApiKey,
   composioCallbackUrl,
   composioUserId,
+  createComposioProvider,
   createConnectLink,
   disconnectAccount,
   isToolkitSlug,
@@ -17,6 +18,7 @@ import {
   type McpToolDescriptor,
   type McpToolProvider,
 } from "../../../worker/src/mcpTools";
+import { parsePlan } from "../../../worker/src/mcpAgent";
 import { handleMcpAccountApi, isMcpAccountPath } from "../../../worker/src/mcpRoutes";
 
 type Env = Parameters<typeof composioCallbackUrl>[1];
@@ -303,5 +305,55 @@ test.describe("tool confirmation", () => {
     expect(await runMcpTool(provider, "k", "u1", { tool: read.id, arguments: {} }, ["github"])).toMatchObject({ status: "error", httpStatus: 404 });
     expect(await runMcpTool(provider, "k", "u1", { tool: "bad slug!", arguments: {} }, ["gmail"])).toMatchObject({ status: "error", httpStatus: 400 });
     expect(executed).toEqual([]);
+  });
+});
+
+test.describe("Agent planner", () => {
+  const candidates: McpToolDescriptor[] = [
+    { id: "GMAIL_SEND_EMAIL", name: "Send email", toolkit: "gmail", readOnly: false },
+    { id: "GMAIL_FETCH_EMAILS", name: "Fetch emails", toolkit: "gmail", readOnly: true },
+  ];
+
+  test("accepts a listed tool with object arguments, even inside a code fence", () => {
+    const reply = '```json\n{"tool":"GMAIL_SEND_EMAIL","arguments":{"recipient_email":"a@example.com","body":"hi"}}\n```';
+    expect(parsePlan(reply, candidates)).toEqual({ tool: "GMAIL_SEND_EMAIL", arguments: { recipient_email: "a@example.com", body: "hi" } });
+  });
+
+  test("rejects null, unlisted tools, and malformed or non-object arguments", () => {
+    expect(parsePlan('{"tool":null,"arguments":{}}', candidates)).toBeNull();
+    expect(parsePlan('{"tool":"GITHUB_DELETE_REPO","arguments":{}}', candidates)).toBeNull();
+    expect(parsePlan('{"tool":"GMAIL_SEND_EMAIL","arguments":"to: me"}', candidates)).toBeNull();
+    expect(parsePlan("no json here", candidates)).toBeNull();
+    expect(parsePlan('{"tool":"GMAIL_SEND_EMAIL",', candidates)).toBeNull();
+  });
+});
+
+test.describe("Composio tool search", () => {
+  test("keeps only tools from connected toolkits and flags read-only ones", async () => {
+    const result = await withComposio(
+      [
+        { body: { session_id: "trs_s1" } },
+        {
+          body: {
+            results: [
+              {
+                primary_tool_slugs: ["GMAIL_SEND_EMAIL", "GITHUB_CREATE_ISSUE"],
+                related_tool_slugs: ["GMAIL_FETCH_EMAILS"],
+                tool_schemas: {
+                  GMAIL_SEND_EMAIL: { slug: "GMAIL_SEND_EMAIL", name: "Send email", toolkit: "gmail", input_parameters: { type: "object" }, tags: [] },
+                  GITHUB_CREATE_ISSUE: { slug: "GITHUB_CREATE_ISSUE", name: "Create issue", toolkit: "github", input_parameters: { type: "object" } },
+                  GMAIL_FETCH_EMAILS: { slug: "GMAIL_FETCH_EMAILS", name: "Fetch emails", toolkit: { slug: "gmail" }, input_parameters: { type: "object" }, tags: ["readOnlyHint"] },
+                },
+              },
+            ],
+          },
+        },
+      ],
+      () => createComposioProvider(env).searchTools!("uid-search", "email me", ["gmail"])
+    );
+    expect(result.ok).toBe(true);
+    const tools = (result as { value: McpToolDescriptor[] }).value;
+    expect(tools.map((t) => [t.id, t.readOnly])).toEqual([["GMAIL_SEND_EMAIL", false], ["GMAIL_FETCH_EMAILS", true]]);
+    expect(tools[0].inputSchema).toEqual({ type: "object" });
   });
 });

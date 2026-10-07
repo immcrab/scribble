@@ -112,6 +112,9 @@ export interface ChatRequestBody {
   /** Local date/time, timezone, (opt-in) approximate location, custom instructions, and
    * stored memory facts — see ClientContext. */
   clientContext?: ClientContext;
+  /** Agent Mode only: let the Worker use the signed-in user's connected Composio accounts for
+   * this turn. Requires a Firebase ID token in the Authorization header. */
+  connectedTools?: boolean;
 }
 
 export interface AdapterParams {

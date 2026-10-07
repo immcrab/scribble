@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { FileSearch, Terminal, Lightbulb, Globe2 } from "lucide-react";
 import { useChatStore } from "../state/chatStore";
+import { useAuthStore } from "../state/authStore";
 import { getDefaultModel, findModel } from "../config/models";
 import { ChatMessage } from "../components/ChatMessage";
 import { Composer } from "../components/Composer";
@@ -39,6 +40,8 @@ export function AgentMode({
 }) {
   const chat = useChatStore((s) => s.chats.find((c) => c.id === chatId));
   const settings = useChatStore((s) => s.settings);
+  // Signed-in users get their connected Composio accounts as Agent tools (Worker: mcpAgent.ts).
+  const connectedTools = useAuthStore((s) => !!s.user);
   const { addMessage, setChatModels, patchChat, maybeAutoTitle, abort, removeMessagesAfter, updateMessage } = useChatStore();
   const [eagerWorkspace, setEagerWorkspace] = useState(false);
   const [showRunner, setShowRunner] = useState(false);
@@ -96,7 +99,7 @@ export function AgentMode({
       ...previousHistory,
       { role: "user", content: analyzedText, attachments: userWireAttachments },
     ];
-    runAssistantStream({ chatId: chat.id, messageId: assistantMsg.id, model: activeModel, history, effort, webSearch: chat.researchMode ?? settings.autoWebSearch, forceWebSearch: chat.researchMode === true });
+    runAssistantStream({ chatId: chat.id, messageId: assistantMsg.id, model: activeModel, history, effort, webSearch: chat.researchMode ?? settings.autoWebSearch, forceWebSearch: chat.researchMode === true, connectedTools });
   };
 
   const regenerate = (assistantId: string, withModelId?: string) => {
@@ -114,7 +117,7 @@ export function AgentMode({
       toolCalls: [],
     };
     addMessage(chat.id, newAssistant);
-    runAssistantStream({ chatId: chat.id, messageId: newAssistant.id, model: runModel, history, effort, webSearch: chat.researchMode ?? settings.autoWebSearch, forceWebSearch: chat.researchMode === true });
+    runAssistantStream({ chatId: chat.id, messageId: newAssistant.id, model: runModel, history, effort, webSearch: chat.researchMode ?? settings.autoWebSearch, forceWebSearch: chat.researchMode === true, connectedTools });
   };
 
   /** Resume a reply that was cut off at the model's output-token limit, appending in place. */
@@ -136,6 +139,7 @@ export function AgentMode({
       effort,
       webSearch: chat.researchMode ?? settings.autoWebSearch,
       forceWebSearch: chat.researchMode === true,
+      connectedTools,
       appendToExisting: true,
     });
   };
@@ -168,7 +172,7 @@ export function AgentMode({
       toolCalls: [],
     };
     addMessage(chat.id, newAssistant);
-    runAssistantStream({ chatId: chat.id, messageId: newAssistant.id, model, history, effort, webSearch: chat.researchMode ?? settings.autoWebSearch, forceWebSearch: chat.researchMode === true });
+    runAssistantStream({ chatId: chat.id, messageId: newAssistant.id, model, history, effort, webSearch: chat.researchMode ?? settings.autoWebSearch, forceWebSearch: chat.researchMode === true, connectedTools });
   };
 
   const stop = () => {

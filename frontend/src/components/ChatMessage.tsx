@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import type { Attachment, ChatMessage as ChatMessageType, ToolCallRecord } from "../types";
 import { Markdown } from "../lib/markdown";
+import { McpApprovalCard } from "./McpApprovalCard";
 import { ModelFavicon, ProviderFavicon } from "./ProviderIcon";
 import { useLiveArtifact } from "../lib/useLiveArtifact";
 import { modelsByProvider, PROVIDER_LABELS, isModelGated } from "../config/models";
@@ -98,6 +99,7 @@ const TOOL_STATUS_ICON: Record<ToolCallRecord["status"], typeof Loader2> = {
   running: Loader2,
   done: CheckCircle2,
   error: XCircle,
+  awaiting_confirmation: Loader2,
 };
 
 /** A "Web search" tool call still in flight gets its own live pill instead of
@@ -160,12 +162,14 @@ function SearchResultList({ toolCalls }: { toolCalls: ToolCallRecord[] }) {
   );
 }
 
-function ToolActivity({ toolCalls }: { toolCalls: ToolCallRecord[] }) {
+function ToolActivity({ toolCalls, messageId }: { toolCalls: ToolCallRecord[]; messageId: string }) {
   const [open, setOpen] = useState(true);
   const liveSearch = toolCalls.find((t) => t.name === "Web search" && t.status === "running");
-  const listed = toolCalls.filter((t) => t !== liveSearch && !(t.name === "Web search" && t.status === "done" && t.previews?.length));
+  const awaiting = toolCalls.filter((t) => t.status === "awaiting_confirmation" && t.mcp);
+  const listed = toolCalls.filter((t) => t !== liveSearch && !awaiting.includes(t) && !(t.name === "Web search" && t.status === "done" && t.previews?.length));
   return (
     <>
+      {awaiting.map((t) => <McpApprovalCard key={t.id} toolCall={t} messageId={messageId} />)}
       {liveSearch && <SearchingPill toolCall={liveSearch} />}
       <SearchResultList toolCalls={toolCalls} />
       {listed.length > 0 && (
@@ -520,7 +524,7 @@ export function ChatMessage({
               : "border border-base-700/60 bg-base-850/70 text-slate-100"
           } ${!isUser && message.streaming ? "border-accent-500/40" : ""}`}
         >
-          {message.toolCalls && message.toolCalls.length > 0 && <ToolActivity toolCalls={message.toolCalls} />}
+          {message.toolCalls && message.toolCalls.length > 0 && <ToolActivity toolCalls={message.toolCalls} messageId={message.id} />}
           {!isUser && (
             <ThinkingBlock
               message={message}

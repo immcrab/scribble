@@ -22,6 +22,8 @@ interface StreamChatParams {
   effort?: Effort;
   webSearch?: boolean;
   forceWebSearch?: boolean;
+  connectedTools?: boolean;
+  authToken?: string;
   memoryEnabled?: boolean;
   clientContext?: ClientContext;
 }

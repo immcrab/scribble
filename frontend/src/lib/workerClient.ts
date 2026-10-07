@@ -19,6 +19,10 @@ interface StreamChatParams {
   webSearch?: boolean;
   /** Explicit per-turn research request, bypassing automatic relevance detection. */
   forceWebSearch?: boolean;
+  /** Agent Mode only: let the Worker use the signed-in user's connected accounts this turn. */
+  connectedTools?: boolean;
+  /** Firebase ID token, sent only with connectedTools so the Worker can verify the user. */
+  authToken?: string;
   /** The "memory" setting — see worker/src/index.ts. */
   memoryEnabled?: boolean;
   /** Local date/time, timezone, (opt-in) approximate location, custom instructions, and
@@ -87,7 +91,7 @@ export function humanizeWorkerError(raw: string, status?: number): string {
  * know provider-specific wire formats.
  */
 export async function* streamChat(params: StreamChatParams): AsyncGenerator<StreamChunk> {
-  const { workerUrl, password, model, messages, signal, customProvider, effort, webSearch, forceWebSearch, memoryEnabled, clientContext } = params;
+  const { workerUrl, password, model, messages, signal, customProvider, effort, webSearch, forceWebSearch, memoryEnabled, clientContext, connectedTools, authToken } = params;
   if (!workerUrl) {
     throw new WorkerClientError(
       "No Worker URL configured. Open Settings and paste your Cloudflare Worker URL."
@@ -104,6 +108,7 @@ export async function* streamChat(params: StreamChatParams): AsyncGenerator<Stre
     headers: {
       "Content-Type": "application/json",
       ...(password ? { "X-Lofin-Password": password } : {}),
+      ...(connectedTools && authToken ? { Authorization: `Bearer ${authToken}` } : {}),
     },
     body: JSON.stringify({
       provider: model.provider,
@@ -114,6 +119,7 @@ export async function* streamChat(params: StreamChatParams): AsyncGenerator<Stre
       ...(effort ? { effort } : {}),
       ...(webSearch ? { webSearch } : {}),
       ...(forceWebSearch ? { forceWebSearch } : {}),
+      ...(connectedTools && authToken ? { connectedTools } : {}),
       ...(memoryEnabled ? { memoryEnabled } : {}),
       ...(clientContext ? { clientContext } : {}),
     }),

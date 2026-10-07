@@ -98,6 +98,8 @@ export async function runAssistantStream(params: {
   webSearch?: boolean;
   /** Run a live search for this turn even if auto-search would classify it as unnecessary. */
   forceWebSearch?: boolean;
+  /** Agent Mode only: let the Worker use the user's connected Composio accounts this turn. */
+  connectedTools?: boolean;
   /** Resuming a truncated reply: keep the message's existing content/reasoning and
    * append incoming tokens to it, rather than treating the message as brand-new. */
   appendToExisting?: boolean;
@@ -106,7 +108,7 @@ export async function runAssistantStream(params: {
   /** Internal: consecutive auto-continue rounds that produced no new text. */
   stalledContinueRounds?: number;
 }) {
-  const { chatId, messageId, model, history, effort, webSearch, forceWebSearch, appendToExisting } = params;
+  const { chatId, messageId, model, history, effort, webSearch, forceWebSearch, appendToExisting, connectedTools } = params;
   const store = useChatStore.getState();
 
   if (isModelGated(model) && !useAuthStore.getState().user) {
@@ -223,6 +225,7 @@ export async function runAssistantStream(params: {
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       let sawOutput = false;
       try {
+        const authToken = connectedTools ? await auth.currentUser?.getIdToken().catch(() => undefined) : undefined;
         for await (const chunk of streamChat({
           workerUrl: store.settings.workerUrl,
           password: store.settings.password,
@@ -233,6 +236,8 @@ export async function runAssistantStream(params: {
           effort,
           webSearch,
           forceWebSearch,
+          connectedTools,
+          authToken,
           memoryEnabled: store.settings.memoryEnabled,
           clientContext,
         })) {

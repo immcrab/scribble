@@ -153,8 +153,15 @@ Worker routes (all under the Firebase-token gate and rate limited):
 `POST /api/mcp/tools/execute`. The tool routes are for Agent mode only; no other mode
 uses them. Tools not explicitly marked read-only by Composio return HTTP 409 with a
 short-lived confirmation token and run only when the same call is repeated with that token
-after the user approves. Automatic model tool-calling is not wired yet; the clearly marked
-integration boundary is at the bottom of `worker/src/mcpTools.ts`.
+Tools not explicitly marked read-only return HTTP 409 with a short-lived confirmation
+token and run only when the same call is repeated with that token after the user approves.
+
+In **Agent mode**, a signed-in user's chat turns can use their connected accounts: the
+Worker searches Composio for relevant tools, a Groq planner (`GROQ_API_KEY` required)
+picks at most one and fills its arguments, read-only tools run immediately, and anything
+else appears as an Approve/Decline card that runs only after the user approves those
+exact arguments. This is provider-independent (it works with every chat model) and lives
+in `worker/src/mcpAgent.ts`. Other modes never use these routes.
 
 MCP server lists stay in the browser and are never cloud-synced.
 

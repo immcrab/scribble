@@ -334,6 +334,33 @@ export function createComposioProvider(env: Env): McpToolProvider {
       const wanted = options?.toolkits ? new Set(options.toolkits) : null;
       return { ok: true, value: wanted ? tools.filter((tool) => wanted.has(tool.toolkit)) : tools };
     },
+    async searchTools(uid, useCase, toolkits) {
+      const wanted = new Set(toolkits);
+      const searched = await withSession(env, uid, (sessionId) =>
+        composioFetch<{ results?: Array<{ primary_tool_slugs?: unknown; related_tool_slugs?: unknown; tool_schemas?: unknown }> }>(env, `/tool_router/session/${sessionId}/search`, {
+          method: "POST",
+          body: { queries: [{ use_case: useCase.slice(0, 1000) }] },
+        })
+      );
+      if (!searched.ok) return searched;
+      const result = searched.value.results?.[0];
+      const schemas = result?.tool_schemas && typeof result.tool_schemas === "object" ? (result.tool_schemas as Record<string, Record<string, unknown>>) : {};
+      const slugs = [...(Array.isArray(result?.primary_tool_slugs) ? result.primary_tool_slugs : []), ...(Array.isArray(result?.related_tool_slugs) ? result.related_tool_slugs : [])]
+        .filter((slug): slug is string => typeof slug === "string");
+      const tools: McpToolDescriptor[] = [];
+      for (const slug of [...new Set(slugs)]) {
+        const raw = schemas[slug];
+        if (!raw || typeof raw !== "object") continue;
+        // Search results describe a tool's toolkit and arguments slightly differently from the
+        // tool listing, so accept either shape and fall back to the slug's prefix.
+        const toolkit = typeof raw.toolkit === "string" ? raw.toolkit : (raw.toolkit as { slug?: unknown } | undefined)?.slug ?? slug.split("_")[0].toLowerCase();
+        const params = raw.input_parameters ?? raw.inputSchema ?? raw.input_schema ?? raw.parameters;
+        const parsed = parseTool({ ...raw, slug, toolkit: { slug: String(toolkit).toLowerCase() }, input_parameters: params }, true);
+        if (parsed && wanted.has(parsed.toolkit)) tools.push(parsed);
+        if (tools.length >= 8) break;
+      }
+      return { ok: true, value: tools };
+    },
     async executeTool(uid, tool, args) {
       const executed = await withSession(env, uid, (sessionId) =>
         composioFetch<{ data?: unknown; error?: unknown }>(env, `/tool_router/session/${sessionId}/execute`, {
