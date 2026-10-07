@@ -77,14 +77,22 @@ export function composioCallbackUrl(request: Request, env: Env): string | null {
   return `${parsed.origin}/mcp`;
 }
 
+/** The configured key with pasted whitespace/newlines and an accidental `NAME=` prefix removed,
+ * either of which would make the x-api-key header invalid. Null when unset. */
+export function composioApiKey(env: Env): string | null {
+  const key = env.COMPOSIO_API_KEY?.replace(/\s+/g, "").replace(/^COMPOSIO_API_KEY=/i, "");
+  return key ? key : null;
+}
+
 async function composioFetch<T>(env: Env, path: string, init: { method?: string; body?: unknown } = {}): Promise<McpResult<T>> {
-  if (!env.COMPOSIO_API_KEY) return { ok: false, status: 503, message: "Composio is not configured on this Worker." };
+  const apiKey = composioApiKey(env);
+  if (!apiKey) return { ok: false, status: 503, message: "Composio is not configured on this Worker." };
   let response: Response;
   try {
     response = await fetch(`${COMPOSIO_API_BASE}${path}`, {
       method: init.method ?? "GET",
       headers: {
-        "x-api-key": env.COMPOSIO_API_KEY,
+        "x-api-key": apiKey,
         Accept: "application/json",
         ...(init.body === undefined ? {} : { "Content-Type": "application/json" }),
       },
@@ -92,7 +100,9 @@ async function composioFetch<T>(env: Env, path: string, init: { method?: string;
       redirect: "error",
       signal: AbortSignal.timeout(20_000),
     });
-  } catch {
+  } catch (err) {
+    // Only the error class is logged: messages and headers could contain credentials.
+    console.warn("composio request failed", err instanceof Error ? err.name : "unknown");
     return { ok: false, status: 502, message: "The Worker could not reach Composio." };
   }
   if (!response.ok) {

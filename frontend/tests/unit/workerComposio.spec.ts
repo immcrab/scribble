@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import {
   authConfigsFor,
+  composioApiKey,
   composioCallbackUrl,
   composioUserId,
   createConnectLink,
@@ -62,6 +63,26 @@ test.describe("Composio toolkits and identity", () => {
   test("users are namespaced and auth configs come only from valid secrets", () => {
     expect(composioUserId("abc123")).toBe("lofin:abc123");
     expect(authConfigsFor(env)).toEqual({ github: "ac_github_1" });
+  });
+});
+
+test.describe("API key handling", () => {
+  test("pasted whitespace and a NAME= prefix are stripped; blank means unconfigured", () => {
+    const key = (value: string | undefined) => composioApiKey({ COMPOSIO_API_KEY: value } as unknown as Env);
+    expect(key("ak_abc\r\n")).toBe("ak_abc");
+    expect(key("  ak_abc ")).toBe("ak_abc");
+    expect(key("COMPOSIO_API_KEY=ak_abc")).toBe("ak_abc");
+    expect(key("   ")).toBeNull();
+    expect(key(undefined)).toBeNull();
+  });
+
+  test("a key with a trailing newline is still sent as a valid header", async () => {
+    const dirty = { ...env, COMPOSIO_API_KEY: "test-composio-key\n" } as unknown as Env;
+    const calls = await withComposio([{ body: { items: [] } }], async (calls) => {
+      await disconnectAccount(dirty, "u1", "ca_x");
+      return calls;
+    });
+    expect(calls[0].headers["x-api-key"]).toBe("test-composio-key");
   });
 });
 

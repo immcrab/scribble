@@ -4,6 +4,7 @@ import { isRateLimited } from "./ratelimit";
 import { verifyFirebaseIdToken } from "./firebaseVerifyToken";
 import {
   COMPOSIO_TOOLKITS,
+  composioApiKey,
   composioCallbackUrl,
   createComposioProvider,
   createConnectLink,
@@ -63,7 +64,8 @@ export async function handleMcpAccountApi(request: Request, env: Env, url: URL, 
 
   const fail = (status: number, message: string) => json({ error: message }, status, headers);
   const { pathname } = url;
-  const configured = Boolean(env.COMPOSIO_API_KEY);
+  const apiKey = composioApiKey(env);
+  const configured = apiKey !== null;
   const toolkits = COMPOSIO_TOOLKITS.map((toolkit) => ({ ...toolkit }));
 
   if (pathname === "/api/mcp/composio/connections") {
@@ -116,7 +118,7 @@ export async function handleMcpAccountApi(request: Request, env: Env, url: URL, 
     if (request.method !== "POST") return fail(405, "Method not allowed.");
     const body = await readJson(request);
     if (!body) return fail(400, "Send a JSON body with a tool and arguments.");
-    const outcome = await runMcpTool(provider, env.COMPOSIO_API_KEY as string, uid, body as { tool: unknown; arguments: unknown; confirmationToken?: unknown }, active);
+    const outcome = await runMcpTool(provider, apiKey as string, uid, body as { tool: unknown; arguments: unknown; confirmationToken?: unknown }, active);
     if (outcome.status === "error") return fail(outcome.httpStatus, outcome.message);
     // 409 tells the client an explicit user confirmation is required before this runs.
     return json(outcome, outcome.status === "confirmation_required" ? 409 : 200, headers);
