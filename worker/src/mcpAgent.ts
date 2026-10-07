@@ -80,9 +80,15 @@ async function planToolCall(groqKey: string, query: string, history: string, can
       ],
     }),
   });
-  if (!res.ok) return null;
+  if (!res.ok) {
+    console.warn("mcp agent", "planner-http", res.status);
+    return null;
+  }
   const json = (await res.json().catch(() => null)) as { choices?: { message?: { content?: string } }[] } | null;
-  return parsePlan(json?.choices?.[0]?.message?.content ?? "", candidates);
+  const reply = json?.choices?.[0]?.message?.content ?? "";
+  const plan = parsePlan(reply, candidates);
+  if (!plan) console.warn("mcp agent", "planner-unparsed", JSON.stringify({ replyChars: reply.length, hasBrace: reply.includes("{") }));
+  return plan;
 }
 
 /**
@@ -97,18 +103,24 @@ export async function runMcpAgentStep(
   emit: (event: McpToolCallEvent) => void
 ): Promise<string | null> {
   const secret = composioApiKey(env);
-  if (!secret || !env.GROQ_API_KEY || !query.trim()) return null;
-  if (isRateLimited(`mcp-agent:${uid}`)) return null;
+  // Stage logs record only counts, tool ids, and failure classes: never message text or credentials.
+  const stage = (name: string, detail?: unknown) => console.warn("mcp agent", name, detail === undefined ? "" : JSON.stringify(detail));
+  if (!secret || !env.GROQ_API_KEY || !query.trim()) return stage("skipped", { composio: !!secret, groq: !!env.GROQ_API_KEY, query: !!query.trim() }) ?? null;
+  if (isRateLimited(`mcp-agent:${uid}`)) return stage("rate-limited") ?? null;
   try {
     const connections = await listConnections(env, uid);
-    if (!connections.ok) return null;
+    if (!connections.ok) return stage("connections-failed", { status: connections.status }) ?? null;
     const active = [...new Set(connections.value.filter((c) => c.status === "connected").map((c) => c.toolkit))];
+    stage("connections", { active });
     if (active.length === 0) return null;
 
     const provider = createComposioProvider(env);
     const found = await provider.searchTools?.(uid, query, active);
-    if (!found?.ok || found.value.length === 0) return null;
+    if (!found?.ok) return stage("search-failed", { status: found ? found.status : "unsupported" }) ?? null;
+    stage("search", { tools: found.value.map((t) => t.id) });
+    if (found.value.length === 0) return null;
     const plan = await planToolCall(env.GROQ_API_KEY, query, history, found.value);
+    stage("plan", { tool: plan?.tool ?? null });
     if (!plan) return null;
 
     const tool = found.value.find((candidate) => candidate.id === plan.tool) as McpToolDescriptor;
@@ -117,6 +129,7 @@ export async function runMcpAgentStep(
     emit({ id, name, status: "running", input: plan.arguments });
 
     const outcome = await runMcpTool(provider, secret, uid, { tool: plan.tool, arguments: plan.arguments }, active);
+    stage("outcome", { status: outcome.status, ...(outcome.status === "error" ? { http: outcome.httpStatus } : {}) });
     if (outcome.status === "confirmation_required") {
       emit({
         id,
@@ -138,7 +151,8 @@ export async function runMcpAgentStep(
     }
     emit({ id, name, status: "error", input: plan.arguments, output: outcome.message });
     return `[The action "${tool.name}" could not run: ${outcome.message} Tell the user briefly.]`;
-  } catch {
+  } catch (err) {
+    stage("crashed", { class: err instanceof Error ? err.name : "unknown" });
     return null;
   }
 }

@@ -322,6 +322,35 @@ async function fetchToolkitTools(env: Env, toolkit: ToolkitSlug, includeSchemas:
   return { ok: true, value: tools };
 }
 
+async function catalogFor(env: Env, slug: ToolkitSlug, includeSchemas: boolean): Promise<McpResult<McpToolDescriptor[]>> {
+  const cached = toolCache.get(slug);
+  if (!includeSchemas && cached && cached.expiresAt > Date.now()) return { ok: true, value: cached.tools };
+  const fetched = await fetchToolkitTools(env, slug, includeSchemas);
+  // Never cache an empty listing: it usually means a transient or not-yet-ready state.
+  if (fetched.ok && !includeSchemas && fetched.value.length > 0) remember(toolCache, slug, { tools: fetched.value, expiresAt: Date.now() + TOOL_CACHE_TTL_MS });
+  return fetched;
+}
+
+const STOP_WORDS = new Set(["the", "and", "for", "with", "that", "this", "from", "into", "please", "can", "you", "saying", "say", "tell", "about", "me", "my", "to", "of", "an", "a", "in", "on"]);
+
+/** Ranks catalog tools against a request by word overlap with their id, name, and description. */
+export function rankTools(useCase: string, tools: readonly McpToolDescriptor[], limit: number): McpToolDescriptor[] {
+  const words = [...new Set(useCase.toLowerCase().split(/[^a-z0-9]+/).filter((word) => word.length >= 3 && !STOP_WORDS.has(word)))];
+  if (words.length === 0) return [];
+  return tools
+    .map((tool) => {
+      const id = tool.id.toLowerCase().replace(/_/g, " ");
+      const text = `${tool.name} ${tool.description ?? ""}`.toLowerCase();
+      // Words in the tool id and name count most: GMAIL_SEND_EMAIL for "send an email".
+      const score = words.reduce((sum, word) => sum + (id.includes(word) ? 3 : 0) + (text.includes(word) ? 1 : 0), 0);
+      return { tool, score };
+    })
+    .filter((entry) => entry.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit)
+    .map((entry) => entry.tool);
+}
+
 export function createComposioProvider(env: Env): McpToolProvider {
   return {
     id: "composio",
@@ -329,14 +358,7 @@ export function createComposioProvider(env: Env): McpToolProvider {
       const includeSchemas = options?.includeSchemas === true;
       const slugs = (options?.toolkits ?? COMPOSIO_TOOLKITS.map((toolkit) => toolkit.slug)).filter(isToolkitSlug);
       const lists = await Promise.all(
-        slugs.map(async (slug): Promise<McpResult<McpToolDescriptor[]>> => {
-          const cached = toolCache.get(slug);
-          if (!includeSchemas && cached && cached.expiresAt > Date.now()) return { ok: true, value: cached.tools };
-          const fetched = await fetchToolkitTools(env, slug, includeSchemas);
-          // Never cache an empty listing: it usually means a transient or not-yet-ready state.
-          if (fetched.ok && !includeSchemas && fetched.value.length > 0) remember(toolCache, slug, { tools: fetched.value, expiresAt: Date.now() + TOOL_CACHE_TTL_MS });
-          return fetched;
-        })
+        slugs.map((slug) => catalogFor(env, slug, includeSchemas))
       );
       const failed = lists.find((list) => !list.ok);
       if (failed && !failed.ok) return failed;
@@ -350,8 +372,14 @@ export function createComposioProvider(env: Env): McpToolProvider {
           body: { queries: [{ use_case: useCase.slice(0, 1000) }] },
         })
       );
-      if (!searched.ok) return searched;
-      const result = searched.value.results?.[0];
+      const result = searched.ok ? searched.value.results?.[0] : undefined;
+      // Response shape only (counts and field names), to diagnose empty searches.
+      console.warn("composio search", JSON.stringify({
+        ok: searched.ok,
+        resultKeys: result ? Object.keys(result) : [],
+        primary: Array.isArray(result?.primary_tool_slugs) ? result.primary_tool_slugs.length : null,
+        schemas: result?.tool_schemas && typeof result.tool_schemas === "object" ? Object.keys(result.tool_schemas).length : null,
+      }));
       const schemas = result?.tool_schemas && typeof result.tool_schemas === "object" ? (result.tool_schemas as Record<string, Record<string, unknown>>) : {};
       const slugs = [...(Array.isArray(result?.primary_tool_slugs) ? result.primary_tool_slugs : []), ...(Array.isArray(result?.related_tool_slugs) ? result.related_tool_slugs : [])]
         .filter((slug): slug is string => typeof slug === "string");
@@ -367,7 +395,19 @@ export function createComposioProvider(env: Env): McpToolProvider {
         if (parsed && wanted.has(parsed.toolkit)) tools.push(parsed);
         if (tools.length >= 8) break;
       }
-      return { ok: true, value: tools };
+      if (tools.length > 0) return { ok: true, value: tools };
+
+      // Search found nothing usable: rank the toolkits' own catalogs against the request instead,
+      // then fetch full argument schemas for just the best few.
+      const catalogs = await Promise.all([...wanted].filter(isToolkitSlug).map((slug) => catalogFor(env, slug, false)));
+      const ranked = rankTools(useCase, catalogs.flatMap((catalog) => (catalog.ok ? catalog.value : [])), 6);
+      const detailed = await Promise.all(
+        ranked.map(async (tool) => {
+          const detail = await composioFetch<Record<string, unknown>>(env, `/tools/${encodeURIComponent(tool.id)}`);
+          return (detail.ok && parseTool(detail.value, true)) || tool;
+        })
+      );
+      return { ok: true, value: detailed };
     },
     async executeTool(uid, tool, args) {
       const executed = await withSession(env, uid, (sessionId) =>

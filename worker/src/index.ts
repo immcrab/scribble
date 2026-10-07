@@ -449,6 +449,7 @@ export default {
                 toolUid = null;
               }
             }
+            if (!toolUid) console.warn("mcp agent", "no-verified-user", JSON.stringify({ hadToken: !!token }));
             if (toolUid) {
               const priorTurns = messages.slice(Math.max(0, lastUserIdx - 4), lastUserIdx).map((m) => `${m.role}: ${m.content.slice(0, 400)}`).join("\n");
               const note = await runMcpAgentStep(env, toolUid, query, priorTurns, (toolCall) => controller.enqueue(ndjsonLine({ toolCall })));

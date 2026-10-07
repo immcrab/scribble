@@ -9,6 +9,7 @@ import {
   disconnectAccount,
   isToolkitSlug,
   parseConnections,
+  rankTools,
 } from "../../../worker/src/composio";
 import {
   issueConfirmationToken,
@@ -355,5 +356,26 @@ test.describe("Composio tool search", () => {
     const tools = (result as { value: McpToolDescriptor[] }).value;
     expect(tools.map((t) => [t.id, t.readOnly])).toEqual([["GMAIL_SEND_EMAIL", false], ["GMAIL_FETCH_EMAILS", true]]);
     expect(tools[0].inputSchema).toEqual({ type: "object" });
+  });
+});
+
+test.describe("catalog ranking fallback", () => {
+  const tool = (id: string, name: string, description = ""): McpToolDescriptor => ({ id, name, description, toolkit: "gmail", readOnly: false });
+  const catalog = [
+    tool("GMAIL_FETCH_EMAILS", "Fetch emails", "List messages in the mailbox"),
+    tool("GMAIL_SEND_EMAIL", "Send email", "Send an email message"),
+    tool("GMAIL_DELETE_MESSAGE", "Delete message", "Permanently delete a message"),
+    tool("GMAIL_CREATE_LABEL", "Create label", "Create a mailbox label"),
+  ];
+
+  test("ranks the send tool first for a send-an-email request", () => {
+    const ranked = rankTools("send an email to me@example.com saying hi", catalog, 3);
+    expect(ranked[0].id).toBe("GMAIL_SEND_EMAIL");
+    expect(ranked.length).toBeLessThanOrEqual(3);
+  });
+
+  test("returns nothing when no word overlaps or the request is only stop words", () => {
+    expect(rankTools("what is the weather", catalog, 3)).toEqual([]);
+    expect(rankTools("to me saying the", catalog, 3)).toEqual([]);
   });
 });
