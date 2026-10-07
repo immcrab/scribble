@@ -65,8 +65,24 @@ crons = ["0 * * * *"]
 #   CF_AI_TOKEN         (Workers AI-scoped API token — powers /api/image/generate)
 #   TURNSTILE_SECRET    (Cloudflare Turnstile secret — sign-in bot protection)
 #
+#
+# Composio OAuth connections (Settings -> MCP Servers). All of these are secrets;
+# none belong in [vars] or in the frontend:
+#   COMPOSIO_API_KEY                      (required — Composio project API key, from
+#                                          the Composio dashboard -> Settings -> API keys)
+#   COMPOSIO_AUTH_CONFIG_GMAIL            (optional — Composio auth config id, "ac_...")
+#   COMPOSIO_AUTH_CONFIG_GITHUB           (optional — same, per toolkit)
+#   COMPOSIO_AUTH_CONFIG_SLACK            (optional)
+#   COMPOSIO_AUTH_CONFIG_NOTION           (optional)
+#   COMPOSIO_AUTH_CONFIG_GOOGLECALENDAR   (optional)
+# Auth config ids are only needed to use your own OAuth apps; without one, Composio's
+# managed auth is used for that toolkit. FIREBASE_PROJECT_ID (above) must be set because
+# every Composio endpoint requires a verified Firebase ID token.
+#
 # Remote MCP endpoint lists live in each browser. Do not put per-user MCP
 # credentials in wrangler vars or the frontend; OAuth and tokens belong server-side.
+# The Composio return URL is built from the request Origin, and only when that origin is
+# listed in ALLOWED_ORIGINS, so every deployed origin (and staging) must be listed there.
 
 # Staging deployment (`wrangler deploy --env staging`). The only place TURNSTILE_QA_MODE
 # may be set: it lets Cloudflare's Turnstile *test* keys through the site gate so QA can

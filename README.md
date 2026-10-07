@@ -114,6 +114,50 @@ Also edit `worker/wrangler.toml` → `ALLOWED_ORIGINS` to include your deployed
 GitHub Pages origin (comma-separated, no paths — e.g.
 `https://your-username.github.io`). This is the Worker's CORS allowlist.
 
+### Composio OAuth connections (optional)
+
+Settings → MCP Servers can connect a signed-in user's Gmail, GitHub, Slack, Notion,
+and Google Calendar through [Composio](https://composio.dev)'s hosted OAuth. The Worker
+uses Composio's current Sessions API (v3.1): it creates a session per user, generates a
+Composio-hosted Connect Link, and reports connection status. OAuth tokens, the API key,
+and connected-account credentials never reach the browser, and every endpoint requires a
+verified Firebase ID token (`FIREBASE_PROJECT_ID` must be set). The Composio user id is
+`lofin:<firebase uid>`.
+
+```bash
+cd worker
+npx wrangler secret put COMPOSIO_API_KEY
+
+# optional — only to use your own OAuth apps instead of Composio-managed auth
+npx wrangler secret put COMPOSIO_AUTH_CONFIG_GMAIL
+npx wrangler secret put COMPOSIO_AUTH_CONFIG_GITHUB
+npx wrangler secret put COMPOSIO_AUTH_CONFIG_SLACK
+npx wrangler secret put COMPOSIO_AUTH_CONFIG_NOTION
+npx wrangler secret put COMPOSIO_AUTH_CONFIG_GOOGLECALENDAR
+```
+
+Composio dashboard setup:
+
+1. Create a project and copy its API key into `COMPOSIO_API_KEY`.
+2. Composio-managed auth works out of the box for the five toolkits. To use your own
+   OAuth app, create an auth config for that toolkit (Auth configs → Create), set its
+   redirect URI to the one Composio shows, and store the resulting `ac_...` id in the
+   matching `COMPOSIO_AUTH_CONFIG_*` secret.
+3. Make sure each Lofin origin that will start a connection (for example
+   `https://lofin.dev`) is in `ALLOWED_ORIGINS`. Composio sends the user back to
+   `<origin>/mcp`, and the Worker only builds that URL from an allowlisted origin.
+
+Worker routes (all under the Firebase-token gate and rate limited):
+`GET /api/mcp/composio/connections`, `POST /api/mcp/composio/connect`,
+`DELETE /api/mcp/composio/connections/:id`, `GET /api/mcp/tools`, and
+`POST /api/mcp/tools/execute`. The tool routes are for Agent mode only; no other mode
+uses them. Tools not explicitly marked read-only by Composio return HTTP 409 with a
+short-lived confirmation token and run only when the same call is repeated with that token
+after the user approves. Automatic model tool-calling is not wired yet; the clearly marked
+integration boundary is at the bottom of `worker/src/mcpTools.ts`.
+
+MCP server lists stay in the browser and are never cloud-synced.
+
 ### About `LOFIN_PASSWORD`
 
 This is a basic access gate, not a real auth system: if set, the Worker

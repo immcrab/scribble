@@ -35,6 +35,7 @@ import { useChatStore } from "../state/chatStore";
 import { useAuthStore } from "../state/authStore";
 import { checkWorkerHealth } from "../lib/workerClient";
 import { inspectMcpServer, type McpInspection } from "../lib/mcpClient";
+import { ComposioConnections } from "./ComposioConnections";
 import { getAllModels, getDefaultModel, isModelGated } from "../config/models";
 import type { Theme } from "../lib/theme";
 import { FONT_OPTIONS, THEME_PALETTE_OPTIONS, REPLY_LANGUAGE_OPTIONS } from "../lib/appearance";
@@ -577,9 +578,7 @@ function McpServersSection() {
   return (
     <div className="mx-auto max-w-2xl space-y-6">
       <div><SectionLabel>Remote MCP servers</SectionLabel><p className="text-sm leading-6 text-slate-400">Add public Streamable HTTP MCP endpoints for Agent tools. Server URLs stay in this browser; the Worker probes them with a restricted handshake and never stores browser-supplied credentials.</p></div>
-      <div className="rounded-2xl border border-base-600/70 bg-base-900/35 p-4">
-        <div className="mb-3 flex items-start justify-between gap-3"><div><h4 className="text-sm font-semibold text-white">Composio</h4><p className="mt-1 text-xs leading-5 text-slate-500">Adds Composio's remote MCP endpoint. Its OAuth consent flow remains with Composio; no token is saved in Lofin.</p></div><button onClick={() => addServer("composio")} disabled={settings.mcpServers.some((server) => server.kind === "composio")} className="shrink-0 rounded-lg border border-base-600/60 px-3 py-1.5 text-xs font-medium text-slate-200 hover:bg-base-700/60 disabled:cursor-not-allowed disabled:opacity-50">Add Composio</button></div>
-      </div>
+      <ComposioConnections />
       <div className="rounded-2xl border border-base-600/70 bg-base-900/35 p-4">
         <SectionLabel>Add custom server</SectionLabel>
         <div className="grid gap-2 sm:grid-cols-[minmax(0,0.7fr)_minmax(0,1.3fr)_auto]"><input value={name} onChange={(event) => setName(event.target.value)} maxLength={80} placeholder="Name" className="rounded-lg border border-base-600/60 bg-base-900 px-3 py-2 text-sm text-white outline-none placeholder:text-slate-500 focus:border-accent-500" /><input value={url} onChange={(event) => setUrl(event.target.value)} maxLength={2048} placeholder="https://example.com/mcp" className="rounded-lg border border-base-600/60 bg-base-900 px-3 py-2 text-sm text-white outline-none placeholder:text-slate-500 focus:border-accent-500" /><button onClick={() => addServer()} className="rounded-lg bg-accent-500 px-3 py-2 text-sm font-medium text-base-950 hover:bg-accent-400">Add server</button></div>

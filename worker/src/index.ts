@@ -30,6 +30,7 @@ import { deleteExpiredWebsites, handleWebsiteApi, serveWebsite } from "./website
 import { FREE_XKIRO_MODEL_IDS } from "./freeXkiroModels";
 import { FREE_PROVIDER_MODEL_IDS } from "./freeProviderModels";
 import { handleMcpInspect } from "./mcp";
+import { handleMcpAccountApi, isMcpAccountPath } from "./mcpRoutes";
 
 const ADMIN_EMAIL = "imcrabfr@gmail.com";
 const FREE_XKIRO_IMAGE_MODEL = "sensenova/sensenova-u1.5-lite";
@@ -139,6 +140,11 @@ export default {
         return json({ error: "Rate limit exceeded. Slow down and try again shortly." }, 429, cors);
       }
       return handleMcpInspect(request, env, cors, json);
+    }
+
+    // Composio OAuth connections and Agent tool access. Firebase-token gated; see mcpRoutes.ts.
+    if (isMcpAccountPath(url.pathname)) {
+      return handleMcpAccountApi(request, env, url, cors, json);
     }
 
     // Google serves a compact favicon for nearly any public hostname. Proxy it

@@ -1,0 +1,177 @@
+import { useCallback, useEffect, useRef, useState } from "react";
+import { PlugZap } from "lucide-react";
+import { useAuthStore } from "../state/authStore";
+import {
+  disconnectComposioAccount,
+  fetchComposioOverview,
+  fetchComposioTools,
+  startComposioConnect,
+  type ComposioConnection,
+  type ComposioConnectionState,
+  type ComposioOverview,
+  type ComposioToolSummary,
+} from "../lib/mcpClient";
+
+const STATUS_LABEL: Record<ComposioConnectionState, string> = { connected: "Connected", pending: "Pending", failed: "Failed" };
+const STATUS_CLASS: Record<ComposioConnectionState, string> = {
+  connected: "border-emerald-500/40 text-emerald-300",
+  pending: "border-amber-500/40 text-amber-300",
+  failed: "border-red-500/40 text-red-300",
+};
+const MAX_PENDING_POLLS = 12;
+
+/** Composio returns the user here with `status` and `connected_account_id` query params.
+ * Only the coarse status is read; both params are removed from the address bar immediately
+ * and the real state is always re-fetched from the Worker. */
+function consumeReturnParams(): "success" | "failed" | null {
+  const params = new URLSearchParams(window.location.search);
+  if (!params.has("status") && !params.has("connected_account_id")) return null;
+  const status = params.get("status");
+  params.delete("status");
+  params.delete("connected_account_id");
+  const rest = params.toString();
+  window.history.replaceState(window.history.state, "", `${window.location.pathname}${rest ? `?${rest}` : ""}${window.location.hash}`);
+  return status === "success" ? "success" : "failed";
+}
+
+export function ComposioConnections() {
+  const user = useAuthStore((state) => state.user);
+  const authLoading = useAuthStore((state) => state.loading);
+  const signInWithGoogle = useAuthStore((state) => state.signInWithGoogle);
+  const [overview, setOverview] = useState<ComposioOverview | null>(null);
+  const [toolkit, setToolkit] = useState("gmail");
+  const [loading, setLoading] = useState(false);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(() => {
+    const outcome = consumeReturnParams();
+    if (outcome === null) return null;
+    return outcome === "success" ? "Returned from Composio. Checking your connection…" : "Composio did not complete the connection. See the status below.";
+  });
+  const [tools, setTools] = useState<Record<string, ComposioToolSummary[] | "loading" | { error: string }>>({});
+  const polls = useRef(0);
+  const uid = user?.uid;
+
+  const refresh = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      setOverview(await fetchComposioOverview());
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not load connections.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!uid) { setOverview(null); return; }
+    void refresh();
+  }, [uid, refresh]);
+
+  // Authorization can finish a moment after the redirect; poll briefly while pending.
+  const hasPending = overview?.connections.some((connection) => connection.status === "pending") ?? false;
+  useEffect(() => {
+    if (!hasPending) { polls.current = 0; return; }
+    if (polls.current >= MAX_PENDING_POLLS) return;
+    const timer = window.setTimeout(() => { polls.current += 1; void refresh(); }, 5000);
+    return () => window.clearTimeout(timer);
+  }, [hasPending, overview, refresh]);
+
+  const connect = async () => {
+    setBusy("connect");
+    setError(null);
+    try {
+      // Same-tab navigation: no popup blocker, and the Settings route restores on return.
+      window.location.assign(await startComposioConnect(toolkit));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not start the connection.");
+      setBusy(null);
+    }
+  };
+
+  const disconnect = async (connection: ComposioConnection, label: string) => {
+    if (!window.confirm(`Disconnect this ${label} account from Lofin?`)) return;
+    setBusy(connection.id);
+    setError(null);
+    try {
+      await disconnectComposioAccount(connection.id);
+      setTools((current) => { const { [connection.toolkit]: _removed, ...rest } = current; return rest; });
+      await refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not disconnect this account.");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const showTools = async (slug: string) => {
+    setTools((current) => ({ ...current, [slug]: "loading" }));
+    try {
+      const list = await fetchComposioTools(slug);
+      setTools((current) => ({ ...current, [slug]: list }));
+    } catch (err) {
+      setTools((current) => ({ ...current, [slug]: { error: err instanceof Error ? err.message : "Could not load tools." } }));
+    }
+  };
+
+  const nameOf = (slug: string) => overview?.toolkits.find((item) => item.slug === slug)?.name ?? slug;
+  const inputClass = "rounded-lg border border-base-600/60 bg-base-900 px-3 py-2 text-sm text-white outline-none focus:border-accent-500";
+
+  return (
+    <div className="rounded-2xl border border-base-600/70 bg-base-900/35 p-4">
+      <div className="flex items-start gap-3">
+        <PlugZap size={17} className="mt-0.5 shrink-0 text-accent-300" />
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2"><h4 className="text-sm font-semibold text-white">Composio</h4><span className="rounded-full border border-base-600/60 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-slate-400">OAuth</span></div>
+          <p className="mt-1 text-xs leading-5 text-slate-500">Connect your own accounts through Composio's hosted sign-in. Tokens and API keys stay on Lofin's Worker; this browser only sees connection status. Tools are for Agent mode and ask before anything that changes data.</p>
+        </div>
+      </div>
+
+      {authLoading ? (
+        <p className="mt-4 text-xs text-slate-500">Checking sign-in…</p>
+      ) : !user ? (
+        <div className="mt-4 flex flex-wrap items-center gap-3"><p className="text-xs text-slate-400">Sign in to Lofin to connect accounts.</p><button onClick={() => void signInWithGoogle()} className="rounded-lg bg-accent-500 px-3 py-1.5 text-xs font-medium text-base-950 hover:bg-accent-400">Sign in</button></div>
+      ) : (
+        <>
+          {overview && !overview.configured ? (
+            <p className="mt-4 text-xs text-amber-300">Composio is not configured on this Worker yet (missing COMPOSIO_API_KEY secret).</p>
+          ) : (
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              <select aria-label="Toolkit" value={toolkit} onChange={(event) => setToolkit(event.target.value)} className={inputClass}>
+                {(overview?.toolkits ?? [{ slug: "gmail", name: "Gmail" }, { slug: "github", name: "GitHub" }, { slug: "slack", name: "Slack" }, { slug: "notion", name: "Notion" }, { slug: "googlecalendar", name: "Google Calendar" }]).map((item) => <option key={item.slug} value={item.slug}>{item.name}</option>)}
+              </select>
+              <button onClick={() => void connect()} disabled={busy !== null || !overview} className="rounded-lg bg-accent-500 px-3 py-2 text-sm font-medium text-base-950 hover:bg-accent-400 disabled:opacity-50">{busy === "connect" ? "Opening Composio…" : "Connect"}</button>
+              <button onClick={() => void refresh()} disabled={loading} className="rounded-lg border border-base-600/60 px-3 py-2 text-xs font-medium text-slate-200 hover:bg-base-700/60 disabled:opacity-50">{loading ? "Refreshing…" : "Refresh status"}</button>
+            </div>
+          )}
+          {notice && <p className="mt-3 text-xs text-slate-300">{notice}</p>}
+          {error && <p className="mt-3 text-xs text-red-300">{error}</p>}
+          {overview && overview.connections.length > 0 && (
+            <ul className="mt-4 space-y-2">
+              {overview.connections.map((connection) => {
+                const label = nameOf(connection.toolkit);
+                const toolState = tools[connection.toolkit];
+                return (
+                  <li key={connection.id} className="rounded-xl border border-base-600/60 bg-base-900/40 p-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-sm font-medium text-white">{label}</span>
+                      <span className={`rounded-full border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide ${STATUS_CLASS[connection.status]}`}>{STATUS_LABEL[connection.status]}</span>
+                      <span className="flex-1" />
+                      {connection.status === "connected" && <button onClick={() => void showTools(connection.toolkit)} disabled={toolState === "loading"} className="text-xs text-slate-300 hover:text-white disabled:opacity-50">{toolState === "loading" ? "Loading tools…" : "View tools"}</button>}
+                      <button onClick={() => void disconnect(connection, label)} disabled={busy !== null} className="text-xs text-slate-500 hover:text-red-300 disabled:opacity-50">{busy === connection.id ? "Disconnecting…" : "Disconnect"}</button>
+                    </div>
+                    {connection.status === "failed" && <p className="mt-2 text-xs text-red-300">This connection did not complete. Disconnect it and connect again.</p>}
+                    {Array.isArray(toolState) && (toolState.length === 0 ? <p className="mt-2 text-xs text-slate-500">No tools discovered.</p> : <div className="mt-2 flex flex-wrap gap-1.5">{toolState.slice(0, 40).map((tool) => <span key={tool.id} title={tool.description} className="rounded-full border border-base-600/60 bg-base-850 px-2 py-1 text-[11px] text-slate-300">{tool.name}</span>)}</div>)}
+                    {toolState && typeof toolState === "object" && "error" in toolState && <p className="mt-2 text-xs text-red-300">{toolState.error}</p>}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+          {overview?.configured && overview.connections.length === 0 && !loading && <p className="mt-4 text-xs text-slate-500">No accounts connected yet.</p>}
+        </>
+      )}
+    </div>
+  );
+}

@@ -28,6 +28,16 @@ export interface Env {
   /** Optional canonical origin used in links to temporary published websites. */
   PUBLIC_WEBSITE_ORIGIN?: string;
   FIREBASE_PROJECT_ID?: string;
+  /** Composio project API key (secret). Powers /api/mcp/composio/* and /api/mcp/tools*.
+   * Set with: wrangler secret put COMPOSIO_API_KEY */
+  COMPOSIO_API_KEY?: string;
+  /** Optional Composio auth config ids (secrets, `ac_...`) for custom OAuth apps. When
+   * unset, Composio-managed auth is used for that toolkit. */
+  COMPOSIO_AUTH_CONFIG_GMAIL?: string;
+  COMPOSIO_AUTH_CONFIG_GITHUB?: string;
+  COMPOSIO_AUTH_CONFIG_SLACK?: string;
+  COMPOSIO_AUTH_CONFIG_NOTION?: string;
+  COMPOSIO_AUTH_CONFIG_GOOGLECALENDAR?: string;
 }
 
 export type Provider = "xkiro" | "mistral" | "gemini" | "groq" | "openrouter" | "zai" | "custom";
