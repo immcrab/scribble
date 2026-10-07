@@ -124,6 +124,7 @@ const TOOLKIT_NOUNS: Record<string, RegExp> = {
   dropbox: /\b(file|folder)\b/i,
   googlesheets: /\b(spreadsheet|sheet)\b/i,
   googledocs: /\b(document|doc)\b/i,
+  googleslides: /\b(slides?|presentation|deck|powerpoint)\b/i,
   notion: /\b(page|notion)\b/i,
 };
 
@@ -148,8 +149,8 @@ export function buildCapabilityPrompt(connectedToolkits: readonly string[], quer
   const lines = [
     "You are running in Lofin's Agent mode, which can act on the user's own connected accounts through Composio.",
     connected.length
-      ? `Connected accounts: ${connected.join(", ")}. You CAN do things in these (send email, create GitHub repositories or issues, post messages, edit documents, and similar). Lofin finds the right tool and prepares the action. Actions that change something show the user an Approve button first, and nothing happens until they approve.`
-      : "The user has no connected accounts yet. Lofin can connect Gmail, GitHub, Slack, Notion, Google Drive and many more: they open Settings → MCP Servers, pick the service, and sign in through Composio.",
+      ? `Connected accounts: ${connected.join(", ")}. You CAN do things in these (send email, create GitHub repositories or issues, post messages, create and edit documents or Slides, and similar). Lofin finds the right tool and prepares the action. Actions that change something show the user an Approve button first, and nothing runs until the user approves.`
+      : "The user has no connected accounts yet. Lofin can connect Gmail, GitHub, Slack, Notion, Google Drive, Google Docs, Google Slides and many more: they open Settings → Apps & MCP, pick the service, and sign in through Composio.",
     "Never say you cannot access their accounts or take actions when a connected account fits the request.",
   ];
   if (connected.length && !prepared) {

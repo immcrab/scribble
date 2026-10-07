@@ -162,6 +162,24 @@ function SearchResultList({ toolCalls }: { toolCalls: ToolCallRecord[] }) {
   );
 }
 
+function ConnectedAppArtifactList({ toolCalls }: { toolCalls: ToolCallRecord[] }) {
+  const artifacts = toolCalls.flatMap((tool) => (tool.links ?? []).map((link) => ({ ...link, tool: tool.name })));
+  if (!artifacts.length) return null;
+  return (
+    <div className="mb-2 overflow-hidden rounded-xl border border-accent-500/30 bg-accent-500/5">
+      <div className="border-b border-accent-500/20 px-3 py-2 text-xs font-medium text-accent-200">Created with a connected app</div>
+      <div className="space-y-1 p-1.5">
+        {artifacts.map((artifact) => (
+          <a key={`${artifact.tool}:${artifact.url}`} href={artifact.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 rounded-lg px-2.5 py-2 text-xs text-slate-200 hover:bg-base-700/50">
+            <ExternalLink size={13} className="shrink-0 text-accent-300" />
+            <span className="min-w-0 flex-1 truncate">{artifact.label}</span>
+            <span className="shrink-0 text-slate-500">{artifact.tool}</span>
+          </a>
+        ))}
+      </div>
+    </div>
+  );
+}
 function ToolActivity({ toolCalls, messageId }: { toolCalls: ToolCallRecord[]; messageId: string }) {
   const [open, setOpen] = useState(true);
   const liveSearch = toolCalls.find((t) => t.name === "Web search" && t.status === "running");
@@ -172,6 +190,7 @@ function ToolActivity({ toolCalls, messageId }: { toolCalls: ToolCallRecord[]; m
       {awaiting.map((t) => <McpApprovalCard key={t.id} toolCall={t} messageId={messageId} />)}
       {liveSearch && <SearchingPill toolCall={liveSearch} />}
       <SearchResultList toolCalls={toolCalls} />
+      <ConnectedAppArtifactList toolCalls={toolCalls} />
       {listed.length > 0 && (
         <div className="mb-2 overflow-hidden rounded-xl border border-base-700/60 bg-base-900/50">
           <button

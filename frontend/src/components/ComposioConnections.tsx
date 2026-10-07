@@ -39,6 +39,8 @@ function consumeReturnParams(): "success" | "failed" | null {
 const FALLBACK_TOOLKITS: ComposioToolkit[] = [
   { slug: "gmail", name: "Gmail", group: "Email and calendar" },
   { slug: "googlecalendar", name: "Google Calendar", group: "Email and calendar" },
+  { slug: "googledocs", name: "Google Docs", group: "Files and documents" },
+  { slug: "googleslides", name: "Google Slides", group: "Files and documents" },
   { slug: "notion", name: "Notion", group: "Files and documents" },
   { slug: "slack", name: "Slack", group: "Team chat" },
   { slug: "github", name: "GitHub", group: "Code and design" },
@@ -225,7 +227,7 @@ export function ComposioConnections() {
         <PlugZap size={17} className="mt-0.5 shrink-0 text-accent-300" />
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2"><h4 className="text-sm font-semibold text-white">Composio</h4><span className="rounded-full border border-base-600/60 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-slate-400">OAuth</span></div>
-          <p className="mt-1 text-xs leading-5 text-slate-500">Connect your own accounts through Composio's hosted sign-in. Tokens and API keys stay on Lofin's Worker; this browser only sees connection status. Tools are for Agent mode and ask before anything that changes data.</p>
+          <p className="mt-1 text-xs leading-5 text-slate-500">Connect your own accounts through Composio's hosted sign-in. Tokens and API keys stay on Lofin's Worker; this browser only sees connection status. In Agent mode, you can create Google Docs and Slides, draft and send email, manage projects, work with files, and more.</p>
         </div>
       </div>
 

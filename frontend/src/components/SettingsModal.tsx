@@ -70,7 +70,7 @@ const TABS: { id: Tab; label: string; icon: typeof Sliders; group: "Personal" | 
   { id: "memory", label: "Memory", icon: Brain, group: "Personal", keywords: "remember stored memories" },
   { id: "account", label: "Account", icon: UserCircle2, group: "Workspace", keywords: "profile sign in data" },
   { id: "models", label: "Models", icon: Blocks, group: "Workspace", keywords: "providers custom models endpoints" },
-  { id: "mcp", label: "MCP Servers", icon: PlugZap, group: "Workspace", keywords: "mcp composio tools integrations remote servers" },
+  { id: "mcp", label: "Apps & MCP", icon: PlugZap, group: "Workspace", keywords: "apps connectors composio google slides docs approval email integrations remote servers media" },
   { id: "storage", label: "Storage", icon: HardDrive, group: "Workspace", keywords: "space usage files images chats attachments local data" },
   { id: "advanced", label: "Advanced", icon: Server, group: "Workspace", keywords: "worker connection password request spacing" },
 ];
@@ -577,7 +577,11 @@ function McpServersSection() {
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
-      <div><SectionLabel>Remote MCP servers</SectionLabel><p className="text-sm leading-6 text-slate-400">Add public Streamable HTTP MCP endpoints for Agent tools. Server URLs stay in this browser; the Worker probes them with a restricted handshake and never stores browser-supplied credentials.</p></div>
+      <div><SectionLabel>Apps, media connectors, and MCP servers</SectionLabel><p className="text-sm leading-6 text-slate-400">Connect Google Workspace, email, project, design, and file apps through Composio. Add any public Streamable HTTP MCP endpoint for specialized tools, including an image or video provider that offers its own MCP server. Server URLs stay in this browser; the Worker probes them with a restricted handshake and never stores browser-supplied credentials.</p></div>
+      <div className="rounded-2xl border border-base-600/70 bg-base-900/35 p-4">
+        <SectionLabel>Action approvals</SectionLabel>
+        <p className="text-sm leading-6 text-slate-400">Lofin asks before an Agent action changes a connected account. This includes sending email, creating or editing Docs and Slides, posting messages, and publishing changes. Read-only tools can run without a prompt.</p>
+      </div>
       <ComposioConnections />
       <div className="rounded-2xl border border-base-600/70 bg-base-900/35 p-4">
         <SectionLabel>Add custom server</SectionLabel>

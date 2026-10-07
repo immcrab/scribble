@@ -22,6 +22,7 @@ export const COMPOSIO_TOOLKITS = [
   { slug: "googledrive", name: "Google Drive", group: "Files and documents" },
   { slug: "googlesheets", name: "Google Sheets", group: "Files and documents" },
   { slug: "googledocs", name: "Google Docs", group: "Files and documents" },
+  { slug: "googleslides", name: "Google Slides", group: "Files and documents" },
   { slug: "dropbox", name: "Dropbox", group: "Files and documents" },
   { slug: "notion", name: "Notion", group: "Files and documents" },
   { slug: "airtable", name: "Airtable", group: "Files and documents" },

@@ -73,6 +73,7 @@ crons = ["0 * * * *"]
 #   COMPOSIO_AUTH_CONFIG_<TOOLKIT SLUG>   (optional, one per toolkit — Composio auth config
 #                                          id "ac_...", e.g. COMPOSIO_AUTH_CONFIG_GMAIL,
 #                                          COMPOSIO_AUTH_CONFIG_GOOGLEDRIVE,
+#                                          COMPOSIO_AUTH_CONFIG_GOOGLESLIDES,
 #                                          COMPOSIO_AUTH_CONFIG_MICROSOFT_TEAMS; the slug list
 #                                          is COMPOSIO_TOOLKITS in src/composio.ts)
 # Auth config ids are only needed to use your own OAuth apps; without one, Composio's

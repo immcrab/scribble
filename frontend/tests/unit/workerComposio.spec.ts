@@ -435,6 +435,7 @@ test.describe("tool ranking by intent and action detection", () => {
   test("detects account actions by app name or its nouns, and ignores plain questions", () => {
     expect(looksLikeAccountAction("make me a new repo", ["github"])).toBe(true);
     expect(looksLikeAccountAction("send an email to bob", ["gmail"])).toBe(true);
+    expect(looksLikeAccountAction("create a product presentation", ["googleslides"])).toBe(true);
     expect(looksLikeAccountAction("make me a new repo", ["gmail"])).toBe(false);
     expect(looksLikeAccountAction("what is a git repository", ["github"])).toBe(false);
   });
