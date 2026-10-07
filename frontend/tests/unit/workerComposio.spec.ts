@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import {
   authConfigsFor,
+  COMPOSIO_TOOLKITS,
   composioApiKey,
   composioCallbackUrl,
   composioUserId,
@@ -19,7 +20,7 @@ import {
   type McpToolDescriptor,
   type McpToolProvider,
 } from "../../../worker/src/mcpTools";
-import { parsePlan } from "../../../worker/src/mcpAgent";
+import { buildCapabilityPrompt, parsePlan } from "../../../worker/src/mcpAgent";
 import { handleMcpAccountApi, isMcpAccountPath } from "../../../worker/src/mcpRoutes";
 
 type Env = Parameters<typeof composioCallbackUrl>[1];
@@ -377,5 +378,28 @@ test.describe("catalog ranking fallback", () => {
   test("returns nothing when no word overlaps or the request is only stop words", () => {
     expect(rankTools("what is the weather", catalog, 3)).toEqual([]);
     expect(rankTools("to me saying the", catalog, 3)).toEqual([]);
+  });
+});
+
+test.describe("Agent capability prompt", () => {
+  test("tells the model which accounts it can act on and that approval is required", () => {
+    const prompt = buildCapabilityPrompt(["gmail", "github"], "make me a new repo");
+    expect(prompt).toContain("Gmail, GitHub");
+    expect(prompt).toContain("CAN do things");
+    expect(prompt).toContain("Approve");
+  });
+
+  test("points to Settings when a mentioned app is not connected", () => {
+    const prompt = buildCapabilityPrompt(["gmail"], "create a new GitHub repo called demo");
+    expect(prompt).toContain("GitHub, which is not connected");
+    expect(prompt).toContain("Settings → MCP Servers");
+  });
+
+  test("explains how to connect when nothing is connected yet", () => {
+    expect(buildCapabilityPrompt([], "hi")).toContain("no connected accounts yet");
+  });
+
+  test("every toolkit has a picker group", () => {
+    for (const toolkit of COMPOSIO_TOOLKITS) expect(toolkit.group.length).toBeGreaterThan(0);
   });
 });

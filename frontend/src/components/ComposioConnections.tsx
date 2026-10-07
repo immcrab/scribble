@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { PlugZap } from "lucide-react";
+import { Check, ChevronDown, PlugZap, Search } from "lucide-react";
+import { Dropdown } from "./Dropdown";
 import { useAuthStore } from "../state/authStore";
 import {
   disconnectComposioAccount,
@@ -9,6 +10,7 @@ import {
   type ComposioConnection,
   type ComposioConnectionState,
   type ComposioOverview,
+  type ComposioToolkit,
   type ComposioToolSummary,
 } from "../lib/mcpClient";
 
@@ -32,6 +34,105 @@ function consumeReturnParams(): "success" | "failed" | null {
   const rest = params.toString();
   window.history.replaceState(window.history.state, "", `${window.location.pathname}${rest ? `?${rest}` : ""}${window.location.hash}`);
   return status === "success" ? "success" : "failed";
+}
+
+const FALLBACK_TOOLKITS: ComposioToolkit[] = [
+  { slug: "gmail", name: "Gmail", group: "Email and calendar" },
+  { slug: "googlecalendar", name: "Google Calendar", group: "Email and calendar" },
+  { slug: "notion", name: "Notion", group: "Files and documents" },
+  { slug: "slack", name: "Slack", group: "Team chat" },
+  { slug: "github", name: "GitHub", group: "Code and design" },
+];
+
+/** Composio's logo for a toolkit, falling back to a letter tile if it can't load. */
+function ToolkitIcon({ toolkit, size = 18 }: { toolkit: ComposioToolkit; size?: number }) {
+  const [failed, setFailed] = useState(false);
+  if (failed) {
+    return (
+      <span aria-hidden="true" style={{ width: size, height: size }} className="inline-flex shrink-0 items-center justify-center rounded bg-base-700 text-[10px] font-semibold text-slate-300">
+        {toolkit.name.charAt(0).toUpperCase()}
+      </span>
+    );
+  }
+  return <img src={`https://logos.composio.dev/api/${encodeURIComponent(toolkit.slug)}`} alt="" width={size} height={size} loading="lazy" referrerPolicy="no-referrer" onError={() => setFailed(true)} className="shrink-0 rounded" />;
+}
+
+/** Toolkit chooser styled like the model chooser: search box, grouped rows, check on the pick. */
+function ToolkitPicker({ toolkits, value, onChange, connected, disabled }: { toolkits: ComposioToolkit[]; value: string; onChange: (slug: string) => void; connected: ReadonlySet<string>; disabled?: boolean }) {
+  const [query, setQuery] = useState("");
+  const current = toolkits.find((toolkit) => toolkit.slug === value) ?? toolkits[0];
+  const needle = query.trim().toLowerCase();
+  const matching = toolkits.filter((toolkit) => !needle || toolkit.name.toLowerCase().includes(needle) || toolkit.slug.includes(needle));
+  const groups = [...new Set(matching.map((toolkit) => toolkit.group ?? "More"))].map((group) => ({ group, items: matching.filter((toolkit) => (toolkit.group ?? "More") === group) }));
+
+  return (
+    <Dropdown
+      label="Choose an app to connect"
+      mobileSheet
+      menuClassName="max-h-[28rem] w-[20rem] max-w-[calc(100vw-1rem)]"
+      trigger={({ open, toggle, menuId }) => (
+        <button
+          type="button"
+          onClick={toggle}
+          disabled={disabled}
+          aria-haspopup="dialog"
+          aria-expanded={open}
+          aria-controls={open ? menuId : undefined}
+          aria-label={`App: ${current?.name ?? "none selected"}`}
+          className="flex min-h-11 items-center gap-2 rounded-lg border border-base-600/60 bg-base-800/60 px-2.5 py-1.5 text-sm text-slate-200 transition-colors hover:border-accent-500/50 hover:bg-base-700/60 disabled:opacity-50 sm:min-h-0"
+        >
+          {current && <ToolkitIcon toolkit={current} size={15} />}
+          <span className="max-w-[160px] truncate">{current ? current.name : "Select app"}</span>
+          <ChevronDown size={13} aria-hidden="true" className={`text-slate-500 transition-transform ${open ? "rotate-180" : ""}`} />
+        </button>
+      )}
+    >
+      {({ close }) => (
+        <>
+          <div className="sticky top-0 z-10 border-b border-base-700/60 bg-base-850 p-2">
+            <label className="relative block">
+              <span className="sr-only">Search apps</span>
+              <Search size={14} aria-hidden="true" className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" />
+              <input
+                data-autofocus=""
+                type="search"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Search apps…"
+                className="w-full rounded-md border border-base-600/60 bg-base-900/60 py-2 pl-8 pr-2 text-sm text-slate-200 placeholder:text-slate-500 focus:border-accent-500/50 focus:outline-none sm:py-1.5"
+              />
+            </label>
+          </div>
+          {groups.map(({ group, items }) => (
+            <div key={group} role="group" aria-label={group} className="border-b border-base-700/40 py-1 last:border-b-0">
+              <div className="flex items-center gap-1.5 px-3.5 pb-1 pt-2" role="presentation">
+                <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{group}</span>
+                <span className="text-[11px] text-slate-600">{items.length}</span>
+              </div>
+              {items.map((toolkit) => {
+                const active = toolkit.slug === current?.slug;
+                return (
+                  <button
+                    key={toolkit.slug}
+                    type="button"
+                    aria-current={active ? "true" : undefined}
+                    onClick={() => { onChange(toolkit.slug); setQuery(""); close(); }}
+                    className={`flex min-h-11 w-full items-center gap-2.5 px-3.5 py-2 text-left text-sm transition-colors hover:bg-base-700/50 sm:min-h-9 ${active ? "bg-accent-500/10 font-medium text-white" : "text-slate-300"}`}
+                  >
+                    <ToolkitIcon toolkit={toolkit} />
+                    <span className="min-w-0 flex-1 truncate">{toolkit.name}</span>
+                    {connected.has(toolkit.slug) && <span className="shrink-0 rounded border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-0.5 text-[9px] font-semibold tracking-wide text-emerald-400">Connected</span>}
+                    {active ? <Check size={13} className="shrink-0 text-accent-400" aria-label="Selected" /> : <span className="w-[13px] shrink-0" />}
+                  </button>
+                );
+              })}
+            </div>
+          ))}
+          {matching.length === 0 && <p className="px-3.5 py-3 text-xs text-slate-500" role="status">No apps match "{query.trim()}".</p>}
+        </>
+      )}
+    </Dropdown>
+  );
 }
 
 export function ComposioConnections() {
@@ -138,9 +239,13 @@ export function ComposioConnections() {
             <p className="mt-4 text-xs text-amber-300">Composio is not configured on this Worker yet (missing COMPOSIO_API_KEY secret).</p>
           ) : (
             <div className="mt-4 flex flex-wrap items-center gap-2">
-              <select aria-label="Toolkit" value={toolkit} onChange={(event) => setToolkit(event.target.value)} className={inputClass}>
-                {(overview?.toolkits ?? [{ slug: "gmail", name: "Gmail" }, { slug: "github", name: "GitHub" }, { slug: "slack", name: "Slack" }, { slug: "notion", name: "Notion" }, { slug: "googlecalendar", name: "Google Calendar" }]).map((item) => <option key={item.slug} value={item.slug}>{item.name}</option>)}
-              </select>
+              <ToolkitPicker
+                toolkits={overview?.toolkits ?? FALLBACK_TOOLKITS}
+                value={toolkit}
+                onChange={setToolkit}
+                connected={new Set((overview?.connections ?? []).filter((connection) => connection.status === "connected").map((connection) => connection.toolkit))}
+                disabled={busy !== null}
+              />
               <button onClick={() => void connect()} disabled={busy !== null || !overview} className="rounded-lg bg-accent-500 px-3 py-2 text-sm font-medium text-base-950 hover:bg-accent-400 disabled:opacity-50">{busy === "connect" ? "Opening Composio…" : "Connect"}</button>
               <button onClick={() => void refresh()} disabled={loading} className="rounded-lg border border-base-600/60 px-3 py-2 text-xs font-medium text-slate-200 hover:bg-base-700/60 disabled:opacity-50">{loading ? "Refreshing…" : "Refresh status"}</button>
             </div>

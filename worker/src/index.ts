@@ -452,8 +452,10 @@ export default {
             if (!toolUid) console.warn("mcp agent", "no-verified-user", JSON.stringify({ hadToken: !!token }));
             if (toolUid) {
               const priorTurns = messages.slice(Math.max(0, lastUserIdx - 4), lastUserIdx).map((m) => `${m.role}: ${m.content.slice(0, 400)}`).join("\n");
-              const note = await runMcpAgentStep(env, toolUid, query, priorTurns, (toolCall) => controller.enqueue(ndjsonLine({ toolCall })));
+              const { note, capability } = await runMcpAgentStep(env, toolUid, query, priorTurns, (toolCall) => controller.enqueue(ndjsonLine({ toolCall })));
               if (note) messages = messages.map((m, i) => (i === lastUserIdx ? { ...m, content: `${m.content}\n\n${note}` } : m));
+              // Tell the model what Agent mode can do on the user's accounts (system prompt, not chat text).
+              if (capability) clientContext = { ...clientContext, customSystemPrompt: [capability, clientContext?.customSystemPrompt].filter(Boolean).join("\n\n") };
             }
           }
 

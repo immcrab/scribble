@@ -15,35 +15,30 @@ import type { McpResult, McpToolDescriptor, McpToolProvider } from "./mcpTools";
 export const COMPOSIO_API_BASE = "https://backend.composio.dev/api/v3.1";
 
 export const COMPOSIO_TOOLKITS = [
-  // Email and calendar
-  { slug: "gmail", name: "Gmail" },
-  { slug: "outlook", name: "Outlook" },
-  { slug: "googlecalendar", name: "Google Calendar" },
-  { slug: "calendly", name: "Calendly" },
-  // Files and documents
-  { slug: "googledrive", name: "Google Drive" },
-  { slug: "googlesheets", name: "Google Sheets" },
-  { slug: "googledocs", name: "Google Docs" },
-  { slug: "dropbox", name: "Dropbox" },
-  { slug: "notion", name: "Notion" },
-  { slug: "airtable", name: "Airtable" },
-  // Team chat
-  { slug: "slack", name: "Slack" },
-  { slug: "discord", name: "Discord" },
-  { slug: "microsoft_teams", name: "Microsoft Teams" },
-  // Code and design
-  { slug: "github", name: "GitHub" },
-  { slug: "gitlab", name: "GitLab" },
-  { slug: "figma", name: "Figma" },
-  { slug: "canva", name: "Canva" },
-  // Projects and CRM
-  { slug: "linear", name: "Linear" },
-  { slug: "jira", name: "Jira" },
-  { slug: "asana", name: "Asana" },
-  { slug: "clickup", name: "ClickUp" },
-  { slug: "monday", name: "Monday" },
-  { slug: "hubspot", name: "HubSpot" },
-  { slug: "mailchimp", name: "Mailchimp" },
+  { slug: "gmail", name: "Gmail", group: "Email and calendar" },
+  { slug: "outlook", name: "Outlook", group: "Email and calendar" },
+  { slug: "googlecalendar", name: "Google Calendar", group: "Email and calendar" },
+  { slug: "calendly", name: "Calendly", group: "Email and calendar" },
+  { slug: "googledrive", name: "Google Drive", group: "Files and documents" },
+  { slug: "googlesheets", name: "Google Sheets", group: "Files and documents" },
+  { slug: "googledocs", name: "Google Docs", group: "Files and documents" },
+  { slug: "dropbox", name: "Dropbox", group: "Files and documents" },
+  { slug: "notion", name: "Notion", group: "Files and documents" },
+  { slug: "airtable", name: "Airtable", group: "Files and documents" },
+  { slug: "slack", name: "Slack", group: "Team chat" },
+  { slug: "discord", name: "Discord", group: "Team chat" },
+  { slug: "microsoft_teams", name: "Microsoft Teams", group: "Team chat" },
+  { slug: "github", name: "GitHub", group: "Code and design" },
+  { slug: "gitlab", name: "GitLab", group: "Code and design" },
+  { slug: "figma", name: "Figma", group: "Code and design" },
+  { slug: "canva", name: "Canva", group: "Code and design" },
+  { slug: "linear", name: "Linear", group: "Projects and CRM" },
+  { slug: "jira", name: "Jira", group: "Projects and CRM" },
+  { slug: "asana", name: "Asana", group: "Projects and CRM" },
+  { slug: "clickup", name: "ClickUp", group: "Projects and CRM" },
+  { slug: "monday", name: "Monday", group: "Projects and CRM" },
+  { slug: "hubspot", name: "HubSpot", group: "Projects and CRM" },
+  { slug: "mailchimp", name: "Mailchimp", group: "Projects and CRM" },
 ] as const;
 
 export type ToolkitSlug = (typeof COMPOSIO_TOOLKITS)[number]["slug"];

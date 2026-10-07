@@ -41,6 +41,7 @@ export type ComposioConnectionState = "connected" | "pending" | "failed";
 export interface ComposioToolkit {
   slug: string;
   name: string;
+  group?: string;
 }
 
 export interface ComposioConnection {
