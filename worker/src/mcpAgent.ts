@@ -128,12 +128,23 @@ const TOOLKIT_NOUNS: Record<string, RegExp> = {
   notion: /\b(page|notion)\b/i,
 };
 
+/** Recognizes the app names people naturally use. Google Slides is often requested in the
+ * singular ("a Google slide") rather than the product's plural name. */
+function mentionsToolkit(text: string, toolkit: (typeof COMPOSIO_TOOLKITS)[number]): boolean {
+  const lower = text.toLowerCase();
+  if (lower.includes(toolkit.name.toLowerCase()) || lower.includes(toolkit.slug)) return true;
+  return toolkit.slug === "googleslides" && /\b(?:google\s+)?slides?\b|\bpresentation\b|\bdeck\b|\bpowerpoint\b/i.test(text);
+}
+
+function missingRequestedToolkits(text: string, connectedToolkits: readonly string[]) {
+  return COMPOSIO_TOOLKITS.filter((toolkit) => !connectedToolkits.includes(toolkit.slug) && mentionsToolkit(text, toolkit));
+}
+
 /** True when the text reads like a request to do something in one of the user's connected apps. */
 export function looksLikeAccountAction(text: string, connectedToolkits: readonly string[]): boolean {
   if (!ACTION_VERBS.test(text)) return false;
-  const lower = text.toLowerCase();
   return COMPOSIO_TOOLKITS.some(
-    (toolkit) => connectedToolkits.includes(toolkit.slug) && (lower.includes(toolkit.name.toLowerCase()) || lower.includes(toolkit.slug) || TOOLKIT_NOUNS[toolkit.slug]?.test(text))
+    (toolkit) => connectedToolkits.includes(toolkit.slug) && (mentionsToolkit(text, toolkit) || TOOLKIT_NOUNS[toolkit.slug]?.test(text))
   );
 }
 
@@ -144,8 +155,7 @@ const NO_RESULT: McpAgentResult = { note: null, capability: null, handled: false
 export function buildCapabilityPrompt(connectedToolkits: readonly string[], query: string, prepared = false): string {
   const names = new Map<string, string>(COMPOSIO_TOOLKITS.map((toolkit) => [toolkit.slug, toolkit.name]));
   const connected = connectedToolkits.map((slug) => names.get(slug) ?? slug);
-  const lower = query.toLowerCase();
-  const mentionedMissing = COMPOSIO_TOOLKITS.filter((toolkit) => !connectedToolkits.includes(toolkit.slug) && lower.includes(toolkit.name.toLowerCase())).map((toolkit) => toolkit.name);
+  const mentionedMissing = missingRequestedToolkits(query, connectedToolkits).map((toolkit) => toolkit.name);
   const lines = [
     "You are running in Lofin's Agent mode, which can act on the user's own connected accounts through Composio.",
     connected.length
@@ -160,7 +170,7 @@ export function buildCapabilityPrompt(connectedToolkits: readonly string[], quer
     );
   }
   if (mentionedMissing.length) {
-    lines.push(`The user mentioned ${mentionedMissing.join(", ")}, which is not connected. Tell them to connect it in Settings → MCP Servers (pick it, press Connect, and sign in), then ask again.`);
+    lines.push(`The user mentioned ${mentionedMissing.join(", ")}, which is not connected. Tell them to connect it in Settings → Apps & MCP (pick it, press Connect, and sign in), then ask again.`);
   }
   return lines.join(" ");
 }
@@ -194,7 +204,14 @@ export async function runMcpAgentStep(
     const active = [...new Set(connections.value.filter((c) => c.status === "connected").map((c) => c.toolkit))];
     stage("connections", { active });
     // From here the model always learns what Agent mode can do, even when no tool matches.
-    const result = (note: string | null, handled: boolean, prepared = false): McpAgentResult => ({ note, handled, capability: buildCapabilityPrompt(active, query, prepared) });
+    // Use the recent request context for capability text too: a follow-up such as "yes" must not
+    // lose the fact that the user was trying to create a Google Slide one turn earlier.
+    const result = (note: string | null, handled: boolean, prepared = false): McpAgentResult => ({ note, handled, capability: buildCapabilityPrompt(active, searchText, prepared) });
+    const missing = missingRequestedToolkits(searchText, active);
+    if (missing.length) {
+      const names = missing.map((toolkit) => toolkit.name).join(", ");
+      return result(`[${names} is not connected, so Lofin cannot prepare this action and there is no approval card. Tell the user to open Settings → Apps & MCP, connect ${names}, then repeat the request. Do not search the web or claim that an action is pending.]`, true);
+    }
     // No tool matched. If it still reads like an account action, say so plainly (and skip the web
     // search) so the model asks for what it needs instead of pretending something was prepared.
     const unmatched = (): McpAgentResult =>

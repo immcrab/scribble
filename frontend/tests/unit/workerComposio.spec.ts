@@ -392,9 +392,14 @@ test.describe("Agent capability prompt", () => {
   test("points to Settings when a mentioned app is not connected", () => {
     const prompt = buildCapabilityPrompt(["gmail"], "create a new GitHub repo called demo");
     expect(prompt).toContain("GitHub, which is not connected");
-    expect(prompt).toContain("Settings → MCP Servers");
+    expect(prompt).toContain("Settings → Apps & MCP");
   });
 
+  test("requires the Google Slides connector for a singular Google slide request", () => {
+    const prompt = buildCapabilityPrompt(["gmail"], "create a Google slide about cars");
+    expect(prompt).toContain("Google Slides, which is not connected");
+    expect(prompt).toContain("Settings → Apps & MCP");
+  });
   test("explains how to connect when nothing is connected yet", () => {
     expect(buildCapabilityPrompt([], "hi")).toContain("no connected accounts yet");
   });
