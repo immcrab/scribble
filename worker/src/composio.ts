@@ -269,20 +269,20 @@ export async function disconnectAccount(env: Env, uid: string, accountId: string
   if (!owned.value.some((connection) => connection.id === accountId)) return { ok: false, status: 404, message: "That connected account was not found." };
   const removed = await composioFetch<unknown>(env, `/connected_accounts/${encodeURIComponent(accountId)}`, { method: "DELETE" });
   if (!removed.ok && removed.status !== 404) return removed;
-  toolCache.delete(uid);
   return { ok: true, value: true };
 }
 
 // ── Tools (consumed through the McpToolProvider abstraction) ────────────────────────
 
-const TOOL_CACHE_TTL_MS = 5 * 60_000;
-const TOOL_PAGE_LIMIT = 500;
-const TOOL_MAX_PAGES = 6;
-/** Descriptors without schemas, so the cache stays small. */
+const TOOL_CACHE_TTL_MS = 30 * 60_000;
+const TOOL_PAGE_LIMIT = 100;
+const TOOL_MAX_PAGES = 10;
+/** Per-toolkit descriptors without schemas, so the cache stays small. */
 const toolCache = new Map<string, { tools: McpToolDescriptor[]; expiresAt: number }>();
 
 function parseTool(item: Record<string, unknown>, includeSchemas: boolean): McpToolDescriptor | null {
-  const toolkit = (item.toolkit as { slug?: unknown } | undefined)?.slug;
+  const rawToolkit = typeof item.toolkit === "string" ? item.toolkit : (item.toolkit as { slug?: unknown } | undefined)?.slug;
+  const toolkit = typeof rawToolkit === "string" ? rawToolkit.toLowerCase() : undefined;
   const slug = typeof item.slug === "string" ? item.slug : "";
   if (!/^[A-Za-z0-9_-]{1,128}$/.test(slug) || !isToolkitSlug(toolkit) || item.is_deprecated === true) return null;
   const tags = Array.isArray(item.tags) ? item.tags : [];
@@ -297,42 +297,50 @@ function parseTool(item: Record<string, unknown>, includeSchemas: boolean): McpT
   };
 }
 
-async function fetchAllTools(env: Env, uid: string, includeSchemas: boolean): Promise<McpResult<McpToolDescriptor[]>> {
-  return withSession(env, uid, async (sessionId) => {
-    const tools: McpToolDescriptor[] = [];
-    let cursor: string | undefined;
-    for (let page = 0; page < TOOL_MAX_PAGES; page++) {
-      const query = `limit=${TOOL_PAGE_LIMIT}${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""}`;
-      const result = await composioFetch<{ items?: unknown; next_cursor?: unknown }>(env, `/tool_router/session/${sessionId}/tools?${query}`);
-      if (!result.ok) return result;
-      for (const item of Array.isArray(result.value.items) ? (result.value.items as Array<Record<string, unknown>>) : []) {
-        const tool = item && typeof item === "object" ? parseTool(item, includeSchemas) : null;
-        if (tool) tools.push(tool);
-      }
-      cursor = typeof result.value.next_cursor === "string" && result.value.next_cursor ? result.value.next_cursor : undefined;
-      if (!cursor) break;
+/**
+ * A toolkit's tool catalog. A session's own /tools listing only exposes Composio's meta tools
+ * (search, execute helpers), so real tools are listed per toolkit instead. The catalog does not
+ * depend on the user; which toolkits a user may use is decided by their connected accounts.
+ */
+async function fetchToolkitTools(env: Env, toolkit: ToolkitSlug, includeSchemas: boolean): Promise<McpResult<McpToolDescriptor[]>> {
+  const tools: McpToolDescriptor[] = [];
+  let cursor: string | undefined;
+  for (let page = 0; page < TOOL_MAX_PAGES; page++) {
+    const query = `toolkit_slug=${toolkit}&limit=${TOOL_PAGE_LIMIT}${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""}`;
+    const result = await composioFetch<{ items?: unknown; next_cursor?: unknown } | Array<Record<string, unknown>>>(env, `/tools?${query}`);
+    if (!result.ok) return result;
+    const rawItems = Array.isArray(result.value) ? result.value : result.value.items;
+    const items = Array.isArray(rawItems) ? (rawItems as Array<Record<string, unknown>>) : [];
+    for (const item of items) {
+      const tool = item && typeof item === "object" ? parseTool(item, includeSchemas) : null;
+      if (tool && tool.toolkit === toolkit) tools.push(tool);
     }
-    return { ok: true, value: tools };
-  });
+    const next = Array.isArray(result.value) ? undefined : result.value.next_cursor;
+    cursor = typeof next === "string" && next ? next : undefined;
+    if (!cursor) break;
+  }
+  return { ok: true, value: tools };
 }
 
 export function createComposioProvider(env: Env): McpToolProvider {
   return {
     id: "composio",
-    async listTools(uid, options) {
+    async listTools(_uid, options) {
       const includeSchemas = options?.includeSchemas === true;
-      const cached = toolCache.get(uid);
-      let tools: McpToolDescriptor[];
-      if (!includeSchemas && cached && cached.expiresAt > Date.now()) {
-        tools = cached.tools;
-      } else {
-        const fetched = await fetchAllTools(env, uid, includeSchemas);
-        if (!fetched.ok) return fetched;
-        tools = fetched.value;
-        if (!includeSchemas) remember(toolCache, uid, { tools, expiresAt: Date.now() + TOOL_CACHE_TTL_MS });
-      }
-      const wanted = options?.toolkits ? new Set(options.toolkits) : null;
-      return { ok: true, value: wanted ? tools.filter((tool) => wanted.has(tool.toolkit)) : tools };
+      const slugs = (options?.toolkits ?? COMPOSIO_TOOLKITS.map((toolkit) => toolkit.slug)).filter(isToolkitSlug);
+      const lists = await Promise.all(
+        slugs.map(async (slug): Promise<McpResult<McpToolDescriptor[]>> => {
+          const cached = toolCache.get(slug);
+          if (!includeSchemas && cached && cached.expiresAt > Date.now()) return { ok: true, value: cached.tools };
+          const fetched = await fetchToolkitTools(env, slug, includeSchemas);
+          // Never cache an empty listing: it usually means a transient or not-yet-ready state.
+          if (fetched.ok && !includeSchemas && fetched.value.length > 0) remember(toolCache, slug, { tools: fetched.value, expiresAt: Date.now() + TOOL_CACHE_TTL_MS });
+          return fetched;
+        })
+      );
+      const failed = lists.find((list) => !list.ok);
+      if (failed && !failed.ok) return failed;
+      return { ok: true, value: lists.flatMap((list) => (list.ok ? list.value : [])) };
     },
     async searchTools(uid, useCase, toolkits) {
       const wanted = new Set(toolkits);
