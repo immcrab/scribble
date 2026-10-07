@@ -3,6 +3,7 @@ import { ExternalLink, ShieldQuestion } from "lucide-react";
 import { useChatStore } from "../state/chatStore";
 import { executeComposioTool } from "../lib/mcpClient";
 import type { ToolCallRecord } from "../types";
+import { SlidesDraftPreview } from "./SlidesDraftPreview";
 
 function updateToolCall(messageId: string, id: string, patch: Partial<ToolCallRecord>) {
   const store = useChatStore.getState();
@@ -35,7 +36,7 @@ function artifactLinks(value: unknown, toolkit: string): NonNullable<ToolCallRec
         // Google Slides creation responses sometimes return only a presentationId.
         // Turn that opaque identifier into the normal first-party URL locally; no
         // credentials or provider data are exposed to do this.
-        if (toolkit === "googleslides" && /presentation_?id|presentationid/i.test(key) && typeof item === "string" && /^[A-Za-z0-9_-]{16,160}$/.test(item)) {
+        if (toolkit === "googleslides" && /presentation_?id|presentationid|^id$|file_?id/i.test(key) && typeof item === "string" && /^[A-Za-z0-9_-]{16,160}$/.test(item)) {
           presentationIds.add(item);
         }
         visit(item, depth + 1);
@@ -83,6 +84,7 @@ export function McpApprovalCard({ toolCall, messageId }: { toolCall: ToolCallRec
       <div className="flex items-center gap-2 font-medium text-amber-200"><ShieldQuestion size={14} />Approve this action?</div>
       <p className="mt-1 text-slate-300">{toolCall.name}</p>
       <pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-base-900/70 p-2 text-[11px] text-slate-300">{JSON.stringify(mcp.arguments, null, 2)}</pre>
+      {mcp.toolkit === "googleslides" && <SlidesDraftPreview arguments={mcp.arguments} />}
       {notice && <p className="mt-2 text-amber-300">{notice}</p>}
       {toolCall.links?.length ? <div className="mt-3 flex flex-wrap gap-2">{toolCall.links.map((link) => <a key={link.url} href={link.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 rounded-lg border border-accent-500/40 px-2.5 py-1.5 font-medium text-accent-200 hover:bg-accent-500/10">{link.label}<ExternalLink size={12} /></a>)}</div> : null}
       <div className="mt-3 flex gap-2">

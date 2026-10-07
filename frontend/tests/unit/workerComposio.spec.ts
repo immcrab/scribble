@@ -20,7 +20,7 @@ import {
   type McpToolDescriptor,
   type McpToolProvider,
 } from "../../../worker/src/mcpTools";
-import { buildCapabilityPrompt, looksLikeAccountAction, parsePlan } from "../../../worker/src/mcpAgent";
+import { buildCapabilityPrompt, looksLikeAccountAction, parsePlan, preferArtifactCreationTools } from "../../../worker/src/mcpAgent";
 import { handleMcpAccountApi, isMcpAccountPath } from "../../../worker/src/mcpRoutes";
 
 type Env = Parameters<typeof composioCallbackUrl>[1];
@@ -443,6 +443,12 @@ test.describe("tool ranking by intent and action detection", () => {
     expect(ranked[0].id).toBe("GITHUB_CREATE_A_REPOSITORY_FOR_THE_AUTHENTICATED_USER");
   });
 
+  test("prefers rich Slides authoring over an empty presentation shell", () => {
+    const blank: McpToolDescriptor = { id: "GOOGLESLIDES_CREATE_PRESENTATION", name: "Create Google Slides Presentation", toolkit: "googleslides", readOnly: false };
+    const rich: McpToolDescriptor = { id: "GOOGLESLIDES_CREATE_SLIDES_MARKDOWN", name: "Create Slides from Markdown", toolkit: "googleslides", readOnly: false };
+    expect(preferArtifactCreationTools([blank, rich], "make me a Google slide about cars")).toEqual([rich]);
+    expect(preferArtifactCreationTools([blank, rich], "what is a presentation?")).toEqual([blank, rich]);
+  });
   test("detects account actions by app name or its nouns, and ignores plain questions", () => {
     expect(looksLikeAccountAction("make me a new repo", ["github"])).toBe(true);
     expect(looksLikeAccountAction("send an email to bob", ["gmail"])).toBe(true);

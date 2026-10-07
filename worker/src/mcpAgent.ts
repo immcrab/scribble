@@ -78,7 +78,9 @@ async function planToolCall(groqKey: string, query: string, history: string, can
           content:
             "You decide whether the user's latest message (read together with the earlier conversation, since it may answer a question you asked) asks you to act on their connected accounts " +
             "(send or read email, create repositories or issues, post messages, edit documents, calendar) using one of the tools below. " +
-            "If it does, choose exactly one tool and fill in its arguments using only information the user gave (never invent addresses, ids, names, or content). " +
+            "If it does, choose exactly one tool and fill in its arguments using only information the user gave (never invent addresses, ids, or external account names). " +
+            "When the user asks to make an artifact about a subject (such as a document or presentation), assume they want a useful completed artifact, not an empty container: write sensible content for that subject using the content field accepted by the chosen tool. Do not ask for a title or outline unless the tool truly requires missing information. Never invent recipients, external account names, IDs, or facts the user did not give. " +
+            "If the available tool is Create Slides from Markdown, use it to make a complete deck by default: a title slide plus roughly five concise, well-structured content slides. " +
             'If the tool needs a required detail the user has not given, still choose the tool and list those details in "missing" as short plain phrases (for example "repository name"). ' +
             "If it is an ordinary question or conversation, choose no tool. " +
             'Reply with only JSON: {"tool": "<tool id or null>", "arguments": {}, "missing": []}.\n\nTools:\n' +
@@ -138,6 +140,19 @@ function mentionsToolkit(text: string, toolkit: (typeof COMPOSIO_TOOLKITS)[numbe
 
 function missingRequestedToolkits(text: string, connectedToolkits: readonly string[]) {
   return COMPOSIO_TOOLKITS.filter((toolkit) => !connectedToolkits.includes(toolkit.slug) && mentionsToolkit(text, toolkit));
+}
+function isPresentationCreationRequest(text: string): boolean {
+  return ACTION_VERBS.test(text) && TOOLKIT_NOUNS.googleslides.test(text);
+}
+
+/** Prefer the rich authoring action over a blank presentation shell. The search result itself
+ * remains authoritative: this only narrows tools Composio supplied for the user's connection. */
+export function preferArtifactCreationTools(tools: McpToolDescriptor[], request: string): McpToolDescriptor[] {
+  if (!isPresentationCreationRequest(request)) return tools;
+  const richSlidesTool = tools.filter((tool) =>
+    tool.toolkit === "googleslides" && /create\s+slides\s+from\s+markdown/i.test(`${tool.name} ${tool.id}`)
+  );
+  return richSlidesTool.length ? richSlidesTool : tools;
 }
 
 /** True when the text reads like a request to do something in one of the user's connected apps. */
@@ -242,11 +257,12 @@ export async function runMcpAgentStep(
       output: found.value.length ? `${found.value.length} found: ${found.value.slice(0, 4).map((tool) => tool.name).join(", ")}` : "No matching tools",
     });
     if (found.value.length === 0) return unmatched();
-    const plan = await planToolCall(env.GROQ_API_KEY, query, history, found.value);
+    const candidates = preferArtifactCreationTools(found.value, searchText);
+    const plan = await planToolCall(env.GROQ_API_KEY, query, history, candidates);
     stage("plan", { tool: plan?.tool ?? null, missing: plan?.missing?.length ?? 0 });
     if (!plan) return unmatched();
 
-    const tool = found.value.find((candidate) => candidate.id === plan.tool) as McpToolDescriptor;
+    const tool = candidates.find((candidate) => candidate.id === plan.tool) as McpToolDescriptor;
     if (plan.missing?.length) {
       return result(
         `[The user wants to use "${tool.name}" (${tool.toolkit}) but still needs to give: ${plan.missing.join(", ")}. Ask for just those details in one short message. Do not search the web.]`,
