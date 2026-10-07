@@ -97,7 +97,8 @@ async function composioFetch<T>(env: Env, path: string, init: { method?: string;
         ...(init.body === undefined ? {} : { "Content-Type": "application/json" }),
       },
       body: init.body === undefined ? undefined : JSON.stringify(init.body),
-      redirect: "error",
+      // Workers only accept "follow" | "manual"; never follow redirects with the API key attached.
+      redirect: "manual",
       signal: AbortSignal.timeout(20_000),
     });
   } catch (err) {
@@ -105,6 +106,7 @@ async function composioFetch<T>(env: Env, path: string, init: { method?: string;
     console.warn("composio request failed", err instanceof Error ? err.name : "unknown");
     return { ok: false, status: 502, message: "The Worker could not reach Composio." };
   }
+  if (response.status >= 300 && response.status < 400) return { ok: false, status: 502, message: "Composio returned an unexpected redirect." };
   if (!response.ok) {
     const message =
       response.status === 401 || response.status === 403 ? "Composio rejected the Worker's credentials." :
