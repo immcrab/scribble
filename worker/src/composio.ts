@@ -350,16 +350,30 @@ async function catalogFor(env: Env, slug: ToolkitSlug, includeSchemas: boolean):
 
 const STOP_WORDS = new Set(["the", "and", "for", "with", "that", "this", "from", "into", "please", "can", "you", "saying", "say", "tell", "about", "me", "my", "to", "of", "an", "a", "in", "on"]);
 
-/** Ranks catalog tools against a request by word overlap with their id, name, and description. */
+/** Everyday verbs mapped to the verbs tool ids use, so "make a repo" prefers CREATE_A_REPOSITORY. */
+const VERB_ALIASES: Record<string, string[]> = {
+  make: ["create"], new: ["create"], build: ["create"], start: ["create"], write: ["create"], compose: ["create", "send"], draft: ["create"],
+  add: ["create", "add"], open: ["create", "open"], post: ["create", "post", "send"], send: ["send"], email: ["send"], message: ["send", "post"],
+  create: ["create"], delete: ["delete"], remove: ["delete", "remove"], update: ["update"], edit: ["update", "edit"], rename: ["update", "rename"],
+  close: ["close"], merge: ["merge"], share: ["share"], upload: ["upload", "create"], schedule: ["create", "schedule"], book: ["create"],
+  read: ["get", "list", "fetch"], show: ["get", "list"], find: ["search", "find", "list"], search: ["search", "find"], list: ["list"], check: ["get", "list", "fetch"],
+};
+
+/** Ranks catalog tools against a request by word overlap with their id, name, and description,
+ * with a strong boost for the action the user asked for (create, send, delete, …). */
 export function rankTools(useCase: string, tools: readonly McpToolDescriptor[], limit: number): McpToolDescriptor[] {
   const words = [...new Set(useCase.toLowerCase().split(/[^a-z0-9]+/).filter((word) => word.length >= 3 && !STOP_WORDS.has(word)))];
   if (words.length === 0) return [];
+  const verbs = new Set(words.flatMap((word) => VERB_ALIASES[word] ?? []));
   return tools
     .map((tool) => {
-      const id = tool.id.toLowerCase().replace(/_/g, " ");
+      const idWords = tool.id.toLowerCase().split("_");
+      const id = idWords.join(" ");
       const text = `${tool.name} ${tool.description ?? ""}`.toLowerCase();
       // Words in the tool id and name count most: GMAIL_SEND_EMAIL for "send an email".
-      const score = words.reduce((sum, word) => sum + (id.includes(word) ? 3 : 0) + (text.includes(word) ? 1 : 0), 0);
+      let score = words.reduce((sum, word) => sum + (id.includes(word) ? 3 : 0) + (text.includes(word) ? 1 : 0), 0);
+      // The action verb sits right after the toolkit prefix in a tool id (GITHUB_CREATE_..., GMAIL_SEND_...).
+      if (verbs.size > 0 && idWords.slice(1, 3).some((word) => verbs.has(word))) score += 8;
       return { tool, score };
     })
     .filter((entry) => entry.score > 0)
@@ -417,7 +431,7 @@ export function createComposioProvider(env: Env): McpToolProvider {
       // Search found nothing usable: rank the toolkits' own catalogs against the request instead,
       // then fetch full argument schemas for just the best few.
       const catalogs = await Promise.all([...wanted].filter(isToolkitSlug).map((slug) => catalogFor(env, slug, false)));
-      const ranked = rankTools(useCase, catalogs.flatMap((catalog) => (catalog.ok ? catalog.value : [])), 6);
+      const ranked = rankTools(useCase, catalogs.flatMap((catalog) => (catalog.ok ? catalog.value : [])), 12);
       const detailed = await Promise.all(
         ranked.map(async (tool) => {
           const detail = await composioFetch<Record<string, unknown>>(env, `/tools/${encodeURIComponent(tool.id)}`);

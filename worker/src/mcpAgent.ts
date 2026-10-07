@@ -108,6 +108,34 @@ export interface McpAgentResult {
   handled: boolean;
 }
 
+const ACTION_VERBS = /\b(create|make|new|add|send|post|delete|remove|update|edit|rename|close|merge|share|upload|schedule|book|draft|write|open|commit|push|invite|reply|forward)\b/i;
+
+/** Words that point at an app even when its name is not said ("make a repo" is about GitHub). */
+const TOOLKIT_NOUNS: Record<string, RegExp> = {
+  github: /\b(repo|repos|repository|repositories|issue|pull request|branch|commit)\b/i,
+  gitlab: /\b(repo|repos|repository|repositories|issue|merge request|branch|commit)\b/i,
+  gmail: /\b(email|e-mail|mail|inbox)\b/i,
+  outlook: /\b(email|e-mail|mail|inbox)\b/i,
+  slack: /\b(channel|slack message)\b/i,
+  discord: /\b(channel|server message)\b/i,
+  googlecalendar: /\b(event|meeting|calendar|appointment)\b/i,
+  calendly: /\b(meeting|calendar|appointment)\b/i,
+  googledrive: /\b(file|folder|drive)\b/i,
+  dropbox: /\b(file|folder)\b/i,
+  googlesheets: /\b(spreadsheet|sheet)\b/i,
+  googledocs: /\b(document|doc)\b/i,
+  notion: /\b(page|notion)\b/i,
+};
+
+/** True when the text reads like a request to do something in one of the user's connected apps. */
+export function looksLikeAccountAction(text: string, connectedToolkits: readonly string[]): boolean {
+  if (!ACTION_VERBS.test(text)) return false;
+  const lower = text.toLowerCase();
+  return COMPOSIO_TOOLKITS.some(
+    (toolkit) => connectedToolkits.includes(toolkit.slug) && (lower.includes(toolkit.name.toLowerCase()) || lower.includes(toolkit.slug) || TOOLKIT_NOUNS[toolkit.slug]?.test(text))
+  );
+}
+
 const NO_RESULT: McpAgentResult = { note: null, capability: null, handled: false };
 
 /** Tells the chat model about its connected-account tools, so it neither claims it cannot act
@@ -166,6 +194,12 @@ export async function runMcpAgentStep(
     stage("connections", { active });
     // From here the model always learns what Agent mode can do, even when no tool matches.
     const result = (note: string | null, handled: boolean, prepared = false): McpAgentResult => ({ note, handled, capability: buildCapabilityPrompt(active, query, prepared) });
+    // No tool matched. If it still reads like an account action, say so plainly (and skip the web
+    // search) so the model asks for what it needs instead of pretending something was prepared.
+    const unmatched = (): McpAgentResult =>
+      looksLikeAccountAction(searchText, active)
+        ? result("[Lofin could not prepare a connected-app action for this message, so nothing is waiting for approval. Do not claim an approval prompt exists or that you will run anything. Say briefly what you need (for example the exact name or details), or what is not possible.]", true)
+        : result(null, false);
     if (active.length === 0) return result(null, false);
     if (!env.GROQ_API_KEY || isRateLimited(`mcp-agent:${uid}`)) {
       stage("planner-unavailable", { groq: !!env.GROQ_API_KEY });
@@ -179,7 +213,7 @@ export async function runMcpAgentStep(
     if (!found?.ok) {
       stage("search-failed", { status: found ? found.status : "unsupported" });
       emit({ id: searchId, name: "Searching available tools", status: "error", output: "Could not search your connected apps" });
-      return result(null, false);
+      return unmatched();
     }
     stage("search", { tools: found.value.map((t) => t.id) });
     emit({
@@ -188,10 +222,10 @@ export async function runMcpAgentStep(
       status: "done",
       output: found.value.length ? `${found.value.length} found: ${found.value.slice(0, 4).map((tool) => tool.name).join(", ")}` : "No matching tools",
     });
-    if (found.value.length === 0) return result(null, false);
+    if (found.value.length === 0) return unmatched();
     const plan = await planToolCall(env.GROQ_API_KEY, query, history, found.value);
     stage("plan", { tool: plan?.tool ?? null, missing: plan?.missing?.length ?? 0 });
-    if (!plan) return result(null, false);
+    if (!plan) return unmatched();
 
     const tool = found.value.find((candidate) => candidate.id === plan.tool) as McpToolDescriptor;
     if (plan.missing?.length) {

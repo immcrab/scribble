@@ -20,7 +20,7 @@ import {
   type McpToolDescriptor,
   type McpToolProvider,
 } from "../../../worker/src/mcpTools";
-import { buildCapabilityPrompt, parsePlan } from "../../../worker/src/mcpAgent";
+import { buildCapabilityPrompt, looksLikeAccountAction, parsePlan } from "../../../worker/src/mcpAgent";
 import { handleMcpAccountApi, isMcpAccountPath } from "../../../worker/src/mcpRoutes";
 
 type Env = Parameters<typeof composioCallbackUrl>[1];
@@ -415,5 +415,27 @@ test.describe("Agent planner: missing details and honesty", () => {
   test("tells the model there is no Approve button when nothing was prepared", () => {
     expect(buildCapabilityPrompt(["github"], "public no readme")).toContain("no Approve button");
     expect(buildCapabilityPrompt(["github"], "make a repo", true)).not.toContain("no Approve button");
+  });
+});
+
+test.describe("tool ranking by intent and action detection", () => {
+  const t = (id: string, name: string, description = ""): McpToolDescriptor => ({ id, name, description, toolkit: "github", readOnly: false });
+  const catalog = [
+    t("GITHUB_GET_A_REPOSITORY_README", "Get a repository readme", "Gets the preferred README for a public repository"),
+    t("GITHUB_LIST_PUBLIC_EVENTS_FOR_A_NETWORK_OF_REPOSITORIES", "List public events", "public events for a network of repositories"),
+    t("GITHUB_GET_A_REPOSITORY_PUBLIC_KEY", "Get a repository public key", "public key"),
+    t("GITHUB_CREATE_A_REPOSITORY_FOR_THE_AUTHENTICATED_USER", "Create a repository for the authenticated user", "Creates a new repository"),
+  ];
+
+  test("a follow-up full of read-ish words still ranks the create tool first", () => {
+    const ranked = rankTools("make a new github repo public no readme and no desc", catalog, 3);
+    expect(ranked[0].id).toBe("GITHUB_CREATE_A_REPOSITORY_FOR_THE_AUTHENTICATED_USER");
+  });
+
+  test("detects account actions by app name or its nouns, and ignores plain questions", () => {
+    expect(looksLikeAccountAction("make me a new repo", ["github"])).toBe(true);
+    expect(looksLikeAccountAction("send an email to bob", ["gmail"])).toBe(true);
+    expect(looksLikeAccountAction("make me a new repo", ["gmail"])).toBe(false);
+    expect(looksLikeAccountAction("what is a git repository", ["github"])).toBe(false);
   });
 });
