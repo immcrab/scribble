@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <script src="/anti-embed.js"></script>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Practical AI Guides — Lofin</title>
+    <meta name="description" content="Practical, model-agnostic guides for comparing AI answers, writing better prompts, and checking AI-generated work." />
+    <meta name="robots" content="index, follow, max-snippet:-1" />
+    <link rel="canonical" href="https://lofin.dev/guides" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" href="/favicon.ico" sizes="48x48" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Lofin" />
+    <meta property="og:title" content="Practical AI Guides — Lofin" />
+    <meta property="og:description" content="Useful, model-agnostic habits for getting more reliable work from AI." />
+    <meta property="og:url" content="https://lofin.dev/guides" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,300;8..60,500;8..60,600&display=swap" rel="stylesheet" />
+    <style>
+      :root { color-scheme: dark; }
+      * { box-sizing: border-box; }
+      html { scroll-behavior: smooth; }
+      body { margin: 0; background: #1b1a18; color: #e7e1da; font-family: "Inter", ui-sans-serif, system-ui, sans-serif; line-height: 1.7; }
+      .wrap { width: min(100% - 36px, 780px); margin: 0 auto; padding: 38px 0 90px; }
+      header { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-bottom: 64px; }
+      .brand { color: #f5f0eb; font-weight: 600; text-decoration: none; font-size: 1.05rem; }
+      .back { color: #aaa39b; font-size: .84rem; text-decoration: none; }
+      .eyebrow { margin: 0 0 12px; color: #aca49a; font-size: .72rem; font-weight: 700; letter-spacing: .13em; text-transform: uppercase; }
+      h1, h2, h3 { color: #f8f3ee; }
+      h1 { margin: 0; font-family: "Source Serif 4", ui-serif, Georgia, serif; font-size: clamp(2.7rem, 9vw, 4.8rem); font-weight: 300; letter-spacing: -.04em; line-height: 1.02; }
+      h2 { margin: 0 0 16px; font-size: 1.45rem; line-height: 1.25; }
+      h3 { margin: 1.9rem 0 .55rem; font-size: 1.02rem; }
+      p, li { color: #c7c2bc; font-size: .97rem; }
+      p { margin: 0 0 17px; }
+      a { color: #f5f0eb; text-decoration: underline; text-decoration-color: #6c655c; text-underline-offset: 3px; }
+      a:hover { color: #fff; }
+      .lede { max-width: 650px; margin: 25px 0 0; color: #c9c2ba; font-family: "Source Serif 4", ui-serif, Georgia, serif; font-size: clamp(1.2rem, 2.5vw, 1.5rem); line-height: 1.5; }
+      nav { display: flex; flex-wrap: wrap; gap: 8px; margin: 36px 0 62px; }
+      nav a { border: 1px solid #46413c; border-radius: 999px; color: #c9c2ba; font-size: .78rem; padding: 7px 12px; text-decoration: none; }
+      nav a:hover { background: #252320; border-color: #8d857c; }
+      article { margin-top: 68px; padding-top: 2px; scroll-margin-top: 24px; }
+      ul, ol { padding-left: 1.25em; margin: .6em 0 1.15em; }
+      li { margin: .48em 0; }
+      .callout { margin: 26px 0; padding: 18px 20px; border-left: 2px solid #aaa096; background: #23211f; color: #b8b0a8; }
+      .callout strong { color: #f1ebe5; }
+      .example { margin: 23px 0; padding: 18px 20px; border: 1px solid #423d38; border-radius: 12px; background: #22201d; }
+      .example p:last-child { margin-bottom: 0; }
+      .label { display: block; margin-bottom: 7px; color: #9f978e; font-size: .72rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+      code { color: #e7e1da; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .88em; }
+      footer { margin-top: 76px; padding-top: 24px; border-top: 1px solid #3a3733; color: #827c73; font-size: .83rem; }
+      @media (max-width: 620px) { .wrap { width: min(100% - 32px, 780px); padding-top: 28px; } header { margin-bottom: 52px; } article { margin-top: 54px; } }
+    </style>
+  </head>
+  <body>
+    <main class="wrap">
+      <header><a class="brand" href="/">Lofin</a><a class="back" href="/">Open Lofin <span aria-hidden="true">↗</span></a></header>
+
+      <p class="eyebrow">Field notes</p>
+      <h1>Practical habits for working with AI.</h1>
+      <p class="lede">A good AI result is rarely about finding one magical model or prompt. It comes from giving a task enough context, comparing useful alternatives, and keeping a human check at the points that matter.</p>
+      <nav aria-label="Guide sections"><a href="#compare">Compare answers</a><a href="#prompt">Build a useful prompt</a><a href="#verify">Check important work</a></nav>
+
+      <article id="compare">
+        <p class="eyebrow">Guide 01</p>
+        <h2>Compare answers for a decision, not for a spectacle.</h2>
+        <p>Different models make different tradeoffs. One may produce a sharp first draft; another may notice caveats, write cleaner code, or ask a question you missed. A comparison becomes useful when you decide what you are evaluating before reading the outputs.</p>
+        <h3>Start with a shared task</h3>
+        <p>Give every model the same source material, constraints, and desired format. If the request changes between runs, it is hard to know whether a different answer came from the model or the briefing. Include the audience, the outcome, facts that cannot change, and the shape of a good result.</p>
+        <div class="example"><span class="label">A comparison prompt</span><p>“Draft a 250-word project update for a non-technical client. Keep the tone calm and specific. Mention that the launch date moved from 12 May to 19 May because the payment integration needs another security review. Do not promise that the new date is guaranteed. End with two next steps.”</p></div>
+        <h3>Use a small scorecard</h3>
+        <p>Choose three to five criteria in advance. For writing, that might be accuracy, clarity, tone, and whether the requested action is easy to find. For code, use correctness, security, maintainability, and fit with the existing project. A short scorecard prevents a polished answer from winning simply because it is longer or more confident.</p>
+        <ol><li>Read once without editing; mark claims that need a source.</li><li>Check each answer against your non-negotiable facts and constraints.</li><li>Choose the best structure or explanation, not necessarily a single complete answer.</li><li>Ask for a revision based on the specific gaps you found.</li></ol>
+        <p class="callout"><strong>Useful default:</strong> compare when a weak answer would create rework. Two focused outputs and a clear rubric are usually more useful than five vague ones.</p>
+      </article>
+
+      <article id="prompt">
+        <p class="eyebrow">Guide 02</p>
+        <h2>Build a prompt like a compact creative brief.</h2>
+        <p>Prompts work best when they carry the information a capable collaborator would need before beginning. You do not have to write a long instruction every time. The goal is to remove ambiguities that would lead to the wrong kind of answer.</p>
+        <h3>Four pieces that pull their weight</h3>
+        <ul><li><strong>Context:</strong> What is happening, and what source material should the model use?</li><li><strong>Outcome:</strong> What should the reader, user, or teammate be able to do with the result?</li><li><strong>Constraints:</strong> What must be included, avoided, preserved, or treated as uncertain?</li><li><strong>Format:</strong> Should the answer be a table, a checklist, a short email, code with tests, or something else?</li></ul>
+        <p>A prompt can be short and still cover all four. “Turn these notes into a three-bullet release summary for support staff; preserve exact version numbers; flag uncertainty instead of inventing details” gives much better direction than “summarize this.”</p>
+        <h3>Iterate with critique, not a full restart</h3>
+        <p>When a first answer misses, point to the specific problem. “The second paragraph makes a promise we cannot make. Keep the same length, remove that promise, and add the missing limitation” gives the model a target. It also leaves you in control of the parts that were already right.</p>
+        <div class="example"><span class="label">A simple revision loop</span><p><code>Draft → identify one concrete weakness → state the constraint → revise only what needs changing → read it as the intended audience.</code></p></div>
+        <p>For complex work, ask for a plan or assumptions before asking for the final output. That makes hidden guesses visible early, when they are cheap to correct. It is especially helpful with research, multi-file programming tasks, and decisions involving several people.</p>
+      </article>
+
+      <article id="verify">
+        <p class="eyebrow">Guide 03</p>
+        <h2>Keep a human verification step for consequential work.</h2>
+        <p>AI can produce fluent text even when a fact is incomplete, old, or simply wrong. It may also omit a condition that a domain expert would consider essential. The more a result affects money, safety, rights, health, a production system, or another person’s trust, the more important it is to verify it outside the model.</p>
+        <h3>Match the check to the risk</h3>
+        <ul><li>For a casual draft, reread it for accuracy, tone, and unintended claims.</li><li>For factual work, open the primary source and verify quotations, dates, numbers, and links.</li><li>For code, run relevant tests, inspect error cases, and have a reviewer check security-sensitive changes.</li><li>For legal, medical, financial, or safety decisions, use qualified professional guidance rather than an AI answer as the final authority.</li></ul>
+        <h3>Ask the model to expose uncertainty</h3>
+        <p>One practical technique is to ask for assumptions, missing information, and the facts that would change its recommendation. This is not a substitute for research, but it can turn an overly confident paragraph into a useful checklist for your own review.</p>
+        <div class="example"><span class="label">A verification prompt</span><p>“Review this draft for claims that need evidence. List each claim, why it may be uncertain, and the best primary source or person to check. Do not invent citations.”</p></div>
+        <p class="callout"><strong>Good judgment is part of the workflow.</strong> Use AI to accelerate exploration, drafting, and routine transformation; keep accountability for the final decision with the person who understands the context and consequences.</p>
+      </article>
+
+      <footer>© Lofin · <a href="/about">About</a> · <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="https://docs.lofin.dev/">Documentation</a></footer>
+    </main>
+  </body>
+</html>

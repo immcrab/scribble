@@ -43,6 +43,17 @@ export function HumanGate({ children }: { children: ReactNode }) {
           <h1 className="text-base font-semibold text-white">Verify you're human</h1>
         </div>
         <p className="mb-4 text-sm text-slate-400">Quick check before you continue to Lofin.</p>
+        <p className="mb-4 text-xs leading-relaxed text-slate-500">
+          Lofin is an independent workspace for comparing AI models, drafting, researching, and creating.
+          This check helps protect the free service from automated abuse.
+        </p>
+        <p className="mb-4 text-xs text-slate-500">
+          <a className="underline underline-offset-2 hover:text-slate-300" href="/about">About Lofin</a>
+          <span aria-hidden="true"> · </span>
+          <a className="underline underline-offset-2 hover:text-slate-300" href="/guides">Practical guides</a>
+          <span aria-hidden="true"> · </span>
+          <a className="underline underline-offset-2 hover:text-slate-300" href="/privacy">Privacy</a>
+        </p>
         {qaMode && (
           <p
             data-testid="turnstile-qa-banner"
