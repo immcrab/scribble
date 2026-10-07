@@ -116,8 +116,10 @@ GitHub Pages origin (comma-separated, no paths — e.g.
 
 ### Composio OAuth connections (optional)
 
-Settings → MCP Servers can connect a signed-in user's Gmail, GitHub, Slack, Notion,
-and Google Calendar through [Composio](https://composio.dev)'s hosted OAuth. The Worker
+Settings → MCP Servers can connect a signed-in user's accounts (Gmail, Outlook, Google
+Calendar/Drive/Sheets/Docs, Dropbox, Notion, Airtable, Slack, Discord, Microsoft Teams,
+GitHub, GitLab, Figma, Canva, Linear, Jira, Asana, ClickUp, Monday, HubSpot, Mailchimp,
+Calendly) through [Composio](https://composio.dev)'s hosted OAuth. The Worker
 uses Composio's current Sessions API (v3.1): it creates a session per user, generates a
 Composio-hosted Connect Link, and reports connection status. OAuth tokens, the API key,
 and connected-account credentials never reach the browser, and every endpoint requires a
@@ -128,12 +130,11 @@ verified Firebase ID token (`FIREBASE_PROJECT_ID` must be set). The Composio use
 cd worker
 npx wrangler secret put COMPOSIO_API_KEY
 
-# optional — only to use your own OAuth apps instead of Composio-managed auth
+# optional — only to use your own OAuth app for a toolkit instead of Composio-managed
+# auth. The name is COMPOSIO_AUTH_CONFIG_<TOOLKIT SLUG>, for example:
 npx wrangler secret put COMPOSIO_AUTH_CONFIG_GMAIL
-npx wrangler secret put COMPOSIO_AUTH_CONFIG_GITHUB
-npx wrangler secret put COMPOSIO_AUTH_CONFIG_SLACK
-npx wrangler secret put COMPOSIO_AUTH_CONFIG_NOTION
-npx wrangler secret put COMPOSIO_AUTH_CONFIG_GOOGLECALENDAR
+npx wrangler secret put COMPOSIO_AUTH_CONFIG_GOOGLEDRIVE
+npx wrangler secret put COMPOSIO_AUTH_CONFIG_MICROSOFT_TEAMS
 ```
 
 Composio dashboard setup:

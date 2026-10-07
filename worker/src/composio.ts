@@ -15,11 +15,35 @@ import type { McpResult, McpToolDescriptor, McpToolProvider } from "./mcpTools";
 export const COMPOSIO_API_BASE = "https://backend.composio.dev/api/v3.1";
 
 export const COMPOSIO_TOOLKITS = [
+  // Email and calendar
   { slug: "gmail", name: "Gmail" },
-  { slug: "github", name: "GitHub" },
-  { slug: "slack", name: "Slack" },
-  { slug: "notion", name: "Notion" },
+  { slug: "outlook", name: "Outlook" },
   { slug: "googlecalendar", name: "Google Calendar" },
+  { slug: "calendly", name: "Calendly" },
+  // Files and documents
+  { slug: "googledrive", name: "Google Drive" },
+  { slug: "googlesheets", name: "Google Sheets" },
+  { slug: "googledocs", name: "Google Docs" },
+  { slug: "dropbox", name: "Dropbox" },
+  { slug: "notion", name: "Notion" },
+  { slug: "airtable", name: "Airtable" },
+  // Team chat
+  { slug: "slack", name: "Slack" },
+  { slug: "discord", name: "Discord" },
+  { slug: "microsoft_teams", name: "Microsoft Teams" },
+  // Code and design
+  { slug: "github", name: "GitHub" },
+  { slug: "gitlab", name: "GitLab" },
+  { slug: "figma", name: "Figma" },
+  { slug: "canva", name: "Canva" },
+  // Projects and CRM
+  { slug: "linear", name: "Linear" },
+  { slug: "jira", name: "Jira" },
+  { slug: "asana", name: "Asana" },
+  { slug: "clickup", name: "ClickUp" },
+  { slug: "monday", name: "Monday" },
+  { slug: "hubspot", name: "HubSpot" },
+  { slug: "mailchimp", name: "Mailchimp" },
 ] as const;
 
 export type ToolkitSlug = (typeof COMPOSIO_TOOLKITS)[number]["slug"];
@@ -39,19 +63,17 @@ export function isSafeUid(uid: string): boolean {
   return /^[A-Za-z0-9_-]{1,128}$/.test(uid);
 }
 
-/** Optional Composio auth config ids, kept as Worker secrets rather than frontend config. */
-const AUTH_CONFIG_SECRETS: Record<ToolkitSlug, "COMPOSIO_AUTH_CONFIG_GMAIL" | "COMPOSIO_AUTH_CONFIG_GITHUB" | "COMPOSIO_AUTH_CONFIG_SLACK" | "COMPOSIO_AUTH_CONFIG_NOTION" | "COMPOSIO_AUTH_CONFIG_GOOGLECALENDAR"> = {
-  gmail: "COMPOSIO_AUTH_CONFIG_GMAIL",
-  github: "COMPOSIO_AUTH_CONFIG_GITHUB",
-  slack: "COMPOSIO_AUTH_CONFIG_SLACK",
-  notion: "COMPOSIO_AUTH_CONFIG_NOTION",
-  googlecalendar: "COMPOSIO_AUTH_CONFIG_GOOGLECALENDAR",
-};
+/** Optional Composio auth config id (a Worker secret) for a toolkit's custom OAuth app:
+ * COMPOSIO_AUTH_CONFIG_<SLUG>, e.g. COMPOSIO_AUTH_CONFIG_GOOGLEDRIVE. Unset means Composio-managed auth. */
+export function authConfigSecretName(slug: ToolkitSlug): string {
+  return `COMPOSIO_AUTH_CONFIG_${slug.toUpperCase().replace(/-/g, "_")}`;
+}
 
 export function authConfigsFor(env: Env): Record<string, string> {
+  const secrets = env as unknown as Record<string, string | undefined>;
   const configs: Record<string, string> = {};
   for (const toolkit of COMPOSIO_TOOLKITS) {
-    const id = env[AUTH_CONFIG_SECRETS[toolkit.slug]]?.trim();
+    const id = secrets[authConfigSecretName(toolkit.slug)]?.trim();
     if (id && /^[A-Za-z0-9_-]{1,128}$/.test(id)) configs[toolkit.slug] = id;
   }
   return configs;

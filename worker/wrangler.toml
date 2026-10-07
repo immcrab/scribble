@@ -70,11 +70,11 @@ crons = ["0 * * * *"]
 # none belong in [vars] or in the frontend:
 #   COMPOSIO_API_KEY                      (required — Composio project API key, from
 #                                          the Composio dashboard -> Settings -> API keys)
-#   COMPOSIO_AUTH_CONFIG_GMAIL            (optional — Composio auth config id, "ac_...")
-#   COMPOSIO_AUTH_CONFIG_GITHUB           (optional — same, per toolkit)
-#   COMPOSIO_AUTH_CONFIG_SLACK            (optional)
-#   COMPOSIO_AUTH_CONFIG_NOTION           (optional)
-#   COMPOSIO_AUTH_CONFIG_GOOGLECALENDAR   (optional)
+#   COMPOSIO_AUTH_CONFIG_<TOOLKIT SLUG>   (optional, one per toolkit — Composio auth config
+#                                          id "ac_...", e.g. COMPOSIO_AUTH_CONFIG_GMAIL,
+#                                          COMPOSIO_AUTH_CONFIG_GOOGLEDRIVE,
+#                                          COMPOSIO_AUTH_CONFIG_MICROSOFT_TEAMS; the slug list
+#                                          is COMPOSIO_TOOLKITS in src/composio.ts)
 # Auth config ids are only needed to use your own OAuth apps; without one, Composio's
 # managed auth is used for that toolkit. FIREBASE_PROJECT_ID (above) must be set because
 # every Composio endpoint requires a verified Firebase ID token.
