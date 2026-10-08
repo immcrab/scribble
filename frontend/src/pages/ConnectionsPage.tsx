@@ -45,7 +45,7 @@ export function ConnectionsPage({ onExit }: { onExit: () => void }) {
                 {c.imageUrl ? (
                   <img src={c.imageUrl} alt="" className="aspect-video w-full object-cover" loading="lazy" />
                 ) : (
-                  <div className="flex aspect-video w-full items-center justify-center bg-gradient-to-br from-base-800 to-base-900 text-accent-400/70">
+                  <div className="flex aspect-video w-full items-center justify-center bg-base-800 text-accent-400/70">
                     <Globe size={56} />
                   </div>
                 )}

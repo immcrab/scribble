@@ -43,24 +43,19 @@ const PREFERENCES: Record<TutorTask, string[]> = {
     "gemini-3.6-flash",
   ],
   math: [
-    "deepseek/deepseek-v4-pro",
     "qwen/qwen3.8-max:free",
-    "minimax/minimax-m2.7:free",
+    "mistralai/mistral-large-4-0",
     "nvidia/nemotron-3-ultra-550b-a55b:free",
-    "deepseek/deepseek-v3.2",
   ],
   code: [
     "qwen/qwen3-coder-plus:free",
     "mistralai/codestral-2508",
     "mistralai/devstral-medium",
-    "deepseek/deepseek-v4-pro",
     "cohere/north-mini-code:free",
   ],
   reasoning: [
     "qwen/qwen3.8-max:free",
-    "deepseek/deepseek-v4-pro",
-    "minimax/minimax-m2.7:free",
-    "z-ai/glm-5.2:free",
+    "mistralai/mistral-large-4-0",
     "qwen/qwen3.7-max:free",
   ],
   writing: [
@@ -68,7 +63,6 @@ const PREFERENCES: Record<TutorTask, string[]> = {
     "qwen/qwen3.8-max:free",
     "mistralai/mistral-medium-3.5",
     "gemini-3.7-flash",
-    "z-ai/glm-5.2:free",
   ],
   quick: [
     "qwen/qwen3.5-flash:free",
@@ -80,9 +74,8 @@ const PREFERENCES: Record<TutorTask, string[]> = {
   // its head — same shape as a hard reasoning turn.
   analysis: [
     "qwen/qwen3.8-max:free",
+    "mistralai/mistral-large-4-0",
     "mistralai/mistral-large-2512",
-    "deepseek/deepseek-v4-pro",
-    "minimax/minimax-m2.7:free",
   ],
 };
 

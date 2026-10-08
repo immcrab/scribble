@@ -685,6 +685,13 @@ export default {
           apiToken: env.CF_AI_TOKEN,
           model: typeof b.model === "string" ? b.model : undefined,
           prompt: b.prompt,
+          options: {
+            negativePrompt: typeof b.negativePrompt === "string" ? b.negativePrompt : undefined,
+            steps: typeof b.steps === "number" ? b.steps : undefined,
+            seed: typeof b.seed === "number" ? b.seed : undefined,
+            width: typeof b.width === "number" ? b.width : undefined,
+            height: typeof b.height === "number" ? b.height : undefined,
+          },
         });
         return json(result, 200, cors);
       } catch (err) {

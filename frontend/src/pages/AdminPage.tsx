@@ -959,7 +959,7 @@ function WatermarkTab({
             className="relative overflow-hidden rounded-lg border border-base-600/60"
             style={{ width: PREVIEW_W, height: PREVIEW_W }}
           >
-            <div className="absolute inset-0 bg-gradient-to-br from-[#1d2740] via-[#2e3b5e] to-[#3f5233]" />
+            <div className="absolute inset-0 bg-[#2e3b5e]" />
             <div className="absolute right-[18%] top-[16%] h-14 w-14 rounded-full bg-[#f0c987]/90" />
             {draft.enabled && draft.text.trim() && (
               <span

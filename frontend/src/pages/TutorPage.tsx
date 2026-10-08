@@ -713,7 +713,7 @@ export function TutorPage({ onExit }: { onExit: () => void }) {
         <div className="mx-auto w-full max-w-3xl space-y-5">
           {messages.length === 0 ? (
             <div className="pt-8 text-center">
-              <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-accent-500 to-accent-700">
+              <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-2xl bg-accent-500">
                 <GraduationCap size={22} className="text-base-950" />
               </div>
               <h2 className="mt-3 text-lg font-semibold text-white">

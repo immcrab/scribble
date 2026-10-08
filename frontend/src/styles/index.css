@@ -38,6 +38,14 @@
   --glass-top: 35 33 31;
   --glass-bottom: 27 26 24;
 
+  /* Elevation + motion tokens, shared by Tailwind (shadow-panel/lift/pop) and plain CSS. */
+  --shadow-rgb: 0 0 0;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-soft: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-fast: 140ms;
+  --dur-base: 220ms;
+
   color-scheme: dark;
 }
 
@@ -68,6 +76,7 @@
   --scrollbar-thumb-hover: 138 129 117;
   --glass-top: 255 255 255;
   --glass-bottom: 245 242 237;
+  --shadow-rgb: 62 48 30;
 
   color-scheme: light;
 }
@@ -196,7 +205,14 @@ body,
 
 body {
   font-family: var(--app-font, "Inter", ui-sans-serif, system-ui, sans-serif);
-  background: radial-gradient(80rem 44rem at 84% -18%, rgb(var(--accent-500) / .12), transparent 52%), rgb(var(--base-950));
+  background: rgb(var(--base-950));
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: "cv11", "ss01", "calt";
+}
+h1, h2, h3 {
+  text-wrap: balance;
 }
 
 /* A quiet, dimensional shell rather than a flat set of panes. */
@@ -204,10 +220,10 @@ body {
   position: relative;
   z-index: 40;
   border-bottom: 1px solid rgb(var(--base-700) / .48);
-  background: linear-gradient(90deg, rgb(var(--base-950) / .78), rgb(var(--base-900) / .4));
-  backdrop-filter: blur(18px);
+  background: rgb(var(--base-950) / .8);
+  backdrop-filter: blur(18px) saturate(1.15);
 }
-.glass-panel { box-shadow: 1px 0 0 rgb(255 255 255 / .025), 18px 0 50px rgb(0 0 0 / .12); }
+.glass-panel { box-shadow: 1px 0 0 rgb(var(--base-700) / .35), 18px 0 50px rgb(var(--shadow-rgb) / .12); }
 
 /* "Bolder" appearance toggle — nudges the whole UI up one weight step. */
 :root[data-bold="true"] body {
@@ -243,8 +259,8 @@ body {
 }
 
 .glass-panel {
-  background: linear-gradient(180deg, rgb(var(--glass-top) / 0.92), rgb(var(--glass-bottom) / 0.92));
-  backdrop-filter: blur(14px);
+  background: rgb(var(--glass-top) / 0.94);
+  backdrop-filter: blur(14px) saturate(1.1);
 }
 
 .prose-lofin {
@@ -469,30 +485,18 @@ select {
   50% { opacity: 0.4; }
 }
 
-/* Live "Thinking for Ns…" label — a soft light band sweeps through the text via
-   background-clip:text, replacing a plain color pulse with something that reads
-   as "live work happening" rather than just blinking. */
+/* Live "Thinking for Ns…" label — the text eases between a muted and a bright
+   tone (driven by the animate-thinking-shimmer utility) so it reads as live work
+   without any gradient. */
 .thinking-label {
-  background-image: linear-gradient(
-    90deg,
-    rgb(var(--slate-500)) 0%,
-    rgb(var(--slate-500)) 35%,
-    rgb(var(--slate-200)) 50%,
-    rgb(var(--slate-500)) 65%,
-    rgb(var(--slate-500)) 100%
-  );
-  background-size: 250% 100%;
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  color: rgb(var(--slate-500));
   font-size: 0.8rem;
   letter-spacing: 0.02em;
 }
 
 .skeleton-line {
-  background: linear-gradient(90deg, rgb(var(--code-bg)) 25%, rgb(var(--code-chip-bg)) 37%, rgb(var(--code-bg)) 63%);
-  background-size: 400% 100%;
-  animation: shimmer 1.8s linear infinite;
+  background: rgb(var(--code-chip-bg));
+  animation: breathe 1.6s ease-in-out infinite;
   border-radius: 6px;
 }
 
@@ -635,6 +639,14 @@ select {
     opacity: 1;
   }
 }
+@keyframes ring-pulse {
+  0% { box-shadow: 0 0 0 0 rgb(var(--accent-500) / 0.35), inset 0 1px rgb(255 255 255 / 0.06); }
+  100% { box-shadow: 0 0 0 14px rgb(var(--accent-500) / 0), inset 0 1px rgb(255 255 255 / 0.06); }
+}
+@keyframes breathe {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
 @keyframes shimmer {
   0% {
     background-position: -200% 0;
@@ -663,7 +675,7 @@ select {
   background: rgb(var(--base-850));
   border: 1px solid rgb(var(--base-700));
   border-radius: 1.25rem;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+  box-shadow: 0 24px 60px -12px rgb(var(--shadow-rgb) / 0.55);
 }
 
 /* ─── Image-mode "generating" buddy ─────────────────────────────
@@ -677,47 +689,34 @@ select {
   overflow: hidden;
   border-radius: 14px;
   border: 1px solid rgb(var(--base-700) / 0.6);
-  background: radial-gradient(120% 80% at 50% 0%, rgb(var(--base-800) / 0.85), rgb(var(--base-900) / 0.9));
+  background: rgb(var(--base-850));
 }
 .image-studio-grid {
   position: relative;
   isolation: isolate;
   overflow: hidden;
-  background:
-    linear-gradient(rgb(var(--base-900) / 0.78), rgb(var(--base-900) / 0.96)),
-    linear-gradient(90deg, rgb(var(--base-700) / 0.12) 1px, transparent 1px),
-    linear-gradient(rgb(var(--base-700) / 0.12) 1px, transparent 1px);
-  background-size: auto, 28px 28px, 28px 28px;
-}
-.image-studio-grid::before {
-  content: "";
-  position: absolute;
-  z-index: -1;
-  width: min(44rem, 90vw);
-  aspect-ratio: 1;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgb(var(--accent-500) / 0.18), transparent 66%);
-  filter: blur(14px);
-  animation: studio-orbit 12s ease-in-out infinite alternate;
+  background: rgb(var(--base-950));
 }
 .image-studio-orb {
+  position: relative;
   display: grid;
   place-items: center;
-  width: 48px;
-  height: 48px;
+  width: 52px;
+  height: 52px;
   border: 1px solid rgb(var(--accent-400) / 0.42);
-  border-radius: 16px;
-  color: rgb(var(--accent-300));
-  background: linear-gradient(135deg, rgb(var(--accent-500) / 0.2), rgb(var(--base-850) / 0.7));
-  box-shadow: 0 0 42px rgb(var(--accent-500) / 0.16), inset 0 1px rgb(255 255 255 / 0.08);
-  animation: studio-float 4s ease-in-out infinite;
+  border-radius: 18px;
+  color: rgb(var(--accent-400));
+  background: rgb(var(--base-850));
+  box-shadow: inset 0 1px rgb(255 255 255 / 0.06), 0 10px 30px -10px rgb(var(--shadow-rgb) / 0.5);
+  animation: studio-float 4s ease-in-out infinite, ring-pulse 2.4s ease-out infinite;
 }
 .image-composer {
-  box-shadow: 0 12px 38px rgb(0 0 0 / 0.22), inset 0 1px rgb(255 255 255 / 0.025);
+  transition: border-color var(--dur-base) var(--ease-out), box-shadow var(--dur-base) var(--ease-out);
+  box-shadow: 0 12px 38px -12px rgb(var(--shadow-rgb) / 0.3), inset 0 1px rgb(255 255 255 / 0.025);
 }
 .image-composer:focus-within {
   border-color: rgb(var(--accent-500) / 0.62);
-  box-shadow: 0 0 0 3px rgb(var(--accent-500) / 0.11), 0 12px 38px rgb(0 0 0 / 0.22);
+  box-shadow: 0 0 0 3px rgb(var(--accent-500) / 0.11), 0 12px 38px -12px rgb(var(--shadow-rgb) / 0.3);
 }
 
 /* Search cards show xKiro's result thumbnails in the chat itself. They are a
@@ -756,7 +755,7 @@ select {
   min-height: 72px;
   place-items: center;
   color: rgb(var(--accent-400));
-  background: radial-gradient(circle at 50% 20%, rgb(var(--accent-500) / 0.23), transparent 65%);
+  background: rgb(var(--base-800));
 }
 .imggen-ground {
   position: absolute;
@@ -764,7 +763,7 @@ select {
   right: 0;
   bottom: 12px;
   height: 1px;
-  background: linear-gradient(90deg, transparent, rgb(var(--base-500) / 0.5), transparent);
+  background: rgb(var(--base-500) / 0.45);
 }
 .imggen-buddy {
   position: absolute;
@@ -801,9 +800,9 @@ select {
   width: 34px;
   height: 28px;
   border-radius: 12px 12px 10px 10px;
-  background: linear-gradient(160deg, rgb(var(--accent-400)), rgb(var(--accent-600)));
+  background: rgb(var(--accent-500));
   border: 1px solid rgb(var(--base-950) / 0.15);
-  box-shadow: 0 3px 10px -2px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 3px 10px -2px rgb(var(--shadow-rgb) / 0.5);
   animation: imggen-bob 0.45s ease-in-out infinite;
 }
 .imggen-eye {
@@ -869,10 +868,6 @@ select {
   25% { opacity: 1; }
   100% { opacity: 0; transform: translateY(-54px) scale(1); }
 }
-@keyframes studio-orbit {
-  from { transform: translate3d(-13%, -9%, 0) scale(0.9); }
-  to { transform: translate3d(13%, 10%, 0) scale(1.08); }
-}
 @keyframes studio-float {
   0%, 100% { transform: translateY(0) rotate(-2deg); }
   50% { transform: translateY(-6px) rotate(2deg); }
@@ -883,7 +878,6 @@ select {
   .imggen-body,
   .imggen-leg,
   .imggen-spark,
-  .image-studio-grid::before,
   .image-studio-orb {
     animation-duration: 0.001ms !important;
     animation-iteration-count: 1 !important;
@@ -911,7 +905,7 @@ select {
 .ttsgen-bar {
   width: 4px;
   border-radius: 2px;
-  background: linear-gradient(180deg, rgb(var(--accent-400)), rgb(var(--accent-600)));
+  background: rgb(var(--accent-500));
   animation: ttsgen-eq 1s ease-in-out infinite;
 }
 .ttsgen-bar:nth-child(1) { animation-delay: -0.9s; }
@@ -947,3 +941,273 @@ select {
   animation-iteration-count: infinite !important;
 }
 .motion-reduce-force .imggen-spark { opacity: 0.55; }
+
+
+/* ─── Motion system ────────────────────────────────────────────
+   Every interactive element gets the same quick, eased state transitions, and
+   buttons physically respond to a press. Tailwind's own transition-* utilities
+   (higher specificity) still override these where a component needs something
+   bespoke. The reduced-motion rules above zero all of it. */
+:where(button, a, summary, [role="button"], [role="menuitem"], [role="option"], [role="tab"], input, textarea, select) {
+  transition:
+    background-color var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-base) var(--ease-out),
+    opacity var(--dur-fast) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out);
+}
+:where(button:not(:disabled), [role="button"]:not([aria-disabled="true"])):active {
+  transform: scale(0.975);
+  transition-duration: 60ms;
+}
+:where(button:disabled, [aria-disabled="true"]) {
+  cursor: not-allowed;
+}
+
+/* Cards and tiles that rise slightly on hover. */
+.hover-lift {
+  transition: transform var(--dur-base) var(--ease-out), border-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-base) var(--ease-out);
+}
+.hover-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 2px 4px rgb(var(--shadow-rgb) / 0.14), 0 14px 28px -12px rgb(var(--shadow-rgb) / 0.4);
+}
+
+/* Staggered entrance for any list: children rise in one after another. */
+.stagger > * {
+  animation: fade-in-up 0.45s var(--ease-out) backwards;
+}
+.stagger > *:nth-child(1) { animation-delay: 0ms; }
+.stagger > *:nth-child(2) { animation-delay: 45ms; }
+.stagger > *:nth-child(3) { animation-delay: 90ms; }
+.stagger > *:nth-child(4) { animation-delay: 135ms; }
+.stagger > *:nth-child(5) { animation-delay: 180ms; }
+.stagger > *:nth-child(6) { animation-delay: 225ms; }
+.stagger > *:nth-child(n + 7) { animation-delay: 270ms; }
+
+/* Model/voice menus: rows cascade in as the menu opens (first screenful only). */
+.menu-cascade > *:nth-child(-n + 9) {
+  animation: menu-row-in 0.28s var(--ease-out) backwards;
+}
+.menu-cascade > *:nth-child(2) { animation-delay: 20ms; }
+.menu-cascade > *:nth-child(3) { animation-delay: 40ms; }
+.menu-cascade > *:nth-child(4) { animation-delay: 60ms; }
+.menu-cascade > *:nth-child(5) { animation-delay: 80ms; }
+.menu-cascade > *:nth-child(6) { animation-delay: 100ms; }
+.menu-cascade > *:nth-child(7) { animation-delay: 120ms; }
+.menu-cascade > *:nth-child(8) { animation-delay: 140ms; }
+.menu-cascade > *:nth-child(9) { animation-delay: 160ms; }
+@keyframes menu-row-in {
+  from { opacity: 0; transform: translateX(-6px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+/* Selected-row marker used by model / voice pickers. */
+.row-active {
+  position: relative;
+}
+.row-active::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 22%;
+  bottom: 22%;
+  width: 2px;
+  border-radius: 2px;
+  background: rgb(var(--accent-400));
+  animation: pop-in-y 0.28s var(--ease-spring) backwards;
+}
+@keyframes pop-in-y {
+  from { transform: scaleY(0); }
+  to { transform: scaleY(1); }
+}
+
+/* Segmented control: a single thumb slides between options. The thumb's
+   position/size are set inline from measured option rects (components/Segmented.tsx). */
+.seg {
+  position: relative;
+  display: inline-flex;
+  padding: 2px;
+  gap: 0;
+  border: 1px solid rgb(var(--base-700) / 0.7);
+  border-radius: 10px;
+  background: rgb(var(--base-900) / 0.6);
+}
+.seg-thumb {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  left: 0;
+  border-radius: 8px;
+  background: rgb(var(--accent-500));
+  box-shadow: 0 1px 2px rgb(var(--shadow-rgb) / 0.3);
+  transition: transform 260ms var(--ease-out), width 260ms var(--ease-out);
+  pointer-events: none;
+}
+.seg-btn {
+  position: relative;
+  z-index: 1;
+  border-radius: 8px;
+  padding: 0.3rem 0.65rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: rgb(var(--slate-400));
+  transition: color var(--dur-base) var(--ease-out);
+}
+.seg-btn:hover:not(:disabled):not([aria-checked="true"]) {
+  color: rgb(var(--slate-100));
+}
+.seg-btn[aria-checked="true"] {
+  color: rgb(var(--base-950));
+}
+.seg-btn:disabled {
+  opacity: 0.45;
+}
+
+/* Range sliders (speech speed, image detail). Native track, themed thumb. */
+.range-lofin {
+  width: 100%;
+  height: 20px;
+  background: transparent;
+  accent-color: rgb(var(--accent-500));
+  cursor: pointer;
+}
+.range-lofin::-webkit-slider-thumb {
+  transition: transform var(--dur-fast) var(--ease-spring);
+}
+.range-lofin:hover::-webkit-slider-thumb {
+  transform: scale(1.18);
+}
+.range-lofin:active::-webkit-slider-thumb {
+  transform: scale(1.05);
+}
+
+/* Mini equalizer — "this voice is playing". */
+.eq-mini {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 12px;
+}
+.eq-mini span {
+  width: 2px;
+  height: 100%;
+  border-radius: 1px;
+  background: currentColor;
+  transform-origin: bottom;
+  animation: eq-mini 0.9s ease-in-out infinite;
+}
+.eq-mini span:nth-child(2) { animation-delay: -0.3s; }
+.eq-mini span:nth-child(3) { animation-delay: -0.6s; }
+@keyframes eq-mini {
+  0%, 100% { transform: scaleY(0.3); }
+  50% { transform: scaleY(1); }
+}
+
+/* Settings group card used by the image / speech option panels. */
+.opt-panel {
+  border: 1px solid rgb(var(--base-700) / 0.7);
+  border-radius: 14px;
+  background: rgb(var(--base-850) / 0.8);
+  box-shadow: 0 1px 2px rgb(var(--shadow-rgb) / 0.12);
+}
+.opt-label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgb(var(--slate-500));
+}
+
+/* Prose refinements. */
+.prose-lofin p,
+.prose-lofin li {
+  text-wrap: pretty;
+}
+.prose-lofin a {
+  text-decoration-thickness: 1px;
+  transition: text-decoration-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+.prose-lofin a:hover {
+  color: rgb(var(--accent-400));
+}
+.prose-lofin tr:nth-child(even) td {
+  background: rgb(var(--base-850) / 0.45);
+}
+.prose-lofin th {
+  background: rgb(var(--base-800) / 0.6);
+  font-weight: 600;
+}
+.prose-lofin hr {
+  border: 0;
+  border-top: 1px solid rgb(var(--base-700));
+  margin: 1.2em 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stagger > *,
+  .menu-cascade > *,
+  .row-active::before,
+  .eq-mini span,
+  .skeleton-line {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    animation-delay: 0s !important;
+  }
+  .hover-lift:hover {
+    transform: none;
+  }
+  :where(button:not(:disabled), [role="button"]):active {
+    transform: none;
+  }
+  .seg-thumb {
+    transition-duration: 0.001ms !important;
+  }
+}
+.motion-reduce-force .stagger > *,
+.motion-reduce-force .menu-cascade > *,
+.motion-reduce-force .row-active::before,
+.motion-reduce-force .eq-mini span,
+.motion-reduce-force .skeleton-line {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  animation-delay: 0s !important;
+}
+.motion-reduce-force .hover-lift:hover,
+.motion-reduce-force :where(button:not(:disabled), [role="button"]):active {
+  transform: none;
+}
+.motion-reduce-force .seg-thumb {
+  transition-duration: 0.001ms !important;
+}
+
+/* Indeterminate activity bar: a solid segment slides across a quiet track. Honest
+   "still working" feedback — it never implies a percentage. */
+.indet {
+  position: relative;
+  height: 2px;
+  overflow: hidden;
+  border-radius: 2px;
+  background: rgb(var(--base-700) / 0.7);
+}
+.indet > span {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 32%;
+  border-radius: 2px;
+  background: rgb(var(--accent-500));
+  animation: indet-slide 1.5s var(--ease-soft) infinite;
+}
+@keyframes indet-slide {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(320%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .indet > span {
+    animation-duration: 3s !important;
+    animation-iteration-count: infinite !important;
+  }
+}

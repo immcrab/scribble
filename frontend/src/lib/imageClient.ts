@@ -9,11 +9,25 @@ export async function generateImage({
   provider,
   model,
   size,
+  negativePrompt,
+  steps,
+  seed,
+  width,
+  height,
   signal,
 }: {
   workerUrl: string;
   password?: string;
   prompt: string;
+  /** Things to avoid — honoured by Cloudflare Stable Diffusion models only. */
+  negativePrompt?: string;
+  /** Sampler steps (Cloudflare). The Worker clamps this to the model's maximum. */
+  steps?: number;
+  /** Fixed seed for reproducible output (Cloudflare Stable Diffusion models). */
+  seed?: number;
+  /** Cloudflare Stable Diffusion canvas size in px. */
+  width?: number;
+  height?: number;
   /** Image backend — "cloudflare" (default) or "xkiro". */
   provider?: "cloudflare" | "xkiro";
   /** Provider-specific model id (xKiro). */
@@ -32,7 +46,16 @@ export async function generateImage({
       "Content-Type": "application/json",
       ...(password ? { "X-Lofin-Password": password } : {}),
     },
-    body: JSON.stringify({ prompt, ...(provider ? { provider } : {}), ...(model ? { model } : {}), ...(size ? { size } : {}) }),
+    body: JSON.stringify({
+      prompt,
+      ...(provider ? { provider } : {}),
+      ...(model ? { model } : {}),
+      ...(size ? { size } : {}),
+      ...(negativePrompt?.trim() ? { negativePrompt: negativePrompt.trim() } : {}),
+      ...(typeof steps === "number" ? { steps } : {}),
+      ...(typeof seed === "number" ? { seed } : {}),
+      ...(typeof width === "number" && typeof height === "number" ? { width, height } : {}),
+    }),
     signal,
   });
 

@@ -41,8 +41,20 @@ export default {
         serif: ["'Source Serif 4'", "ui-serif", "Georgia", "serif"],
       },
       boxShadow: {
-        glow: "0 0 0 1px rgb(var(--accent-500) / 0.12), 0 8px 30px -8px rgb(var(--accent-500) / 0.25)",
-        panel: "0 4px 24px -4px rgba(0,0,0,0.5)",
+        // Layered, theme-aware elevation. --shadow-rgb flips between the dark and
+        // light palettes (src/styles/index.css) so light mode gets soft warm shadows
+        // instead of heavy black ones.
+        glow: "0 0 0 1px rgb(var(--accent-500) / 0.14), 0 8px 28px -10px rgb(var(--accent-500) / 0.3)",
+        panel: "0 1px 2px rgb(var(--shadow-rgb) / 0.16), 0 12px 32px -10px rgb(var(--shadow-rgb) / 0.42)",
+        lift: "0 2px 4px rgb(var(--shadow-rgb) / 0.14), 0 14px 28px -12px rgb(var(--shadow-rgb) / 0.4)",
+        pop: "0 2px 6px rgb(var(--shadow-rgb) / 0.2), 0 24px 56px -14px rgb(var(--shadow-rgb) / 0.55)",
+      },
+      transitionTimingFunction: {
+        // Shared motion curves — fast-out for entrances, springy overshoot for
+        // small interactive pops, symmetrical for state changes.
+        "out-expo": "cubic-bezier(0.16, 1, 0.3, 1)",
+        spring: "cubic-bezier(0.34, 1.56, 0.64, 1)",
+        "in-out-soft": "cubic-bezier(0.65, 0, 0.35, 1)",
       },
       keyframes: {
         "fade-in-up": {
@@ -70,37 +82,66 @@ export default {
           "0%, 100%": { opacity: 0.25, transform: "scale(0.85)" },
           "50%": { opacity: 1, transform: "scale(1.1)" },
         },
-        "pulse-dot-a": {
-          "0%, 100%": { opacity: 0.25, transform: "scale(0.85)" },
-          "50%": { opacity: 1, transform: "scale(1.1)" },
-        },
-        "pulse-dot-b": {
-          "0%, 100%": { opacity: 0.25, transform: "scale(0.85)" },
-          "50%": { opacity: 1, transform: "scale(1.1)" },
-        },
-        "pulse-dot-c": {
-          "0%, 100%": { opacity: 0.25, transform: "scale(0.85)" },
-          "50%": { opacity: 1, transform: "scale(1.1)" },
-        },
         // A soft ripple/glow that radiates from the assistant avatar while a
         // turn is streaming, signalling "alive" at a glance.
         "avatar-glow": {
           "0%, 100%": { boxShadow: "0 0 0 0px rgba(245,240,235,0)" },
           "50%": { boxShadow: "0 0 0 6px rgba(245,240,235,0.1)" },
         },
+        // Menu / popover entrance: small rise + scale from the trigger side.
+        "menu-in": {
+          "0%": { opacity: 0, transform: "translateY(-4px) scale(0.97)" },
+          "100%": { opacity: 1, transform: "translateY(0) scale(1)" },
+        },
+        "menu-in-up": {
+          "0%": { opacity: 0, transform: "translateY(4px) scale(0.97)" },
+          "100%": { opacity: 1, transform: "translateY(0) scale(1)" },
+        },
+        // Bottom sheet slide for mobile menus.
+        "sheet-in": {
+          "0%": { transform: "translateY(10px)", opacity: 0 },
+          "100%": { transform: "translateY(0)", opacity: 1 },
+        },
+        // Small confirmation pop (selected check, copied tick, toggled chip).
+        "pop-in": {
+          "0%": { opacity: 0, transform: "scale(0.4)" },
+          "60%": { opacity: 1, transform: "scale(1.15)" },
+          "100%": { opacity: 1, transform: "scale(1)" },
+        },
+        "slide-in-right": {
+          "0%": { opacity: 0, transform: "translateX(12px)" },
+          "100%": { opacity: 1, transform: "translateX(0)" },
+        },
+        // Expanding soft ring — "listening / playing" affordance.
+        "ring-pulse": {
+          "0%": { boxShadow: "0 0 0 0 rgb(var(--accent-500) / 0.35)" },
+          "100%": { boxShadow: "0 0 0 10px rgb(var(--accent-500) / 0)" },
+        },
+        // Solid-color breathing used instead of a gradient sweep for skeletons/labels.
+        breathe: {
+          "0%, 100%": { opacity: 0.55 },
+          "50%": { opacity: 1 },
+        },
         shimmer: {
           "0%": { backgroundPosition: "-200% 0" },
           "100%": { backgroundPosition: "200% 0" },
         },
-        // Text-shimmer used by the live "Thinking for Ns" label — a soft light
-        // band sweeping through the label text, replacing the plain pulsing dots.
+        // Live "Thinking for Ns" label: the text eases between a muted and a
+        // bright tone — a solid-color pulse, no gradient sweep.
         "thinking-shimmer": {
-          "0%": { backgroundPosition: "150% 0" },
-          "100%": { backgroundPosition: "-150% 0" },
+          "0%, 100%": { color: "rgb(var(--slate-500))" },
+          "50%": { color: "rgb(var(--slate-200))" },
         },
       },
       animation: {
-        "fade-in-up": "fade-in-up 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
+        "fade-in-up": "fade-in-up 0.4s cubic-bezier(0.16, 1, 0.3, 1) backwards",
+        "menu-in": "menu-in 0.18s cubic-bezier(0.16, 1, 0.3, 1) backwards",
+        "menu-in-up": "menu-in-up 0.18s cubic-bezier(0.16, 1, 0.3, 1) backwards",
+        "sheet-in": "sheet-in 0.28s cubic-bezier(0.16, 1, 0.3, 1) backwards",
+        "pop-in": "pop-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) backwards",
+        "slide-in-right": "slide-in-right 0.32s cubic-bezier(0.16, 1, 0.3, 1) backwards",
+        "ring-pulse": "ring-pulse 1.6s ease-out infinite",
+        breathe: "breathe 1.8s ease-in-out infinite",
         "fade-in": "fade-in 0.2s ease-out",
         "pop-up": "pop-up 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)",
         "cursor-breathe": "cursor-breathe 1.2s ease-in-out infinite",
@@ -111,7 +152,7 @@ export default {
         "avatar-glow": "avatar-glow 2.2s ease-in-out infinite",
         blink: "blink 1s step-start infinite",
         shimmer: "shimmer 1.8s linear infinite",
-        "thinking-shimmer": "thinking-shimmer 2.2s linear infinite",
+        "thinking-shimmer": "thinking-shimmer 2.2s ease-in-out infinite",
       },
     },
   },

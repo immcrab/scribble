@@ -35,6 +35,13 @@ export interface LofinSettings {
   /** xKiro image canvas ratio. Stored independently from the model so changing
    * models doesn't throw away the composition the user chose. */
   imageAspectRatio?: "1:1" | "3:4" | "4:3" | "9:16" | "16:9";
+  /** Things the image should avoid ("blurry, extra fingers"). Sent to Cloudflare Stable Diffusion models,
+   * which accept a negative prompt; FLUX and xKiro ignore it. */
+  imageNegativePrompt?: string;
+  /** Fixed seed for reproducible Cloudflare images. Unset = a fresh random seed each time. */
+  imageSeed?: number;
+  /** Speed/detail trade-off for Cloudflare models — mapped to each model's step count (see config/imageModels.ts). */
+  imageQuality?: "fast" | "balanced" | "detailed";
   /** Text-to-speech voice id (xKiro), persisted across Speech-mode sessions. Falls back to the
    * first voice the /api/speech/voices list returns when unset. */
   speechVoiceId?: string;
@@ -42,6 +49,12 @@ export interface LofinSettings {
   speechFormat?: string;
   /** Text-to-speech playback rate sent to xKiro, 0.25–4.0. Defaults to 1. */
   speechSpeed?: number;
+  /** Voice ids the user starred in the Speech-mode voice picker; pinned to the top of the list. */
+  speechFavoriteVoices?: string[];
+  /** Recently used voice ids, newest first (max 5). */
+  speechRecentVoices?: string[];
+  /** "written => spoken" pronunciation rules, one per line — persisted so they survive a reload. */
+  speechPronunciations?: string;
   /** Enter sends the message; Shift/Ctrl/Cmd+Enter inserts a newline. When false, Ctrl/Cmd+Enter sends instead. */
   sendOnEnter: boolean;
   /** User-forced reduced-motion, independent of the OS-level prefers-reduced-motion. */

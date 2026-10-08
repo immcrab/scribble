@@ -66,6 +66,13 @@ function Badge({ tone, icon, label, title }: { tone: string; icon: ReactNode; la
   );
 }
 
+/** 1000000 -> "1M", 262144 -> "262K" — compact context-window label for dense rows. */
+function formatContext(tokens: number): string {
+  if (tokens >= 1_000_000) return `${Math.round((tokens / 1_000_000) * 10) / 10}M`;
+  if (tokens >= 1000) return `${Math.round(tokens / 1000)}K`;
+  return String(tokens);
+}
+
 const TONE = {
   free: "border-emerald-500/30 bg-emerald-500/10 text-emerald-400",
   gated: "border-base-500/50 bg-base-700/40 text-slate-400",
@@ -113,7 +120,7 @@ function ModelRow({
   hideBadges?: boolean;
 }) {
   return (
-    <div className={`group flex items-center ${active ? "bg-accent-500/10" : ""}`}>
+    <div className={`group flex items-center ${active ? "row-active bg-accent-500/10" : ""}`}>
       <button
         type="button"
         aria-current={active ? "true" : undefined}
@@ -126,8 +133,13 @@ function ModelRow({
       >
         <ModelFavicon model={model} size={15} />
         <span className="min-w-0 flex-1 truncate">{model.displayName}</span>
+        {!hideBadges && model.contextLength > 0 && (
+          <span title={`${model.contextLength.toLocaleString()} token context window`} className="hidden shrink-0 text-[10px] tabular-nums text-slate-600 sm:inline">
+            {formatContext(model.contextLength)}
+          </span>
+        )}
         {!hideBadges && <ModelBadges model={model} locked={locked} />}
-        {active ? <Check size={13} className="shrink-0 text-accent-400" aria-label="Selected" /> : <span className="w-[13px] shrink-0" />}
+        {active ? <Check size={13} className="shrink-0 animate-pop-in text-accent-400" aria-label="Selected" /> : <span className="w-[13px] shrink-0" />}
       </button>
       {onToggleStar && (
         <button
@@ -356,7 +368,7 @@ export function ModelSelector({
       align={align}
       label="Choose a model"
       mobileSheet
-      menuClassName="max-h-[28rem] w-[22rem] max-w-[calc(100vw-1rem)]"
+      menuClassName="max-h-[28rem] w-[25rem] max-w-[calc(100vw-1rem)]"
       trigger={({ open, toggle, menuId }) => (
         <button
           type="button"
@@ -366,7 +378,7 @@ export function ModelSelector({
           aria-controls={open ? menuId : undefined}
           aria-label={`Model: ${value ? value.displayName : "none selected"}`}
           data-testid="model-selector"
-          className="flex min-h-11 items-center gap-2 rounded-lg border border-base-600/60 bg-base-800/60 px-2.5 py-1.5 text-sm text-slate-200 transition-colors hover:border-accent-500/50 hover:bg-base-700/60 sm:min-h-0"
+          className="flex min-h-11 items-center gap-2 rounded-lg border border-base-600/60 bg-base-800/60 px-2.5 py-1.5 text-sm text-slate-200 transition-[border-color,background-color,box-shadow] duration-200 hover:border-accent-500/50 hover:bg-base-700/60 hover:shadow-lift sm:min-h-0"
         >
           <ModelFavicon model={value} size={15} />
           <span className="max-w-[160px] truncate">{value ? value.displayName : "Select model"}</span>
@@ -384,7 +396,7 @@ export function ModelSelector({
               Vision
             </span>
           )}
-          <ChevronDown size={13} aria-hidden="true" className={`text-slate-500 transition-transform ${open ? "rotate-180" : ""}`} />
+          <ChevronDown size={13} aria-hidden="true" className={`text-slate-500 transition-transform duration-200 ease-out-expo ${open ? "rotate-180" : ""}`} />
         </button>
       )}
     >
@@ -432,6 +444,11 @@ export function ModelSelector({
           </div>
 
           <div id="model-results">
+            {narrowing && !noResults && (
+              <p className="px-3.5 pb-0.5 pt-2 text-[11px] text-slate-500" role="status" aria-live="polite">
+                {groups.reduce((n, g) => n + g.models.length, 0) + favoritedPuterModels.length + customPuterModels.length} matching models
+              </p>
+            )}
             {!narrowing && (
               <div className="border-b border-base-700/40 p-1.5">
                 <ModelRow
@@ -450,20 +467,20 @@ export function ModelSelector({
             )}
 
             {favoriteModels.length > 0 && (
-              <div role="group" aria-label="Favorites" className="border-b border-base-700/40 py-1">
+              <div role="group" aria-label="Favorites" className="menu-cascade border-b border-base-700/40 py-1">
                 <SectionHeader icon={<Star size={12} className="text-amber-400" fill="currentColor" aria-hidden="true" />} label="Favorites" />
                 {favoriteModels.map((m) => row(m, close))}
               </div>
             )}
             {recentModels.length > 0 && (
-              <div role="group" aria-label="Recent" className="border-b border-base-700/40 py-1">
+              <div role="group" aria-label="Recent" className="menu-cascade border-b border-base-700/40 py-1">
                 <SectionHeader icon={<Clock size={12} className="text-slate-400" aria-hidden="true" />} label="Recent" />
                 {recentModels.map((m) => row(m, close))}
               </div>
             )}
 
             {groups.map(({ provider, models }) => (
-              <div key={provider} role="group" aria-label={PROVIDER_LABELS[provider]} className="border-b border-base-700/40 py-1 last:border-b-0">
+              <div key={provider} role="group" aria-label={PROVIDER_LABELS[provider]} className="menu-cascade border-b border-base-700/40 py-1 last:border-b-0">
                 <SectionHeader icon={<ProviderFavicon provider={provider} size={13} />} label={PROVIDER_LABELS[provider]} count={models.length} />
                 {models.map((m) => row(m, close))}
               </div>
@@ -544,8 +561,8 @@ export function ModelSelector({
             style={isMobile ? undefined : { top: flyoutPos?.top ?? 0, left: flyoutPos?.left ?? 0 }}
             className={
               isMobile
-                ? "fixed inset-x-3 bottom-3 z-[75] flex max-h-[70vh] flex-col rounded-xl border border-base-600/70 bg-base-850 shadow-panel backdrop-blur-xl animate-fade-in-up"
-                : "fixed z-[75] flex max-h-[26rem] w-80 flex-col rounded-xl border border-base-600/70 bg-base-850 shadow-panel backdrop-blur-xl animate-fade-in-up"
+                ? "fixed inset-x-3 bottom-3 z-[75] flex max-h-[70vh] flex-col rounded-xl border border-base-600/70 bg-base-850 shadow-pop backdrop-blur-xl animate-sheet-in"
+                : "fixed z-[75] flex max-h-[26rem] w-80 flex-col rounded-xl border border-base-600/70 bg-base-850 shadow-pop backdrop-blur-xl animate-slide-in-right"
             }
           >
             <div className="flex items-center justify-between border-b border-base-700/40 px-3.5 py-2.5">

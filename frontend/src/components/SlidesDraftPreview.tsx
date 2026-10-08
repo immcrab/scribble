@@ -44,7 +44,7 @@ export function SlidesDraftPreview({ arguments: args }: { arguments: Record<stri
     <div className="mt-3 overflow-hidden rounded-xl border border-accent-500/30 bg-base-900/70">
       <div className="flex items-center gap-2 border-b border-accent-500/20 px-3 py-2 text-[11px] font-medium text-accent-200"><FilePenLine size={13} />Slide content preview <span className="ml-auto text-slate-500">{slides.length} slides</span></div>
       <div className="p-2">
-        <div className="aspect-video rounded-lg border border-base-700/60 bg-gradient-to-br from-slate-900 via-slate-950 to-accent-950/50 p-4">
+        <div className="aspect-video rounded-lg border border-base-700/60 bg-base-900 p-4">
           <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-accent-300"><Presentation size={11} />Slide 1 of {slides.length}</div>
           <h4 className="mt-5 text-lg font-semibold leading-tight text-white">{title}</h4>
           {body.length > 0 && <ul className="mt-3 space-y-1 text-xs leading-relaxed text-slate-300">{body.map((line, index) => <li key={`${line}-${index}`}>• {line}</li>)}</ul>}

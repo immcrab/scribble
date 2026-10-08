@@ -37,8 +37,9 @@ export function SpeechGeneratingLoader({ startedAt }: { startedAt?: number }) {
           <span key={i} className="ttsgen-bar" />
         ))}
       </div>
-      <div className="mt-2 flex items-center justify-between gap-3 px-0.5 text-xs">
-        <span className="thinking-label animate-thinking-shimmer">{line}…</span>
+      <div className="indet mt-2" aria-hidden="true"><span /></div>
+      <div className="mt-2 flex items-center justify-between gap-3 px-0.5 text-xs" role="status" aria-live="polite">
+        <span key={line} className="animate-fade-in"><span className="thinking-label animate-thinking-shimmer">{line}…</span></span>
         <span className="shrink-0 tabular-nums text-slate-500">{formatElapsed(elapsed)}</span>
       </div>
     </div>

@@ -523,7 +523,7 @@ export function ChatMessage({
                       </a>
                     </div>
                     {a.name && (
-                      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-base-950/80 to-transparent p-1.5 text-[11px] text-slate-300 opacity-0 transition-opacity group-hover/img:opacity-100 truncate">
+                      <div className="absolute inset-x-0 bottom-0 bg-base-950/75 backdrop-blur-sm p-1.5 text-[11px] text-slate-300 opacity-0 transition-opacity group-hover/img:opacity-100 truncate">
                         {a.name}
                       </div>
                     )}

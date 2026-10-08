@@ -241,9 +241,9 @@ export function Dropdown({
               }
               className={
                 asSheet
-                  ? "popover-layer fixed inset-x-0 bottom-0 z-[70] flex max-h-[85dvh] flex-col overflow-y-auto overscroll-contain rounded-t-2xl border border-b-0 border-base-600/70 bg-base-850 pb-[env(safe-area-inset-bottom)] shadow-panel animate-fade-in-up"
-                  : `popover-layer fixed z-[70] overflow-y-auto overscroll-contain rounded-xl border border-base-600/70 bg-base-850 shadow-panel backdrop-blur-xl animate-fade-in-up ${
-                      pos?.placement === "up" ? "origin-bottom" : "origin-top"
+                  ? "popover-layer fixed inset-x-0 bottom-0 z-[70] flex max-h-[85dvh] flex-col overflow-y-auto overscroll-contain rounded-t-2xl border border-b-0 border-base-600/70 bg-base-850 pb-[env(safe-area-inset-bottom)] shadow-pop animate-sheet-in"
+                  : `popover-layer fixed z-[70] overflow-y-auto overscroll-contain rounded-xl border border-base-600/70 bg-base-850 shadow-pop backdrop-blur-xl ${
+                      !pos ? "origin-top" : pos.placement === "up" ? "origin-bottom animate-menu-in-up" : "origin-top animate-menu-in"
                     } ${menuClassName}`
               }
             >
