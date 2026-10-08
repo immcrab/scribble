@@ -174,6 +174,15 @@ export interface Attachment {
   };
 }
 
+export interface YouTubeVideo {
+  id: string;
+  title: string;
+  channel: string;
+  duration?: string;
+  views?: string;
+  published?: string;
+}
+
 export interface ToolCallRecord {
   id: string;
   name: string;
@@ -190,6 +199,8 @@ export interface ToolCallRecord {
   /** Agent tool call waiting for the user's approval (Composio). The token is a short-lived
    * server-signed approval bound to exactly these arguments; it is not a credential. */
   mcp?: { toolId: string; toolkit: string; confirmationToken: string; arguments: Record<string, unknown> };
+  /** Videos found by a "YouTube search" call; the chat shows them in an inline player window. */
+  videos?: YouTubeVideo[];
   /** Optional visual cards returned by xKiro web search. These are result
    * thumbnails, not browser screenshots, and let someone judge a page before
    * choosing whether to open it. */

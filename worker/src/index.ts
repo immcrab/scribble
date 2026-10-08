@@ -22,6 +22,7 @@ import {
   publicUrlIn,
   readWebPage,
 } from "./adapters/search";
+import { plainYouTubeQuery, searchYouTube, wantsYouTubeVideos, youtubeTitle, youtubeVideoIdIn, type YouTubeVideo } from "./adapters/youtube";
 import { extractMemory, shouldRecallMemory } from "./adapters/memory";
 import { ndjsonLine } from "./adapters/base";
 import { verifyFirebaseIdToken } from "./firebaseVerifyToken";
@@ -342,7 +343,74 @@ export default {
           // search is off: that is an explicit, per-turn instruction from the
           // user rather than an automatic lookup.
           const userRequestedWeb = explicitlyRequestsWeb(query);
-          if (useWebSearch && !mcpHandled && (body.webSearch || userRequestedWeb)) {
+
+          // Video requests ("find me a react tutorial", "youtube videos about X", "more
+          // like this <link>") get a YouTube search whose results the chat renders as a
+          // small player window. That replaces the generic web search for the turn.
+          let youtubeHandled = false;
+          if (!mcpHandled && lastUserIdx !== undefined && query && wantsYouTubeVideos(query)) {
+            const toolId = crypto.randomUUID();
+            const pastedId = youtubeVideoIdIn(query);
+            let searchQuery = "";
+            if (pastedId) searchQuery = (await youtubeTitle(pastedId)) ?? "";
+            if (!searchQuery && env.GROQ_API_KEY) {
+              try {
+                searchQuery = await buildSearchQuery(
+                  env.GROQ_API_KEY,
+                  query,
+                  messages.slice(0, lastUserIdx).map((m) => ({ role: m.role, content: m.content }))
+                );
+              } catch {
+                searchQuery = "";
+              }
+            }
+            searchQuery = (searchQuery || plainYouTubeQuery(query) || query).replace(/\byoutube\b/gi, " ").replace(/\s+/g, " ").trim().slice(0, 200);
+            controller.enqueue(ndjsonLine({ toolCall: { id: toolId, name: "YouTube search", status: "running", input: { query: searchQuery } } }));
+            try {
+              const found = await searchYouTube(searchQuery);
+              const videos: YouTubeVideo[] = pastedId
+                ? [{ id: pastedId, title: searchQuery, channel: "" }, ...found.filter((v) => v.id !== pastedId)]
+                : found;
+              const listing = videos
+                .map((v, i) => `${i + 1}. ${v.title}${v.channel ? ` — ${v.channel}` : ""}${v.duration ? ` (${v.duration})` : ""}`)
+                .join("\n");
+              messages = messages.map((m, i) =>
+                i === lastUserIdx
+                  ? {
+                      ...m,
+                      content: `${m.content}\n\n[YouTube videos found for "${searchQuery}". The chat is already showing them to the user in a video window, so refer to them by title, briefly say which fit best, and do not paste links or invent other videos:\n${listing}]`,
+                    }
+                  : m
+              );
+              controller.enqueue(
+                ndjsonLine({
+                  toolCall: {
+                    id: toolId,
+                    name: "YouTube search",
+                    status: "done",
+                    input: { query: searchQuery },
+                    output: `${videos.length} video${videos.length === 1 ? "" : "s"}`,
+                    videos,
+                  },
+                })
+              );
+              youtubeHandled = true;
+            } catch (err) {
+              controller.enqueue(
+                ndjsonLine({
+                  toolCall: {
+                    id: toolId,
+                    name: "YouTube search",
+                    status: "error",
+                    input: { query: searchQuery },
+                    output: err instanceof Error ? err.message : "YouTube search failed.",
+                  },
+                })
+              );
+            }
+          }
+
+          if (useWebSearch && !mcpHandled && !youtubeHandled && (body.webSearch || userRequestedWeb)) {
             const pageUrl = publicUrlIn(query);
             if (pageUrl && lastUserIdx !== undefined) {
               const toolId = crypto.randomUUID();
