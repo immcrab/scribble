@@ -11,7 +11,7 @@ export interface ImageModelDef {
   id: string;
   /** Routed on by the Worker. */
   provider: "cloudflare" | "xkiro";
-  /** Wire model id sent to the provider. Cloudflare uses the Worker's default. */
+  /** Wire model id sent to the provider. Cloudflare and xKiro model IDs are forwarded to the Worker. */
   model?: string;
   displayName: string;
   desc: string;
@@ -25,8 +25,33 @@ export const IMAGE_MODELS: ImageModelDef[] = [
   {
     id: "cf-flux-schnell",
     provider: "cloudflare",
-    displayName: "Cloudflare Flux",
-    desc: "Fast, runs on Cloudflare Workers AI",
+    model: "@cf/black-forest-labs/flux-1-schnell",
+    displayName: "FLUX.1 Schnell",
+    desc: "Cloudflare Workers AI · fast draft generation · limited",
+    billing: "cloudflare",
+  },
+  {
+    id: "cf-dreamshaper-8-lcm",
+    provider: "cloudflare",
+    model: "@cf/lykon/dreamshaper-8-lcm",
+    displayName: "DreamShaper 8 LCM",
+    desc: "Cloudflare Workers AI · photorealistic styles · limited",
+    billing: "cloudflare",
+  },
+  {
+    id: "cf-sdxl-base",
+    provider: "cloudflare",
+    model: "@cf/stabilityai/stable-diffusion-xl-base-1.0",
+    displayName: "Stable Diffusion XL",
+    desc: "Cloudflare Workers AI · detailed compositions · limited",
+    billing: "cloudflare",
+  },
+  {
+    id: "cf-sdxl-lightning",
+    provider: "cloudflare",
+    model: "@cf/bytedance/stable-diffusion-xl-lightning",
+    displayName: "SDXL Lightning",
+    desc: "Cloudflare Workers AI · rapid SDXL generation · limited",
     billing: "cloudflare",
   },
   {

@@ -1,13 +1,14 @@
 import type { ChatRequestBody, Env, Provider, ProviderAdapter } from "./types";
 import { corsHeaders } from "./cors";
 import { checkPassword } from "./auth";
-import { isRateLimited } from "./ratelimit";
+import { isCloudflareImageRateLimited, isRateLimited } from "./ratelimit";
 import { xkiroStreamChat } from "./adapters/xkiro";
 import { mistralStreamChat } from "./adapters/mistral";
 import { geminiStreamChat } from "./adapters/gemini";
 import { groqStreamChat } from "./adapters/groq";
 import { openrouterStreamChat } from "./adapters/openrouter";
 import { zaiStreamChat } from "./adapters/zai";
+import { cloudflareStreamChat } from "./adapters/cloudflare";
 import { generateImage } from "./adapters/image";
 import { generateXkiroImage, editXkiroImage } from "./adapters/xkiroImage";
 import { generateXkiroSpeech, listXkiroVoices } from "./adapters/xkiroSpeech";
@@ -35,6 +36,12 @@ import { runMcpAgentStep } from "./mcpAgent";
 
 const ADMIN_EMAIL = "imcrabfr@gmail.com";
 const FREE_XKIRO_IMAGE_MODEL = "sensenova/sensenova-u1.5-lite";
+const FREE_CLOUDFLARE_IMAGE_MODELS = new Set([
+  "@cf/black-forest-labs/flux-1-schnell",
+  "@cf/lykon/dreamshaper-8-lcm",
+  "@cf/stabilityai/stable-diffusion-xl-base-1.0",
+  "@cf/bytedance/stable-diffusion-xl-lightning",
+]);
 // Keep image editing on the same free SenseNova backend as the image picker.
 const XKIRO_EDIT_IMAGE_MODEL = FREE_XKIRO_IMAGE_MODEL;
 const SPEECH_INPUT_MAX_CHARS = 4000;
@@ -47,6 +54,7 @@ const ADAPTERS: Partial<Record<Provider, ProviderAdapter>> = {
   groq: groqStreamChat,
   openrouter: openrouterStreamChat,
   zai: zaiStreamChat,
+  cloudflare: cloudflareStreamChat,
 };
 
 function json(body: unknown, status: number, headers: HeadersInit): Response {
@@ -83,7 +91,7 @@ const VALID_EFFORTS = ["low", "medium", "high", "extra", "ultra"];
 function isValidBody(body: unknown): body is ChatRequestBody {
   if (!body || typeof body !== "object") return false;
   const b = body as Record<string, unknown>;
-  if (!["xkiro", "mistral", "gemini", "groq", "openrouter", "zai"].includes(b.provider as string)) return false;
+  if (!["xkiro", "mistral", "gemini", "groq", "openrouter", "zai", "cloudflare"].includes(b.provider as string)) return false;
   if (typeof b.model !== "string" || !b.model) return false;
   const provider = b.provider as keyof typeof FREE_PROVIDER_MODEL_IDS | "xkiro";
   if (provider === "xkiro" ? !FREE_XKIRO_MODEL_IDS.has(b.model) : !FREE_PROVIDER_MODEL_IDS[provider].has(b.model)) return false;
@@ -272,6 +280,7 @@ export default {
         groq: env.GROQ_API_KEY,
         openrouter: env.OPENROUTER_API_KEY,
         zai: env.ZAI_API_KEY,
+        cloudflare: env.CF_AI_TOKEN,
       };
       // isValidBody has already excluded the client-supplied "custom" provider.
       const provider = body.provider as Exclude<Provider, "custom">;
@@ -524,6 +533,7 @@ export default {
               visionCapable: !!body.visionCapable,
               effort: body.effort,
               clientContext,
+              accountId: provider === "cloudflare" ? env.CF_ACCOUNT_ID : undefined,
             });
             const reader = upstream.getReader();
             while (true) {
@@ -590,8 +600,14 @@ export default {
           return json(result, 200, cors);
         }
 
+        if (b.model !== undefined && (typeof b.model !== "string" || !FREE_CLOUDFLARE_IMAGE_MODELS.has(b.model))) {
+          return json({ error: "Request must use a listed free Cloudflare image model." }, 400, cors);
+        }
         if (b.provider !== undefined && b.provider !== "cloudflare") {
           return json({ error: "Unsupported image provider." }, 400, cors);
+        }
+        if (isCloudflareImageRateLimited(clientKey)) {
+          return json({ error: "Cloudflare image limit reached. Please wait a minute before generating another image." }, 429, cors);
         }
         if (!env.CF_ACCOUNT_ID || !env.CF_AI_TOKEN) {
           return json({ error: "Cloudflare Flux is not configured on this Worker (missing Cloudflare AI credentials)." }, 500, cors);
@@ -599,6 +615,7 @@ export default {
         const result = await generateImage({
           accountId: env.CF_ACCOUNT_ID,
           apiToken: env.CF_AI_TOKEN,
+          model: typeof b.model === "string" ? b.model : undefined,
           prompt: b.prompt,
         });
         return json(result, 200, cors);

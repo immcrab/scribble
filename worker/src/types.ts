@@ -40,7 +40,7 @@ export interface Env {
   COMPOSIO_AUTH_CONFIG_GOOGLECALENDAR?: string;
 }
 
-export type Provider = "xkiro" | "mistral" | "gemini" | "groq" | "openrouter" | "zai" | "custom";
+export type Provider = "xkiro" | "mistral" | "gemini" | "groq" | "openrouter" | "zai" | "cloudflare" | "custom";
 
 /** Claude-Code-style reasoning depth. Gemini maps it to a native
  * thinkingBudget param; providers without one (xKiro, Mistral,
@@ -119,6 +119,8 @@ export interface ChatRequestBody {
 
 export interface AdapterParams {
   apiKey: string;
+  /** Cloudflare's OpenAI-compatible endpoint also needs the account id. */
+  accountId?: string;
   model: string;
   messages: WireMessage[];
   visionCapable: boolean;

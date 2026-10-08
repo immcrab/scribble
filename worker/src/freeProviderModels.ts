@@ -6,6 +6,14 @@
  * Keep these in sync with frontend/src/config/models.ts.
  */
 export const FREE_PROVIDER_MODEL_IDS = {
+  // Cloudflare Workers AI models available on the free allocation. Models that
+  // require the Workers Paid plan are intentionally excluded.
+  cloudflare: new Set<string>([
+    "@cf/meta/llama-3.1-8b-instruct-fp8", "@cf/meta/llama-3.2-1b-instruct", "@cf/meta/llama-3.2-3b-instruct", "@cf/meta/llama-3.2-11b-vision-instruct",
+    "@cf/deepseek-ai/deepseek-r1-distill-qwen-32b", "@cf/qwen/qwen2.5-coder-32b-instruct", "@cf/qwen/qwen3-30b-a3b-fp8",
+    "@cf/mistralai/mistral-small-3.1-24b-instruct", "@cf/google/gemma-4-26b-a4b-it", "@cf/openai/gpt-oss-20b",
+    "@cf/ibm-granite/granite-4.0-h-micro", "@cf/zai-org/glm-4.7-flash",
+  ]),
   mistral: new Set<string>([
     "mistral-large-latest",
     "mistral-medium-latest",

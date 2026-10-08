@@ -734,6 +734,21 @@ const XKIRO_MODELS: ModelDef[] = [
  * Small/Medium/Large are all multimodal hybrid-reasoning models. Refresh from
  * https://docs.mistral.ai/models/overview + GET /v1/models.
  */
+/** Cloudflare Workers AI models covered by the Workers Free daily allocation. */
+const CLOUDFLARE_MODELS: ModelDef[] = [
+  { provider: "cloudflare", modelId: "@cf/meta/llama-3.1-8b-instruct-fp8", displayName: "Llama 3.1 8B", icon: "Cloud", contextLength: 32000, capabilities: ["text"], free: true, supportsStreaming: true, supportsVision: false },
+  { provider: "cloudflare", modelId: "@cf/meta/llama-3.2-1b-instruct", displayName: "Llama 3.2 1B", icon: "Cloud", contextLength: 131000, capabilities: ["text"], free: true, supportsStreaming: true, supportsVision: false },
+  { provider: "cloudflare", modelId: "@cf/meta/llama-3.2-3b-instruct", displayName: "Llama 3.2 3B", icon: "Cloud", contextLength: 131000, capabilities: ["text"], free: true, supportsStreaming: true, supportsVision: false },
+  { provider: "cloudflare", modelId: "@cf/meta/llama-3.2-11b-vision-instruct", displayName: "Llama 3.2 11B Vision", icon: "Cloud", contextLength: 131000, capabilities: ["text", "vision"], free: true, supportsStreaming: true, supportsVision: true },
+  { provider: "cloudflare", modelId: "@cf/deepseek-ai/deepseek-r1-distill-qwen-32b", displayName: "DeepSeek R1 Distill Qwen 32B", icon: "Cloud", contextLength: 131000, capabilities: ["text", "reasoning"], free: true, supportsStreaming: true, supportsVision: false },
+  { provider: "cloudflare", modelId: "@cf/qwen/qwen2.5-coder-32b-instruct", displayName: "Qwen 2.5 Coder 32B", icon: "Cloud", contextLength: 32768, capabilities: ["text", "code"], free: true, supportsStreaming: true, supportsVision: false },
+  { provider: "cloudflare", modelId: "@cf/qwen/qwen3-30b-a3b-fp8", displayName: "Qwen 3 30B A3B", icon: "Cloud", contextLength: 32768, capabilities: ["text", "reasoning"], free: true, supportsStreaming: true, supportsVision: false },
+  { provider: "cloudflare", modelId: "@cf/mistralai/mistral-small-3.1-24b-instruct", displayName: "Mistral Small 3.1 24B", icon: "Cloud", contextLength: 128000, capabilities: ["text", "vision", "code"], free: true, supportsStreaming: true, supportsVision: true },
+  { provider: "cloudflare", modelId: "@cf/google/gemma-4-26b-a4b-it", displayName: "Gemma 4 26B A4B", icon: "Cloud", contextLength: 131000, capabilities: ["text", "reasoning", "vision"], free: true, supportsStreaming: true, supportsVision: true },
+  { provider: "cloudflare", modelId: "@cf/openai/gpt-oss-20b", displayName: "GPT-OSS 20B", icon: "Cloud", contextLength: 131000, capabilities: ["text", "reasoning", "code"], free: true, supportsStreaming: true, supportsVision: false },
+  { provider: "cloudflare", modelId: "@cf/ibm-granite/granite-4.0-h-micro", displayName: "Granite 4.0 H Micro", icon: "Cloud", contextLength: 131000, capabilities: ["text", "reasoning"], free: true, supportsStreaming: true, supportsVision: false },
+  { provider: "cloudflare", modelId: "@cf/zai-org/glm-4.7-flash", displayName: "GLM 4.7 Flash", icon: "Cloud", contextLength: 131072, capabilities: ["text", "reasoning"], free: true, supportsStreaming: true, supportsVision: false },
+];
 const MISTRAL_MODELS: ModelDef[] = [
   {
     provider: "mistral",
@@ -1198,6 +1213,7 @@ const ZAI_MODELS: ModelDef[] = [
  */
 
 export const ALL_MODELS: ModelDef[] = [
+  ...CLOUDFLARE_MODELS,
   ...XKIRO_MODELS,
   // Each provider below has a corresponding Worker secret and adapter. Keep the
   // catalog inclusive so setting one of those keys actually makes its free
@@ -1239,6 +1255,7 @@ export const PROVIDER_LABELS: Record<Provider, string> = {
   groq: "Groq",
   openrouter: "OpenRouter",
   zai: "Z.ai (GLM)",
+  cloudflare: "Cloudflare Workers AI",
   puter: "Puter.js",
   custom: "Custom",
 };

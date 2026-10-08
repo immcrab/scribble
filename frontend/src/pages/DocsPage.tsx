@@ -752,7 +752,10 @@ const PROVIDERS_META: Record<Provider, { description: string; link?: { href: str
       "A gateway that proxies many upstream model providers behind one API — how Lofin reaches models it has no direct integration for.",
     link: { href: "https://openrouter.ai", label: "openrouter.ai" },
   },
-  zai: {
+  cloudflare: {
+    description: "Cloudflare Workers AI models run through this app's Cloudflare Worker. The catalog lists only the models included in the Workers Free allocation; image models are separately rate-limited.",
+    link: { href: "https://developers.cloudflare.com/workers-ai/models/", label: "Workers AI models" },
+  },  zai: {
     description:
       "Zhipu AI's GLM model family, called directly through Z.ai's first-party API. Only its free \"Flash\" tier is listed here.",
     link: { href: "https://z.ai", label: "z.ai" },

@@ -21,3 +21,15 @@ export function isRateLimited(key: string): boolean {
   bucket.count += 1;
   return bucket.count > MAX_REQUESTS_PER_WINDOW;
 }
+/** Tight per-IP cap for Cloudflare image models, which share a free allocation. */
+export function isCloudflareImageRateLimited(key: string): boolean {
+  const scopedKey = `cloudflare-image:${key}`;
+  const now = Date.now();
+  const bucket = buckets.get(scopedKey);
+  if (!bucket || now > bucket.resetAt) {
+    buckets.set(scopedKey, { count: 1, resetAt: now + WINDOW_MS });
+    return false;
+  }
+  bucket.count += 1;
+  return bucket.count > 4;
+}
