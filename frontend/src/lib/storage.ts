@@ -1,5 +1,6 @@
 import type { Chat, CustomProvider, Effort, MemoryEntry, ModelDef, Project } from "../types";
 import type { Theme } from "./theme";
+import type { BuildBuddyId, BuildGameId } from "./playground";
 
 const CHATS_KEY = "lofin:chats";
 const SETTINGS_KEY = "lofin:settings";
@@ -61,6 +62,12 @@ export interface LofinSettings {
   reduceMotion: boolean;
   /** Auto-open the code workspace panel for detected coding requests. */
   autoOpenCode: boolean;
+  /** Mini-game shown in the code panel while a website is being generated — see lib/playground.ts. */
+  buildGame: BuildGameId;
+  /** Little character that walks toward the cursor in the code panel while it builds. */
+  buildBuddy: BuildBuddyId;
+  /** How many buddies (1–3) follow along, conga-line style. */
+  buildBuddyCount: number;
   /** When true, every chat turn (any mode) lets the Worker decide — via a fast
    * classification call — whether the reply needs a live web search, and run one
    * automatically if so. See worker/src/adapters/search.ts. */
@@ -144,6 +151,9 @@ const SETTINGS_DEFAULTS: Omit<LofinSettings, "workerUrl" | "password"> = {
   sendOnEnter: true,
   reduceMotion: false,
   autoOpenCode: true,
+  buildGame: "snake",
+  buildBuddy: "cat",
+  buildBuddyCount: 1,
   autoWebSearch: true,
   announcementsEnabled: true,
   seenAnnouncementIds: [],

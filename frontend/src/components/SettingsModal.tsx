@@ -39,6 +39,7 @@ import { ComposioConnections } from "./ComposioConnections";
 import { getAllModels, getDefaultModel, isModelGated } from "../config/models";
 import type { Theme } from "../lib/theme";
 import { FONT_OPTIONS, THEME_PALETTE_OPTIONS, REPLY_LANGUAGE_OPTIONS } from "../lib/appearance";
+import { BUILD_BUDDY_OPTIONS, BUILD_GAME_OPTIONS } from "../lib/playground";
 import { ModelFavicon } from "./ProviderIcon";
 import { Dropdown } from "./Dropdown";
 import { ToggleSwitch } from "./ToggleSwitch";
@@ -62,7 +63,7 @@ export type SettingsTab = "general" | "appearance" | "notifications" | "personal
 type Tab = SettingsTab;
 
 const TABS: { id: Tab; label: string; icon: typeof Sliders; group: "Personal" | "Workspace"; keywords: string }[] = [
-  { id: "general", label: "General", icon: Sliders, group: "Personal", keywords: "preferences keyboard send web search location" },
+  { id: "general", label: "General", icon: Sliders, group: "Personal", keywords: "preferences keyboard send web search location code panel game snake buddy pet character" },
   { id: "appearance", label: "Appearance", icon: Palette, group: "Personal", keywords: "theme color font text density language" },
   { id: "notifications", label: "Notifications", icon: Bell, group: "Personal", keywords: "sound browser alerts announcements" },
   { id: "personalization", label: "Personalization", icon: Sparkles, group: "Personal", keywords: "instructions replies preferences" },
@@ -316,6 +317,69 @@ function AppearanceSection() {
         </p>
       </div>
       <ToggleSwitch label="Reduce motion" description="Turn off streaming and hover animations" checked={settings.reduceMotion} onChange={(v) => updateSettings({ reduceMotion: v })} />
+    </div>
+  );
+}
+
+/** Settings → General: the mini-game and mouse-following buddy shown in the code panel
+ * while a website is being generated (see ArtifactWorkspace's BuildScreen). */
+function CodePanelFunSection() {
+  const { settings, updateSettings } = useChatStore();
+  const pill = (active: boolean) =>
+    `rounded-xl border px-3 py-2 text-xs font-medium transition-colors ${
+      active
+        ? "border-accent-500/60 bg-accent-500/10 text-white"
+        : "border-base-600/60 bg-base-900/60 text-slate-400 hover:border-base-500/60 hover:text-slate-200"
+    }`;
+  return (
+    <div>
+      <SectionLabel>While code builds</SectionLabel>
+      <div className="space-y-4 rounded-2xl border border-base-600/70 bg-base-900/35 p-3">
+        <div>
+          <p className="text-sm font-medium text-slate-200">Mini-game</p>
+          <p className="mb-2 text-xs text-slate-500">Plays in the preview while a website is being written, instead of a flickering half-built page</p>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {BUILD_GAME_OPTIONS.map((g) => (
+              <button key={g.id} title={g.note} onClick={() => updateSettings({ buildGame: g.id })} className={pill(settings.buildGame === g.id)}>
+                {g.label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div>
+          <p className="text-sm font-medium text-slate-200">Buddy</p>
+          <p className="mb-2 text-xs text-slate-500">A little character that walks toward your mouse in the code panel</p>
+          <div className="grid grid-cols-4 gap-2 sm:grid-cols-8">
+            {BUILD_BUDDY_OPTIONS.map((b) => (
+              <button
+                key={b.id}
+                title={b.label}
+                aria-label={b.label}
+                onClick={() => updateSettings({ buildBuddy: b.id })}
+                className={`${pill(settings.buildBuddy === b.id)} flex flex-col items-center gap-0.5`}
+              >
+                <span className={`text-xl leading-6 ${b.id === "none" ? "opacity-60 grayscale" : ""}`}>{b.emoji}</span>
+                <span className="text-[10px]">{b.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+        {settings.buildBuddy !== "none" && (
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-medium text-slate-200">How many</p>
+              <p className="text-xs text-slate-500">Extra buddies follow the leader{settings.reduceMotion ? " · hidden while Reduce motion is on" : ""}</p>
+            </div>
+            <div className="flex gap-1.5">
+              {[1, 2, 3].map((n) => (
+                <button key={n} onClick={() => updateSettings({ buildBuddyCount: n })} className={`${pill(settings.buildBuddyCount === n)} w-10`}>
+                  {n}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -822,6 +886,8 @@ export function SettingsModal({ onClose, initialTab, onTabChange }: { onClose: (
                   />
                 </div>
               </div>
+
+              <CodePanelFunSection />
 
               <details className="group rounded-lg border border-base-700/60 bg-base-900/40 [&_summary::-webkit-details-marker]:hidden">
                 <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2.5 text-sm font-medium text-slate-300 hover:text-white">

@@ -14,6 +14,8 @@ import {
   LoaderCircle,
   Minus,
   X,
+  Gamepad2,
+  Sparkles,
 } from "lucide-react";
 import { useWorkspaceControls } from "./ChatWorkspaceSplit";
 import type { Artifact } from "../lib/codeArtifact";
@@ -22,6 +24,10 @@ import { Markdown } from "../lib/markdown";
 import { ModelFavicon } from "./ProviderIcon";
 import { publishWebsite, type PublishedWebsite } from "../lib/websiteClient";
 import { useAuthStore } from "../state/authStore";
+import { useChatStore } from "../state/chatStore";
+import { BUILD_GAME_OPTIONS, buddyEmoji, type BuildGameId } from "../lib/playground";
+import { GameCanvas } from "./BuildGames";
+import { CodeBuddies } from "./CodeBuddies";
 
 /** VS Code-ish per-extension tint so the file explorer reads at a glance. */
 const EXT_COLORS: Record<string, string> = {
@@ -111,6 +117,88 @@ function useThrottledValue<T>(value: T, intervalMs: number, active: boolean): T 
   return out;
 }
 
+/**
+ * What the Preview tab shows while a website is still being written. Re-rendering the
+ * half-written page into the iframe on every chunk made it flash constantly, so instead the
+ * preview loads once when the code is done, and this screen (progress + a mini-game) fills
+ * the wait. If the user is mid-game when the build finishes, it stays put with a
+ * "View site" button rather than yanking the game away.
+ */
+function BuildScreen({
+  artifact,
+  ready,
+  defaultGame,
+  onPhaseChange,
+  onViewSite,
+}: {
+  artifact: Artifact | null;
+  ready: boolean;
+  defaultGame: BuildGameId;
+  onPhaseChange: (phase: "idle" | "playing" | "over") => void;
+  onViewSite: () => void;
+}) {
+  const [game, setGame] = useState<BuildGameId>(defaultGame);
+  useEffect(() => setGame(defaultGame), [defaultGame]);
+  const lines = artifact?.files.reduce((n, f) => n + f.content.split("\n").length, 0) ?? 0;
+  const current = artifact?.files[artifact.files.length - 1];
+
+  return (
+    <div className="flex h-full flex-col items-center overflow-y-auto px-4 py-5">
+      <div className="flex w-full max-w-[340px] items-center gap-2.5">
+        {ready ? (
+          <Sparkles size={16} className="shrink-0 text-emerald-300" />
+        ) : (
+          <LoaderCircle size={16} className="shrink-0 animate-spin text-slate-400" />
+        )}
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-medium text-slate-200">{ready ? "Your site is ready" : "Building your site…"}</p>
+          <p className="truncate text-xs text-slate-500">
+            {artifact
+              ? `${artifact.files.length} file${artifact.files.length === 1 ? "" : "s"} · ${lines} lines${!ready && current ? ` · writing ${current.name}` : ""}`
+              : "Waiting for the first lines of code"}
+          </p>
+        </div>
+        {ready && (
+          <button
+            onClick={onViewSite}
+            className="shrink-0 rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-black hover:bg-white/90"
+          >
+            View site
+          </button>
+        )}
+      </div>
+
+      <div className="mt-4 flex w-full max-w-[340px] items-center gap-1 rounded-lg bg-base-850 p-0.5">
+        {BUILD_GAME_OPTIONS.map((g) => (
+          <button
+            key={g.id}
+            onClick={() => setGame(g.id)}
+            title={g.note}
+            className={`flex-1 rounded-md px-2 py-1 text-xs font-medium transition-colors ${
+              game === g.id ? "bg-base-700 text-white" : "text-slate-400 hover:text-slate-200"
+            }`}
+          >
+            {g.id === "none" ? "Off" : g.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="mt-3 flex w-full flex-1 flex-col items-center justify-center">
+        {game === "none" ? (
+          <div className="flex flex-col items-center gap-2 text-center">
+            <Gamepad2 size={32} className="text-slate-600" />
+            <p className="max-w-[260px] text-xs text-slate-500">
+              The preview appears here once the code finishes. Pick a game above to pass the time.
+            </p>
+          </div>
+        ) : (
+          <GameCanvas game={game} onPhaseChange={onPhaseChange} />
+        )}
+      </div>
+    </div>
+  );
+}
+
 export interface WorkspacePane {
   key: "a" | "b" | "single";
   label: string;
@@ -138,6 +226,10 @@ export function ArtifactWorkspace({
   const [publishing, setPublishing] = useState(false);
   const controls = useWorkspaceControls();
   const user = useAuthStore((state) => state.user);
+  const settings = useChatStore((state) => state.settings);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const gamePhaseRef = useRef<"idle" | "playing" | "over">("idle");
+  const [holdForGame, setHoldForGame] = useState(false);
 
   const pane = panes[Math.min(activeIndex, panes.length - 1)];
   const artifact = pane?.artifact ?? null;
@@ -148,6 +240,25 @@ export function ArtifactWorkspace({
   // writes, just not re-parsed on literally every chunk. Once the response finishes this
   // snaps straight to the final content (see the `active` arg).
   const throttledCode = useThrottledValue(file?.content ?? "", 200, !!pane?.streaming);
+
+  // When the build finishes mid-game, keep the game on screen until the user chooses to
+  // look at the site. Decided during render (not in an effect) so the game is never
+  // unmounted for a frame in between, which would reset it.
+  const streaming = !!pane?.streaming;
+  const [prevStreaming, setPrevStreaming] = useState(streaming);
+  if (prevStreaming !== streaming) {
+    setPrevStreaming(streaming);
+    setHoldForGame(!streaming && gamePhaseRef.current === "playing");
+  }
+  const onGamePhase = useRef((phase: "idle" | "playing" | "over") => {
+    gamePhaseRef.current = phase;
+  }).current;
+
+  // Web pages (or a reply with no code parsed yet) get the build screen on the Preview tab
+  // while streaming; other languages keep streaming straight into the code view.
+  const showBuildScreen =
+    view === "preview" && ((streaming && (!artifact || !!artifact.previewHtml)) || (holdForGame && !!artifact?.previewHtml));
+  const buddy = buddyEmoji(settings.buildBuddy ?? "cat");
 
   const publishable = !!artifact?.previewHtml && !pane?.streaming;
   const currentArtifactKey = artifact && publishable ? artifactKey(artifact) : null;
@@ -265,7 +376,10 @@ export function ArtifactWorkspace({
   };
 
   return (
-    <div className="flex h-full flex-col border-l border-base-700/60 bg-base-900/40">
+    <div ref={rootRef} className="relative flex h-full flex-col border-l border-base-700/60 bg-base-900/40">
+      {showBuildScreen && buddy && !settings.reduceMotion && (
+        <CodeBuddies containerRef={rootRef} emoji={buddy} count={settings.buildBuddyCount ?? 1} />
+      )}
       {panes.length > 1 && (
         <div className="flex items-stretch border-b border-base-700/60">
           {panes.map((p, i) => (
@@ -311,7 +425,7 @@ export function ArtifactWorkspace({
         <div className="flex items-center gap-1 rounded-lg bg-base-850 p-0.5">
           <button
             onClick={() => setView("preview")}
-            disabled={!artifact?.previewHtml}
+            disabled={!artifact?.previewHtml && !streaming}
             className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors disabled:opacity-30 ${
               view === "preview" ? "bg-base-700 text-white" : "text-slate-400 hover:text-slate-200"
             }`}
@@ -433,7 +547,15 @@ export function ArtifactWorkspace({
         )}
 
         <div className="min-h-0 min-w-0 flex-1">
-          {!artifact ? (
+          {showBuildScreen ? (
+            <BuildScreen
+              artifact={artifact}
+              ready={!streaming}
+              defaultGame={settings.buildGame ?? "snake"}
+              onPhaseChange={onGamePhase}
+              onViewSite={() => setHoldForGame(false)}
+            />
+          ) : !artifact ? (
             <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
               <Blocks size={36} className={pane?.streaming ? "animate-pulse text-slate-600" : "text-slate-700"} />
               <div>
