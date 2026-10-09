@@ -544,6 +544,7 @@ select {
   [class*="animate-"]:not(.animate-spin) {
     animation-duration: 0.001ms !important;
     animation-iteration-count: 1 !important;
+    animation-delay: 0s !important;
   }
   *,
   *::before,
@@ -579,6 +580,7 @@ select {
 .motion-reduce-force [class*="animate-"]:not(.animate-spin) {
   animation-duration: 0.001ms !important;
   animation-iteration-count: 1 !important;
+  animation-delay: 0s !important;
 }
 .motion-reduce-force *,
 .motion-reduce-force *::before,

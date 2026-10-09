@@ -262,9 +262,11 @@ export function AgentMode({
         chat={
           <>
             {chat.messages.length === 0 ? (
-              <div className="flex-1">
-                <EmptyState mode="agent" heading="What would you like Lofin to do?" onPick={(p) => send(p, [])} />
-                <div className="mx-auto -mt-8 flex max-w-md items-start gap-2 rounded-xl border border-base-700/50 bg-base-900/40 px-3.5 py-2.5 text-xs text-slate-500">
+              <div className="flex min-h-0 flex-1 flex-col overflow-y-auto pb-4">
+                <div className="min-h-[24rem] flex-1">
+                  <EmptyState mode="agent" heading="What would you like Lofin to do?" onPick={(p) => send(p, [])} />
+                </div>
+                <div className="mx-4 flex animate-fade-in-up items-start gap-2 self-center rounded-xl border border-base-700/50 bg-base-900/40 px-3.5 py-2.5 text-xs text-slate-500 [animation-delay:400ms] sm:max-w-md">
                   <Lightbulb size={13} className="mt-0.5 shrink-0 text-accent-400" />
                   Agent Mode can research live sources, read supported text attachments, and run small JavaScript snippets locally.
                 </div>

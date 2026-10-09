@@ -21,6 +21,7 @@ import {
   Download,
   Maximize2,
   Wand2,
+  Shuffle,
   Globe2,
   GitFork,
   ExternalLink,
@@ -379,9 +380,13 @@ export function ChatMessage({
   }, [lightbox]);
 
   const copy = async () => {
-    await navigator.clipboard.writeText(message.content);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1200);
+    try {
+      await navigator.clipboard.writeText(message.content);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1200);
+    } catch {
+      // Clipboard blocked (insecure context or denied permission) — nothing to show.
+    }
   };
 
   // An assistant turn that produced only attachments (Image / Speech mode) has
@@ -476,16 +481,16 @@ export function ChatMessage({
                 return (
                   <div
                     key={a.id}
-                    className="group/img relative overflow-hidden rounded-xl border border-base-700/60 bg-base-900/80 shadow-sm"
+                    className="group/img relative flex min-w-[15rem] animate-image-reveal justify-center overflow-hidden rounded-xl border border-base-700/60 bg-base-900/80 shadow-sm"
                   >
                     <img
                       src={a.dataUrl}
                       alt={a.name}
-                      className="max-h-56 max-w-full cursor-zoom-in rounded-xl object-contain sm:max-h-72"
+                      className="max-h-56 max-w-full cursor-zoom-in rounded-xl object-contain transition-transform duration-500 ease-out group-hover/img:scale-[1.02] sm:max-h-72"
                       loading="lazy"
                       onClick={() => setLightbox({ src: a.dataUrl!, name: a.name })}
                     />
-                    <div className="absolute right-1.5 top-1.5 flex gap-1 opacity-0 transition-opacity group-hover/img:opacity-100">
+                    <div className="absolute right-1.5 top-1.5 flex gap-1 opacity-0 transition-opacity group-focus-within/img:opacity-100 group-hover/img:opacity-100 [@media(hover:none)]:opacity-100">
                       <button
                         onClick={() => setLightbox({ src: a.dataUrl!, name: a.name })}
                         className="flex items-center gap-1 rounded-md bg-base-950/70 px-2 py-1 text-[11px] font-medium text-slate-200 backdrop-blur-sm transition-colors hover:bg-base-950/90 hover:text-white"
@@ -512,7 +517,7 @@ export function ChatMessage({
                           onClick={(e) => { e.stopPropagation(); onVaryImage(a); }}
                           className="flex items-center gap-1 rounded-md bg-base-950/70 px-2 py-1 text-[11px] font-medium text-slate-200 backdrop-blur-sm transition-colors hover:bg-base-950/90 hover:text-white"
                           title="Create a variation"
-                        ><Wand2 size={12} /> Vary</button>
+                        ><Shuffle size={12} /> Vary</button>
                       )}
                       <a
                         href={a.dataUrl}

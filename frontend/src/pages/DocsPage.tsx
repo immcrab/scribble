@@ -265,7 +265,7 @@ function CodeBlock({ children }: { children: string }) {
     navigator.clipboard.writeText(children).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
-    });
+    }, () => {});
   };
   return (
     <div className="relative mt-2 rounded-lg border border-base-700/60 bg-base-950/60">

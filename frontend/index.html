@@ -61,7 +61,17 @@
       href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Lora:wght@400;500;600;700&family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=Source+Serif+4:opsz,wght@8..60,300;8..60,500;8..60,600&family=Space+Grotesk:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <!-- Cloudflare Web Analytics --><script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "8c31e25d6bdc447baa67133c616c0642"}'></script><!-- End Cloudflare Web Analytics -->
+    <!-- Cloudflare Web Analytics — production hosts only; local dev just logs CORS errors. -->
+    <script>
+      if (!/^(localhost|127\.0\.0\.1|\[::1\])$|\.(test|localhost)$/.test(location.hostname)) {
+        var cf = document.createElement("script");
+        cf.type = "module";
+        cf.src = "https://static.cloudflareinsights.com/beacon.min.js";
+        cf.setAttribute("data-cf-beacon", '{"token": "8c31e25d6bdc447baa67133c616c0642"}');
+        document.head.appendChild(cf);
+      }
+    </script>
+    <!-- End Cloudflare Web Analytics -->
   </head>
   <body class="bg-base-950 text-slate-100 antialiased" data-docs-site="__LOFIN_DOCS_SITE__">
     <style>

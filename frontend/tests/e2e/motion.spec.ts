@@ -81,6 +81,7 @@ test.describe("Reduced motion", () => {
     await page.goto("/");
     await page.getByTestId("sidebar").getByRole("button", { name: "Settings" }).click();
     const dialog = page.getByRole("dialog", { name: "Settings" });
+    await dialog.getByRole("tab", { name: "Appearance" }).click();
     const toggle = dialog.getByRole("switch", { name: /Reduce motion/ });
     await toggle.click();
     await expect(toggle).toHaveAttribute("aria-checked", "true");

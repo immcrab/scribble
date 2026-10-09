@@ -8,6 +8,7 @@ import { applyAppearance } from "./lib/appearance";
 import { loadSettings } from "./lib/storage";
 import { initCatalogSync } from "./lib/catalogSync";
 import { isDocsSite } from "./lib/router";
+import { installEasterEggs } from "./lib/easterEggs";
 
 const initialSettings = loadSettings();
 applyTheme(initialSettings.theme);
@@ -16,6 +17,7 @@ applyAppearance(initialSettings);
 
 // Subscribe to the shared, admin-curated model catalog (see lib/catalogSync.ts).
 initCatalogSync();
+installEasterEggs();
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>

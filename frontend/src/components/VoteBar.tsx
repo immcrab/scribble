@@ -6,12 +6,12 @@ export function VoteBar({ vote, onVote }: { vote?: Vote; onVote: (winner: Vote["
     <button
       onClick={() => onVote(winner)}
       disabled={!!vote}
-      className={`flex items-center gap-1.5 rounded-lg border px-3.5 py-2 text-sm font-medium transition-all ${
+      className={`flex items-center gap-1.5 rounded-lg border px-3.5 py-2 text-sm font-medium transition-all enabled:active:scale-95 ${
         vote?.winner === winner
-          ? "border-accent-500 bg-accent-500/15 text-white"
+          ? "animate-pop-in border-accent-500 bg-accent-500/15 text-white"
           : vote
           ? "border-base-700/60 text-slate-600"
-          : "border-base-600/60 text-slate-300 hover:border-accent-500/50 hover:bg-base-700/50"
+          : "border-base-600/60 text-slate-300 hover:-translate-y-0.5 hover:border-accent-500/50 hover:bg-base-700/50"
       }`}
     >
       <Icon size={14} />
@@ -20,7 +20,7 @@ export function VoteBar({ vote, onVote }: { vote?: Vote; onVote: (winner: Vote["
   );
 
   return (
-    <div className="flex animate-fade-in-up items-center justify-center gap-2 py-2">
+    <div className="flex animate-fade-in-up flex-wrap items-center justify-center gap-2 py-2">
       {btn("a", "Left is better", ArrowLeftToLine)}
       {btn("tie", "Tie", Equal)}
       {btn("b", "Right is better", ArrowRightToLine)}

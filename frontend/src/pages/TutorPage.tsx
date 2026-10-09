@@ -854,7 +854,7 @@ export function TutorPage({ onExit }: { onExit: () => void }) {
           </span>
           <button
             onClick={() => void signInWithGoogle()}
-            className="flex shrink-0 items-center gap-1.5 rounded-lg bg-amber-400/20 px-2.5 py-1 font-medium text-amber-100 hover:bg-amber-400/30"
+            className="flex shrink-0 items-center gap-1.5 rounded-lg bg-amber-400/20 px-2.5 py-1 text-xs font-medium text-amber-100 transition-colors hover:bg-amber-400/30 active:scale-95"
           >
             <LogIn size={12} /> Sign in to save
           </button>

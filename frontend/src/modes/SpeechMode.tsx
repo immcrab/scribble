@@ -343,7 +343,7 @@ export function SpeechMode({
   const [voicesError, setVoicesError] = useState<string | null>(null);
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [loadingPreviewId, setLoadingPreviewId] = useState<string | null>(null);
-  const [optionsOpen, setOptionsOpen] = useState(true);
+  const [optionsOpen, setOptionsOpen] = useState(() => typeof window === "undefined" || window.matchMedia("(min-width: 640px)").matches);
   const previewAudio = useRef<HTMLAudioElement | null>(null);
   const previewCache = useRef(new Map<string, string>());
   const chatEndRef = useAutoScroll<HTMLDivElement>(chat?.messages ?? []);

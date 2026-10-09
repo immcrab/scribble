@@ -1,3 +1,5 @@
+import { useState } from "react";
+import { eggHeadingFound } from "../lib/easterEggs";
 import { Layout, BarChart3, Gamepad2, Code2, Store, Scale, Search, Sparkles, GitCompare, Bot } from "lucide-react";
 import type { Mode } from "../types";
 
@@ -39,21 +41,50 @@ const BY_MODE: Record<string, Suggestion[]> = {
   agent: AGENT,
 };
 
+// Easter egg: click the heading a few times and it gets a little playful.
+const SECRET_HEADINGS = [
+  "Still here. Still thinking.",
+  "Ask me anything. Even that.",
+  "Lofi beats, high-fi answers.",
+  "Okay, okay — you found me.",
+];
+
 export function EmptyState({ heading, mode = "direct", onPick }: { heading?: string; mode?: Mode; onPick: (prompt: string) => void }) {
   const suggestions = BY_MODE[mode] ?? DIRECT;
+  const [clicks, setClicks] = useState(0);
+  const secret = clicks >= 5 ? SECRET_HEADINGS[(clicks - 5) % SECRET_HEADINGS.length] : null;
+  const text = secret ?? heading ?? "What would you like to do?";
+  const words = text.split(" ");
+  const odd = suggestions.length % 2 === 1;
   return (
     <div className="mx-auto flex h-full max-w-2xl flex-col items-center justify-center gap-7 px-4 text-center">
-      <h1 className="text-balance font-serif text-3xl font-light tracking-tighter text-slate-100 sm:text-[2.6rem]">
-        {heading ?? "What would you like to do?"}
+      <h1
+        key={text}
+        onClick={() => setClicks((c) => {
+          if (c + 1 === 5) eggHeadingFound();
+          return c + 1;
+        })}
+        className={`cursor-default select-none text-balance font-serif text-3xl font-light tracking-tighter text-slate-100 sm:text-[2.6rem] ${secret ? "animate-wiggle" : ""}`}
+      >
+        {words.map((w, i) => (
+          <span key={i}>
+            <span className="inline-block animate-word-rise" style={{ animationDelay: `${i * 55}ms` }}>
+              {w}
+            </span>{" "}
+          </span>
+        ))}
       </h1>
       <div className="grid w-full grid-cols-1 gap-2.5 sm:grid-cols-2">
-        {suggestions.map((s) => (
+        {suggestions.map((s, i) => (
           <button
             key={s.label}
             onClick={() => onPick(s.prompt)}
-            className="flex items-start gap-3 rounded-xl border border-base-700/60 bg-base-850/50 p-3.5 text-left transition-all hover:-translate-y-0.5 hover:border-accent-500/50 hover:bg-base-800/70 hover:shadow-glow"
+            style={{ animationDelay: `${120 + i * 50}ms` }}
+            className={`group flex animate-fade-in-up items-start gap-3 rounded-xl border border-base-700/60 bg-base-850/50 p-3.5 text-left transition-all duration-200 hover:-translate-y-0.5 hover:border-accent-500/50 hover:bg-base-800/70 hover:shadow-glow active:translate-y-0 active:scale-[0.98] ${
+              odd && i === suggestions.length - 1 ? "sm:col-span-2 sm:mx-auto sm:w-[calc(50%-0.3125rem)]" : ""
+            }`}
           >
-            <s.icon size={17} className="mt-0.5 shrink-0 text-accent-400" />
+            <s.icon size={17} className="mt-0.5 shrink-0 text-accent-400 transition-transform duration-300 group-hover:-rotate-6 group-hover:scale-110" />
             <span>
               <span className="block text-sm font-medium text-slate-200">{s.label}</span>
               <span className="block text-xs text-slate-500">{s.desc}</span>

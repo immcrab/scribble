@@ -235,9 +235,13 @@ export function ArtifactWorkspace({
   }, [artifact?.previewHtml, reloadKey]);
 
   const copyCode = async () => {
-    await navigator.clipboard.writeText(file?.content ?? "");
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1200);
+    try {
+      await navigator.clipboard.writeText(file?.content ?? "");
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1200);
+    } catch {
+      // Clipboard blocked (insecure context or denied permission) — nothing to show.
+    }
   };
 
   const openInNewTab = () => {

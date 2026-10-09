@@ -30,7 +30,7 @@ export function ExportChat({
   const shareLink = async () => {
     if (!chatId) return;
     try {
-      await navigator.clipboard.writeText(`${window.location.origin}/c/${chatId}`);
+      await navigator.clipboard.writeText(`${window.location.origin}${import.meta.env.BASE_URL.replace(/\/$/, "")}/c/${encodeURIComponent(chatId)}`);
       setShared(true);
       setCopyError(false);
       setTimeout(() => setShared(false), 2000);

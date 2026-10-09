@@ -28,6 +28,7 @@ lofin/
 │  └─ src/adapters/       xkiro.ts / image.ts / xkiroImage.ts / xkiroSpeech.ts /
 │                          image.ts / xkiroImage.ts / xkiroSpeech.ts / search.ts /
 │                          memory.ts / title.ts
+├─ video/                Remotion product video (LofinShort, 9:16) — see video/README.md
 └─ README.md
 ```
 
@@ -116,8 +117,8 @@ GitHub Pages origin (comma-separated, no paths — e.g.
 
 ### Composio OAuth connections (optional)
 
-Settings → MCP Servers can connect a signed-in user's accounts (Gmail, Outlook, Google
-Calendar/Drive/Sheets/Docs, Dropbox, Notion, Airtable, Slack, Discord, Microsoft Teams,
+Settings → Apps & MCP can connect a signed-in user's accounts (Gmail, Outlook, Google
+Calendar/Drive/Sheets/Docs/Slides, Dropbox, Notion, Airtable, Slack, Discord, Microsoft Teams,
 GitHub, GitLab, Figma, Canva, Linear, Jira, Asana, ClickUp, Monday, HubSpot, Mailchimp,
 Calendly) through [Composio](https://composio.dev)'s hosted OAuth. The Worker
 uses Composio's current Sessions API (v3.1): it creates a session per user, generates a
@@ -134,6 +135,7 @@ npx wrangler secret put COMPOSIO_API_KEY
 # auth. The name is COMPOSIO_AUTH_CONFIG_<TOOLKIT SLUG>, for example:
 npx wrangler secret put COMPOSIO_AUTH_CONFIG_GMAIL
 npx wrangler secret put COMPOSIO_AUTH_CONFIG_GOOGLEDRIVE
+npx wrangler secret put COMPOSIO_AUTH_CONFIG_GOOGLESLIDES
 npx wrangler secret put COMPOSIO_AUTH_CONFIG_MICROSOFT_TEAMS
 ```
 

@@ -34,7 +34,7 @@ import {
 } from "../config/imageModels";
 import { IMAGE_STYLES, findImageStyle, applyImageStyle } from "../config/imageStyles";
 import { recordImageUsage, mediaUsageGate } from "../lib/usage";
-import { auth } from "../lib/firebase";
+import { useAuthStore } from "../state/authStore";
 import { isLocalDev } from "../lib/devMode";
 import { useAutoScroll } from "../lib/useAutoScroll";
 import { uid } from "../lib/id";
@@ -189,7 +189,7 @@ export function ImageMode({
     };
     addMessage(chat.id, assistantMsg);
 
-    if (!auth.currentUser && !isLocalDev()) {
+    if (!useAuthStore.getState().user && !isLocalDev()) {
       updateMessage(chat.id, assistantMsg.id, {
         streaming: false,
         error: editingSource ? "Sign in to edit images." : "Sign in to generate images.",
@@ -259,10 +259,10 @@ export function ImageMode({
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center justify-between gap-2 border-b border-base-700/60 px-5 py-3">
-        <div className="flex items-center gap-2">
-          <ImageIcon size={15} className="text-accent-400" />
-          <span className="text-sm font-medium text-slate-200">Image generation</span>
+      <div className="flex items-center justify-between gap-2 border-b border-base-700/60 px-3 py-3 sm:px-5">
+        <div className="flex min-w-0 items-center gap-2">
+          <ImageIcon size={15} className="shrink-0 text-accent-400" />
+          <span className="hidden whitespace-nowrap text-sm font-medium text-slate-200 sm:inline">Image generation</span>
         </div>
         <div className="flex items-center gap-1">
         <Dropdown
@@ -272,7 +272,7 @@ export function ImageMode({
           trigger={({ open, toggle }) => (
             <button
               onClick={toggle}
-              className="flex items-center gap-1.5 rounded-lg border border-transparent px-2.5 py-1.5 text-sm font-medium text-slate-400 hover:border-base-600 hover:bg-base-800/70 hover:text-slate-200"
+              className="flex items-center gap-1.5 whitespace-nowrap rounded-lg border border-transparent px-2.5 py-1.5 text-sm font-medium text-slate-400 transition-colors hover:border-base-600 hover:bg-base-800/70 hover:text-slate-200"
               title="Style preset"
             >
               <Palette size={14} className={imageStyle.id === "none" ? "text-slate-500" : "text-accent-400"} />
@@ -315,7 +315,7 @@ export function ImageMode({
           trigger={({ open, toggle }) => (
             <button
               onClick={toggle}
-              className="flex items-center gap-2 rounded-lg border border-transparent px-2.5 py-1.5 text-sm font-medium text-slate-200 hover:border-base-600 hover:bg-base-800/70"
+              className="flex items-center gap-2 whitespace-nowrap rounded-lg border border-transparent px-2.5 py-1.5 text-sm font-medium text-slate-200 transition-colors hover:border-base-600 hover:bg-base-800/70"
             >
               {imageModel.displayName}
               <ChevronDown size={14} className={`text-slate-500 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />

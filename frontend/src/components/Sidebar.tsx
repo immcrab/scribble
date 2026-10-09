@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { registerLogoClick } from "../lib/easterEggs";
 import {
   PenLine,
   MessageSquare,
@@ -329,6 +330,9 @@ export function Sidebar({
   );
 
   const modelForChat = (chat: Chat) => {
+    // Battle models stay anonymous, and Image / Speech chats don't run the chat model
+    // they carry — show just the mode for those.
+    if (chat.mode === "battle" || chat.mode === "image" || chat.mode === "speech") return undefined;
     const id = chat.modelId ?? chat.modelAId;
     return id ? findModel(id) : undefined;
   };
@@ -394,11 +398,14 @@ export function Sidebar({
           <div className="flex items-center justify-between px-3 py-4">
             {(sidebarOpen || mobileOpen) && (
               <button
-                onClick={closeOnMobileSelect(() => createChat("direct"))}
+                onClick={(e) => {
+                  registerLogoClick(e.currentTarget.querySelector("svg"));
+                  closeOnMobileSelect(() => createChat("direct"))();
+                }}
                 title="New chat"
-                className="flex items-center gap-2 rounded-lg px-1 py-0.5 animate-fade-in hover:opacity-80"
+                className="group/logo flex items-center gap-2 rounded-lg px-1 py-0.5 animate-fade-in transition-opacity hover:opacity-80"
               >
-                <LogoMark size={28} />
+                <LogoMark size={28} className="transition-transform duration-300 ease-out group-hover/logo:-rotate-6 group-hover/logo:scale-105" />
                 <span className="font-serif text-lg font-semibold tracking-tight text-white">Lofin</span>
               </button>
             )}
@@ -468,7 +475,7 @@ export function Sidebar({
               )}
 
               {projects.length === 0 && !creatingProject && (
-                <p className="px-1 py-1 text-[11px] text-slate-600">No projects yet</p>
+                <p className="px-1 py-1 text-[11px] text-slate-500">No projects yet</p>
               )}
 
               <ul className="space-y-1">

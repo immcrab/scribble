@@ -18,7 +18,7 @@ for (const width of [390, 572]) {
       await expect(menu).toBeVisible();
 
       // Every option's centre point must hit-test to that option (not a card beneath it).
-      for (const id of ["battle", "agent", "side-by-side", "image", "direct"]) {
+      for (const id of ["battle", "agent", "side-by-side", "image", "speech", "direct"]) {
         const opt = page.getByTestId(`mode-option-${id}`);
         await expect(opt).toBeVisible();
         const hit = await opt.evaluate((el) => {
@@ -35,8 +35,10 @@ for (const width of [390, 572]) {
       expect(box.x + box.width).toBeLessThanOrEqual(width);
     });
 
-    test("tapping Image selects Image mode and does not start a suggestion", async ({ page, gotoApp, chatRequests }) => {
+    test("tapping Image selects Image mode and does not start a suggestion", async ({ page, gotoApp, signIn, chatRequests }) => {
       await gotoApp("/");
+      // Image is a signed-in mode; signed out, the tap opens Google sign-in instead.
+      await signIn();
       await page.getByTestId("mode-selector").tap();
       await page.getByTestId("mode-option-image").tap();
       await expect(page.getByRole("menu", { name: "Choose mode" })).toBeHidden();
@@ -76,7 +78,7 @@ test.describe("ModeSelector keyboard", () => {
     await page.keyboard.press("End");
     await expect(page.getByTestId("mode-option-direct")).toBeFocused();
     await page.keyboard.press("ArrowUp");
-    await expect(page.getByTestId("mode-option-image")).toBeFocused();
+    await expect(page.getByTestId("mode-option-speech")).toBeFocused();
     await page.keyboard.press("Tab"); // last → wraps to first (trap)
     await expect(menu.locator(":focus")).toHaveCount(1);
     await page.keyboard.press("Escape");

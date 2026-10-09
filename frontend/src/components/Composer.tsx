@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { checkPromptEgg } from "../lib/easterEggs";
 import { Paperclip, ArrowUp, Square, X, FileText, Code2, Image as ImageIcon, AlertTriangle, Mic, Sparkles } from "lucide-react";
 import { Dropdown } from "./Dropdown";
 import type { Attachment, ModelDef } from "../types";
@@ -173,6 +174,7 @@ export function Composer({
     const trimmed = text.trim();
     if ((!trimmed && attachments.length === 0) || generating) return;
     recognitionRef.current?.stop();
+    checkPromptEgg(trimmed);
     onSend(trimmed, attachments, codeMode);
     setText("");
     setAttachments([]);
@@ -356,7 +358,7 @@ export function Composer({
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            className="flex h-11 w-11 items-center justify-center rounded-xl bg-base-800/60 text-slate-400 transition-colors hover:bg-base-700/60 hover:text-white sm:h-auto sm:w-auto sm:rounded-lg sm:px-2.5 sm:py-1.5"
+            className="flex h-11 w-11 items-center justify-center gap-1.5 rounded-xl bg-base-800/60 text-[13px] font-medium text-slate-400 transition-all hover:bg-base-700/60 hover:text-white active:scale-95 sm:h-auto sm:w-auto sm:rounded-lg sm:px-2.5 sm:py-1.5"
             title="Add images or files"
             aria-label="Add images or files"
           >
@@ -370,13 +372,13 @@ export function Composer({
             aria-pressed={codeMode}
             aria-label="Toggle code preview panel"
             title="Code — force-open the preview panel (also opens automatically for coding requests)"
-            className={`flex h-11 w-11 items-center justify-center rounded-xl border text-slate-400 transition-colors sm:h-auto sm:w-auto sm:rounded-lg sm:border-transparent ${
+            className={`flex h-11 w-11 items-center justify-center gap-1.5 rounded-xl border text-[13px] font-medium text-slate-400 transition-all active:scale-95 sm:h-auto sm:w-auto sm:rounded-lg sm:border-transparent sm:px-2.5 sm:py-1.5 ${
               codeMode
                 ? "border-accent-500/50 bg-accent-500/10 text-white sm:border-transparent"
                 : "border-transparent hover:bg-base-700/60 hover:text-white"
             }`}
           >
-            <Code2 size={18} />
+            <Code2 size={18} className={`transition-transform duration-300 ${codeMode ? "rotate-[360deg] text-accent-300" : ""}`} />
             <span className="hidden sm:inline">Code</span>
           </button>
           )}
@@ -386,7 +388,7 @@ export function Composer({
               onClick={toggleRecording}
               aria-label={recording ? "Stop dictating" : "Dictate with your voice"}
               title={recording ? "Stop dictating" : "Dictate with your voice"}
-              className={`flex h-11 w-11 items-center justify-center rounded-xl border text-slate-400 transition-colors sm:h-auto sm:w-auto sm:rounded-lg sm:border-transparent ${
+              className={`flex h-11 w-11 items-center justify-center gap-1.5 rounded-xl border text-[13px] font-medium text-slate-400 transition-all active:scale-95 sm:h-auto sm:w-auto sm:rounded-lg sm:border-transparent sm:px-2.5 sm:py-1.5 ${
                 recording
                   ? "border-red-500/50 bg-red-500/10 text-red-400 animate-pulse"
                   : "border-transparent hover:bg-base-700/60 hover:text-white"

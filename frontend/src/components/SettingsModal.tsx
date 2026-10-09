@@ -685,7 +685,7 @@ export function SettingsModal({ onClose, initialTab, onTabChange }: { onClose: (
         </div>
 
         <div className="flex min-h-0 flex-1 flex-col sm:flex-row">
-          <aside className="w-full shrink-0 border-b border-base-700/60 bg-base-900/35 p-4 sm:w-64 sm:overflow-y-auto sm:border-b-0 sm:border-r">
+          <aside className="w-full shrink-0 border-b border-base-700/60 bg-base-900/35 p-3 sm:w-64 sm:overflow-y-auto sm:border-b-0 sm:border-r sm:p-4">
             <label className="relative block">
               <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
               <input
@@ -696,35 +696,35 @@ export function SettingsModal({ onClose, initialTab, onTabChange }: { onClose: (
                 className="w-full rounded-xl border border-base-600/60 bg-base-850 py-2 pl-9 pr-3 text-sm text-white outline-none placeholder:text-slate-500 focus:border-accent-500"
               />
             </label>
-            <div role="tablist" aria-label="Settings sections" className="mt-4 grid grid-cols-2 gap-1 sm:block">
+            <div role="tablist" aria-label="Settings sections" className="-mx-3 mt-3 flex gap-1 overflow-x-auto px-3 pb-1 [scrollbar-width:none] sm:mx-0 sm:mt-4 sm:block sm:overflow-visible sm:px-0 sm:pb-0">
               {(["Personal", "Workspace"] as const).map((group) => {
                 const items = visibleTabs.filter((item) => item.group === group);
                 if (!items.length) return null;
                 return (
-                  <div key={group} className="col-span-2 sm:mb-4">
-                    <p className="mb-1.5 px-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">{group}</p>
+                  <div key={group} className="contents sm:mb-4 sm:block">
+                    <p className="mb-1.5 hidden px-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500 sm:block">{group}</p>
                     {items.map(({ id, label, icon: Icon }) => (
                       <button
                         key={id}
                         onClick={() => selectTab(id)}
                         role="tab"
                         aria-selected={tab === id}
-                        className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm font-medium transition-colors ${
+                        className={`flex shrink-0 items-center gap-2 whitespace-nowrap rounded-lg px-2.5 py-2 text-left text-sm font-medium transition-all active:scale-[0.97] sm:w-full ${
                           tab === id ? "bg-accent-500/15 text-white" : "text-slate-400 hover:bg-base-700/60 hover:text-slate-200"
                         }`}
                       >
-                        <Icon size={16} className={tab === id ? "text-accent-300" : "text-slate-500"} />
+                        <Icon size={16} className={`transition-transform duration-300 ${tab === id ? "scale-110 text-accent-300" : "text-slate-500"}`} />
                         <span className="truncate">{label}</span>
                       </button>
                     ))}
                   </div>
                 );
               })}
-              {visibleTabs.length === 0 && <p className="col-span-2 px-2 py-3 text-xs text-slate-500">No matching settings.</p>}
+              {visibleTabs.length === 0 && <p className="px-2 py-3 text-xs text-slate-500">No matching settings.</p>}
             </div>
           </aside>
 
-          <div className="min-w-0 flex-1 overflow-y-auto px-5 py-5 sm:px-8 sm:py-6">
+          <div key={tab} className="min-w-0 flex-1 animate-fade-in-up overflow-y-auto px-5 py-5 sm:px-8 sm:py-6">
           {tab === "general" && (
             <div className="space-y-6">
               <div>

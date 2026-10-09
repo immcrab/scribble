@@ -9,3 +9,4 @@ dist/
 *.tsbuildinfo
 test-results/
 playwright-report/
+video/out/
