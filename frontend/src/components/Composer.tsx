@@ -1,10 +1,11 @@
 import { useRef, useState } from "react";
 import { checkPromptEgg } from "../lib/easterEggs";
-import { Paperclip, ArrowUp, Square, X, FileText, Code2, Image as ImageIcon, AlertTriangle, Mic, Sparkles, MapPin } from "lucide-react";
+import { Plus, ArrowUp, Square, X, FileText, Code2, Image as ImageIcon, AlertTriangle, Mic, Sparkles, MapPin } from "lucide-react";
 import { Dropdown } from "./Dropdown";
 import type { Attachment, ModelDef } from "../types";
 import { uid } from "../lib/id";
 import { readImageMetadata, hasGpsMetadata } from "../lib/imageMetadata";
+import { useRotatingPlaceholder } from "../lib/composerPlaceholders";
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10MB
 const PROMPT_TEMPLATES = [
@@ -26,7 +27,7 @@ export function Composer({
   onSend,
   onStop,
   generating,
-  placeholder = "Ask anything...",
+  placeholder,
   autoFocus = false,
   model,
   sendOnEnter = true,
@@ -56,6 +57,7 @@ export function Composer({
   const recognitionRef = useRef<any>(null);
   const dictationBaseRef = useRef("");
   const speechSupported = !!getSpeechRecognitionCtor();
+  const rotatingPlaceholder = useRotatingPlaceholder(placeholder === undefined, text.length > 0);
 
   const processFiles = async (fileList: FileList | File[]) => {
     const files = Array.from(fileList);
@@ -331,6 +333,25 @@ export function Composer({
         </div>
       )}
 
+      <div className="flex items-end gap-1 px-2.5 py-2.5">
+        <input
+          ref={fileInputRef}
+          type="file"
+          multiple
+          accept="image/*,.pdf,.txt,.md,.json,.js,.ts,.jsx,.tsx,.py,.html,.css,.csv"
+          className="hidden"
+          onChange={handleFileInput}
+        />
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-slate-400 transition-all hover:bg-base-700/60 hover:text-white active:scale-95 sm:h-9 sm:w-9 sm:rounded-lg"
+          title="Add images or files"
+          aria-label="Add images or files"
+        >
+          <Plus size={20} />
+        </button>
+
       <textarea
         ref={textareaRef}
         autoFocus={autoFocus}
@@ -347,74 +368,51 @@ export function Composer({
           e.preventDefault();
           submit();
         }}
-        placeholder={placeholder}
+        placeholder={placeholder ?? rotatingPlaceholder}
         aria-label="Message"
         rows={1}
         inputMode="text"
         enterKeyHint={sendOnEnter ? "send" : "enter"}
-        className="max-h-[220px] w-full resize-none bg-transparent px-4 py-4 text-[15px] text-slate-100 placeholder-slate-500 outline-none"
+        className="max-h-[220px] min-w-0 flex-1 resize-none bg-transparent px-2 py-2 text-[15px] leading-6 text-slate-100 placeholder-slate-500 outline-none"
       />
 
-      <div className="flex items-center justify-between px-3 pb-3">
-        <div className="flex items-center gap-1">
-          <input
-            ref={fileInputRef}
-            type="file"
-            multiple
-            accept="image/*,.pdf,.txt,.md,.json,.js,.ts,.jsx,.tsx,.py,.html,.css,.csv"
-            className="hidden"
-            onChange={handleFileInput}
-          />
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            className="flex h-11 w-11 items-center justify-center gap-1.5 rounded-xl bg-base-800/60 text-[13px] font-medium text-slate-400 transition-all hover:bg-base-700/60 hover:text-white active:scale-95 sm:h-auto sm:w-auto sm:rounded-lg sm:px-2.5 sm:py-1.5"
-            title="Add images or files"
-            aria-label="Add images or files"
-          >
-            <Paperclip size={18} />
-            <span className="hidden sm:inline">Add files</span>
-          </button>
-          {showCodeToggle && (
+        {showCodeToggle && (
           <button
             type="button"
             onClick={() => setCodeMode((c) => !c)}
             aria-pressed={codeMode}
             aria-label="Toggle code preview panel"
             title="Code — force-open the preview panel (also opens automatically for coding requests)"
-            className={`flex h-11 w-11 items-center justify-center gap-1.5 rounded-xl border text-[13px] font-medium text-slate-400 transition-all active:scale-95 sm:h-auto sm:w-auto sm:rounded-lg sm:border-transparent sm:px-2.5 sm:py-1.5 ${
+            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border text-slate-400 transition-all active:scale-95 sm:h-9 sm:w-9 sm:rounded-lg ${
               codeMode
-                ? "border-accent-500/50 bg-accent-500/10 text-white sm:border-transparent"
+                ? "border-accent-500/50 bg-accent-500/10 text-white"
                 : "border-transparent hover:bg-base-700/60 hover:text-white"
             }`}
           >
             <Code2 size={18} className={`transition-transform duration-300 ${codeMode ? "rotate-[360deg] text-accent-300" : ""}`} />
-            <span className="hidden sm:inline">Code</span>
           </button>
-          )}
-          {speechSupported && (
-            <button
-              type="button"
-              onClick={toggleRecording}
-              aria-label={recording ? "Stop dictating" : "Dictate with your voice"}
-              title={recording ? "Stop dictating" : "Dictate with your voice"}
-              className={`flex h-11 w-11 items-center justify-center gap-1.5 rounded-xl border text-[13px] font-medium text-slate-400 transition-all active:scale-95 sm:h-auto sm:w-auto sm:rounded-lg sm:border-transparent sm:px-2.5 sm:py-1.5 ${
-                recording
-                  ? "border-red-500/50 bg-red-500/10 text-red-400 animate-pulse"
-                  : "border-transparent hover:bg-base-700/60 hover:text-white"
-              }`}
-            >
-              <Mic size={18} />
-              <span className="hidden sm:inline">{recording ? "Listening…" : "Voice"}</span>
-            </button>
-          )}
-        </div>
+        )}
+        {speechSupported && (
+          <button
+            type="button"
+            onClick={toggleRecording}
+            aria-label={recording ? "Stop dictating" : "Dictate with your voice"}
+            title={recording ? "Stop dictating" : "Dictate with your voice"}
+            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border text-slate-400 transition-all active:scale-95 sm:h-9 sm:w-9 sm:rounded-lg ${
+              recording
+                ? "border-red-500/50 bg-red-500/10 text-red-400 animate-pulse"
+                : "border-transparent hover:bg-base-700/60 hover:text-white"
+            }`}
+          >
+            <Mic size={18} />
+          </button>
+        )}
 
         {generating ? (
           <button
             type="button"
             onClick={onStop}
-            className="flex h-11 w-11 items-center justify-center rounded-full bg-slate-200 text-base-950 transition-transform hover:scale-105 hover:bg-slate-300 active:scale-95"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-200 text-base-950 transition-transform hover:scale-105 hover:bg-slate-300 active:scale-95 sm:h-9 sm:w-9"
             title="Stop generating"
             aria-label="Stop generating"
           >
@@ -425,11 +423,11 @@ export function Composer({
             type="button"
             onClick={submit}
             disabled={!canSubmit}
-            className="flex h-11 w-11 items-center justify-center rounded-xl bg-accent-500 text-base-950 transition-all hover:scale-105 hover:bg-accent-400 active:scale-95 disabled:scale-100 disabled:cursor-not-allowed disabled:bg-base-600 disabled:text-slate-500 sm:h-8 sm:w-8 sm:rounded-lg"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent-500 text-base-950 transition-all hover:scale-105 hover:bg-accent-400 active:scale-95 disabled:scale-100 disabled:cursor-not-allowed disabled:bg-base-600 disabled:text-slate-500 sm:h-9 sm:w-9 sm:rounded-lg"
             title="Send"
             aria-label="Send message"
           >
-            <ArrowUp size={16} strokeWidth={2.5} />
+            <ArrowUp size={18} strokeWidth={2.5} />
           </button>
         )}
       </div>
