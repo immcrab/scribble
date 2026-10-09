@@ -30,6 +30,7 @@ import { Markdown } from "../lib/markdown";
 import { McpApprovalCard } from "./McpApprovalCard";
 import { GoogleSlidesPreview } from "./GoogleSlidesPreview";
 import { YouTubeResults } from "./YouTubeResults";
+import { ImageResults } from "./ImageResults";
 import { ModelFavicon, ProviderFavicon } from "./ProviderIcon";
 import { useLiveArtifact } from "../lib/useLiveArtifact";
 import { modelsByProvider, PROVIDER_LABELS, isModelGated } from "../config/models";
@@ -113,7 +114,7 @@ function SearchingPill({ toolCall }: { toolCall: ToolCallRecord }) {
     <div className="stream-prelude mb-2">
       <Globe2 size={13} className="text-accent-300" />
       <span className="thinking-label animate-thinking-shimmer">
-        Searching {toolCall.name === "YouTube search" && "YouTube "}{query && <span className="text-slate-300">{query}</span>}
+        Searching {toolCall.name === "YouTube search" && "YouTube "}{toolCall.name === "Image search" && "images "}{query && <span className="text-slate-300">{query}</span>}
       </span>
     </div>
   );
@@ -188,15 +189,17 @@ function ConnectedAppArtifactList({ toolCalls }: { toolCalls: ToolCallRecord[] }
 }
 function ToolActivity({ toolCalls, messageId }: { toolCalls: ToolCallRecord[]; messageId: string }) {
   const [open, setOpen] = useState(true);
-  const liveSearch = toolCalls.find((t) => (t.name === "Web search" || t.name === "YouTube search") && t.status === "running");
+  const liveSearch = toolCalls.find((t) => (t.name === "Web search" || t.name === "YouTube search" || t.name === "Image search") && t.status === "running");
   const awaiting = toolCalls.filter((t) => t.status === "awaiting_confirmation" && t.mcp);
   const videoSearches = toolCalls.filter((t) => t.name === "YouTube search" && t.status === "done" && t.videos?.length);
-  const listed = toolCalls.filter((t) => t !== liveSearch && !awaiting.includes(t) && !videoSearches.includes(t) && !(t.name === "Web search" && t.status === "done" && t.previews?.length));
+  const imageSearches = toolCalls.filter((t) => t.name === "Image search" && t.status === "done" && t.images?.length);
+  const listed = toolCalls.filter((t) => t !== liveSearch && !awaiting.includes(t) && !videoSearches.includes(t) && !imageSearches.includes(t) && !(t.name === "Web search" && t.status === "done" && t.previews?.length));
   return (
     <>
       {awaiting.map((t) => <McpApprovalCard key={t.id} toolCall={t} messageId={messageId} />)}
       {liveSearch && <SearchingPill toolCall={liveSearch} />}
       {videoSearches.map((t) => <YouTubeResults key={t.id} toolCall={t} />)}
+      {imageSearches.map((t) => <ImageResults key={t.id} toolCall={t} />)}
       <SearchResultList toolCalls={toolCalls} />
       <ConnectedAppArtifactList toolCalls={toolCalls} />
       {listed.length > 0 && (
@@ -555,7 +558,7 @@ export function ChatMessage({
           {!isUser && (
             <ThinkingBlock
               message={message}
-              suppressPrelude={message.toolCalls?.some((t) => (t.name === "Web search" || t.name === "YouTube search") && t.status === "running")}
+              suppressPrelude={message.toolCalls?.some((t) => (t.name === "Web search" || t.name === "YouTube search" || t.name === "Image search") && t.status === "running")}
             />
           )}
           {!isUser && message.streaming && message.retryNotice && !message.content && (

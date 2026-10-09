@@ -183,6 +183,18 @@ export interface YouTubeVideo {
   published?: string;
 }
 
+export interface FoundImage {
+  url: string;
+  thumbnail: string;
+  title: string;
+  /** Page the image came from, for credit. */
+  source: string;
+  creator?: string;
+  license?: string;
+  width?: number;
+  height?: number;
+}
+
 export interface ToolCallRecord {
   id: string;
   name: string;
@@ -201,6 +213,8 @@ export interface ToolCallRecord {
   mcp?: { toolId: string; toolkit: string; confirmationToken: string; arguments: Record<string, unknown> };
   /** Videos found by a "YouTube search" call; the chat shows them in an inline player window. */
   videos?: YouTubeVideo[];
+  /** Images found by an "Image search" call; the chat shows them in an inline gallery. */
+  images?: FoundImage[];
   /** Optional visual cards returned by xKiro web search. These are result
    * thumbnails, not browser screenshots, and let someone judge a page before
    * choosing whether to open it. */

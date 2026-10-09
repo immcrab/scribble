@@ -23,6 +23,7 @@ import {
   readWebPage,
 } from "./adapters/search";
 import { plainYouTubeQuery, searchYouTube, wantsYouTubeVideos, youtubeTitle, youtubeVideoIdIn, type YouTubeVideo } from "./adapters/youtube";
+import { isUnsafeImageQuery, plainImageQuery, searchImages, wantsImageSearch } from "./adapters/imageSearch";
 import { extractMemory, shouldRecallMemory } from "./adapters/memory";
 import { ndjsonLine } from "./adapters/base";
 import { verifyFirebaseIdToken } from "./firebaseVerifyToken";
@@ -410,7 +411,70 @@ export default {
             }
           }
 
-          if (useWebSearch && !mcpHandled && !youtubeHandled && (body.webSearch || userRequestedWeb)) {
+          // "Find me pictures of X" gets an image search whose results the chat shows as an
+          // inline gallery. Like the YouTube search, it replaces the generic web search.
+          let imagesHandled = false;
+          if (!mcpHandled && !youtubeHandled && lastUserIdx !== undefined && query && wantsImageSearch(query)) {
+            const toolId = crypto.randomUUID();
+            let searchQuery = "";
+            if (env.GROQ_API_KEY) {
+              try {
+                searchQuery = await buildSearchQuery(
+                  env.GROQ_API_KEY,
+                  query,
+                  messages.slice(0, lastUserIdx).map((m) => ({ role: m.role, content: m.content }))
+                );
+              } catch {
+                searchQuery = "";
+              }
+            }
+            searchQuery = (searchQuery || plainImageQuery(query) || query)
+              .replace(/\b(?:images?|pictures?|pics?|photos?)\b/gi, " ")
+              .replace(/\s+/g, " ")
+              .trim()
+              .slice(0, 200);
+            controller.enqueue(ndjsonLine({ toolCall: { id: toolId, name: "Image search", status: "running", input: { query: searchQuery } } }));
+            try {
+              if (!searchQuery || isUnsafeImageQuery(`${query} ${searchQuery}`)) throw new Error("Lofin can't search for images like that.");
+              const images = await searchImages(searchQuery);
+              const listing = images.map((img, i) => `${i + 1}. ${img.title}${img.creator ? ` — ${img.creator}` : ""}`).join("\n");
+              messages = messages.map((m, i) =>
+                i === lastUserIdx
+                  ? {
+                      ...m,
+                      content: `${m.content}\n\n[Images found for "${searchQuery}". The chat is already showing them to the user in an image gallery, so briefly introduce them (you can mention a couple by title), and do not paste image links, markdown images, or invent other images:\n${listing}]`,
+                    }
+                  : m
+              );
+              controller.enqueue(
+                ndjsonLine({
+                  toolCall: {
+                    id: toolId,
+                    name: "Image search",
+                    status: "done",
+                    input: { query: searchQuery },
+                    output: `${images.length} image${images.length === 1 ? "" : "s"}`,
+                    images,
+                  },
+                })
+              );
+              imagesHandled = true;
+            } catch (err) {
+              controller.enqueue(
+                ndjsonLine({
+                  toolCall: {
+                    id: toolId,
+                    name: "Image search",
+                    status: "error",
+                    input: { query: searchQuery },
+                    output: err instanceof Error ? err.message : "Image search failed.",
+                  },
+                })
+              );
+            }
+          }
+
+          if (useWebSearch && !mcpHandled && !youtubeHandled && !imagesHandled && (body.webSearch || userRequestedWeb)) {
             const pageUrl = publicUrlIn(query);
             if (pageUrl && lastUserIdx !== undefined) {
               const toolId = crypto.randomUUID();
