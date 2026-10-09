@@ -1,7 +1,11 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { readFile, writeFile } from "node:fs/promises";
+import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+
+// Single source of truth for the version shown in the sidebar: frontend/package.json.
+const appVersion: string = JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf8")).version;
 
 /**
  * GitHub Pages serves this repository below `/scribble/`, while the production
@@ -44,6 +48,7 @@ export default defineConfig({
       },
     },
   ],
+  define: { __APP_VERSION__: JSON.stringify(appVersion) },
   base: process.env.VITE_BASE ?? "/",
   server: {
     port: process.env.PORT ? Number(process.env.PORT) : 5173,

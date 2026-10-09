@@ -288,3 +288,10 @@ The Cloudflare rule prevents framing before any page JavaScript can run.
   existing `XKIRO_API_KEY`) and **memory** (needs `GROQ_API_KEY` and the user's opt-in).
   Additional tools would emit more `toolCall` events in the NDJSON stream, read
   into `ChatMessage.toolCalls` in the mode component.
+
+## Versioning
+
+The sidebar shows the app version next to the Lofin logo. It comes from
+`"version"` in `frontend/package.json` (injected by `vite.config.ts` as
+`__APP_VERSION__`). Bump it with every change; AI agents are instructed to do
+so in `AGENTS.md` and `CLAUDE.md`.

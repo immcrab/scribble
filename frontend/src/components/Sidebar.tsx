@@ -424,6 +424,9 @@ export function Sidebar({
               >
                 <LogoMark size={28} className="transition-transform duration-300 ease-out group-hover/logo:-rotate-6 group-hover/logo:scale-105" />
                 <span className="font-serif text-lg font-semibold tracking-tight text-white">Lofin</span>
+                <span data-testid="app-version" title="App version" className="rounded-md bg-base-700/60 px-1.5 py-0.5 text-[10px] font-medium text-slate-400">
+                  v{__APP_VERSION__}
+                </span>
               </button>
             )}
             <button

@@ -26,3 +26,12 @@ If you install dependencies or run a build (`npm install`, `npm run build`,
 - Don't delete `node_modules` while a dev server you started is still
   running, or if the user is actively working in the project (e.g. mid dev
   session) — only clean up your own scratch installs.
+
+## Bump the app version on every change
+
+The sidebar shows the app version (top left, right of the Lofin logo). Its single
+source of truth is `"version"` in `frontend/package.json`; `vite.config.ts` injects
+it as `__APP_VERSION__`. Every time you make a change to this repo, bump that
+version before finishing: patch (`1.0.0` -> `1.0.1`) for fixes and small tweaks,
+minor for new features, major for breaking changes. Never leave a change
+un-bumped, and don't hardcode the version anywhere else.
