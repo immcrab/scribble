@@ -6,6 +6,7 @@ import type { Attachment, ModelDef } from "../types";
 import { uid } from "../lib/id";
 import { readImageMetadata, hasGpsMetadata } from "../lib/imageMetadata";
 import { useRotatingPlaceholder } from "../lib/composerPlaceholders";
+import { storageFullReason } from "../lib/storageQuota";
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10MB
 const PROMPT_TEMPLATES = [
@@ -51,6 +52,7 @@ export function Composer({
   const [codeMode, setCodeMode] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [rejectedFiles, setRejectedFiles] = useState<string[]>([]);
+  const [storageFullError, setStorageFullError] = useState<string | null>(null);
   const [recording, setRecording] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -62,6 +64,9 @@ export function Composer({
   const processFiles = async (fileList: FileList | File[]) => {
     const files = Array.from(fileList);
     if (!files.length) return;
+    const full = await storageFullReason(files.reduce((total, file) => total + file.size, 0));
+    setStorageFullError(full);
+    if (full) return;
     const next: Attachment[] = [];
     const tooBig: string[] = [];
     for (const file of files) {
@@ -287,6 +292,16 @@ export function Composer({
               </div>
             );
           })}
+        </div>
+      )}
+
+      {storageFullError && (
+        <div role="alert" data-testid="composer-storage-full" className="flex items-start gap-2 border-b border-red-500/20 bg-red-500/10 px-4 py-2 text-xs text-red-300">
+          <AlertTriangle size={13} className="mt-0.5 shrink-0" />
+          <span className="flex-1">{storageFullError}</span>
+          <button type="button" onClick={() => setStorageFullError(null)} className="shrink-0 text-red-400/70 hover:text-red-300" title="Dismiss">
+            <X size={13} />
+          </button>
         </div>
       )}
 

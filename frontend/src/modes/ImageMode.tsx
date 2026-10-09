@@ -35,6 +35,7 @@ import {
 import { IMAGE_STYLES, findImageStyle, applyImageStyle } from "../config/imageStyles";
 import { recordImageUsage, mediaUsageGate } from "../lib/usage";
 import { useAuthStore } from "../state/authStore";
+import { storageFullReason } from "../lib/storageQuota";
 import { isLocalDev } from "../lib/devMode";
 import { useAutoScroll } from "../lib/useAutoScroll";
 import { uid } from "../lib/id";
@@ -200,6 +201,12 @@ export function ImageMode({
     const gate = mediaUsageGate("image");
     if (!gate.ok) {
       updateMessage(chat.id, assistantMsg.id, { streaming: false, error: gate.reason });
+      return;
+    }
+
+    const storageFull = await storageFullReason();
+    if (storageFull) {
+      updateMessage(chat.id, assistantMsg.id, { streaming: false, error: storageFull });
       return;
     }
 

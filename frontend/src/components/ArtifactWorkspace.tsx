@@ -23,6 +23,7 @@ import type { Vote, ModelDef } from "../types";
 import { Markdown } from "../lib/markdown";
 import { ModelFavicon } from "./ProviderIcon";
 import { publishWebsite, type PublishedWebsite } from "../lib/websiteClient";
+import { storageFullReason } from "../lib/storageQuota";
 import { useAuthStore } from "../state/authStore";
 import { useChatStore } from "../state/chatStore";
 import { BUILD_GAME_OPTIONS, buddyEmoji, type BuildGameId } from "../lib/playground";
@@ -286,6 +287,8 @@ export function ArtifactWorkspace({
     setPublishing(true);
     setPublishError(null);
     try {
+      const full = await storageFullReason(artifact.files.reduce((total, file) => total + new TextEncoder().encode(file.content).length, 0));
+      if (full) throw new Error(full);
       const site = await publishWebsite(artifact.files);
       setPublished(site);
       try { sessionStorage.setItem(key, JSON.stringify(site)); } catch { /* non-essential */ }

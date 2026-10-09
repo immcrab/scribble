@@ -1,5 +1,6 @@
 import type { Env } from "./types";
 import { verifyFirebaseIdToken } from "./firebaseVerifyToken";
+import { STORAGE_FULL_MESSAGE, STORAGE_LIMIT_BYTES, cloudUsageBytes } from "./storageQuota";
 
 /** Temporary websites are deliberately isolated from the Lofin app origin. */
 const WEBSITE_HOST = "api.lofin.dev";
@@ -196,6 +197,11 @@ export async function handleWebsiteApi(request: Request, env: Env, url: URL, cor
   const body = await request.json().catch(() => null) as { files?: unknown } | null;
   const files = parseFiles(body?.files);
   if (!files) return json({ error: "Publish an index.html file with up to 100 safe text files (10 MB total)." }, 400, cors);
+
+  const siteBytes = files.reduce((total, file) => total + new TextEncoder().encode(file.content).byteLength, 0);
+  if ((await cloudUsageBytes(env.ANNOUNCEMENT_ASSETS, uid)) + siteBytes > STORAGE_LIMIT_BYTES) {
+    return json({ error: STORAGE_FULL_MESSAGE, code: "storage_full" }, 413, cors);
+  }
 
   const slug = createSlug();
   const now = Date.now();

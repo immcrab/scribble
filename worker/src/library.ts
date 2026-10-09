@@ -1,6 +1,7 @@
 import type { Env } from "./types";
 import { verifyFirebaseIdToken } from "./firebaseVerifyToken";
 import { listStoredWebsites } from "./websites";
+import { STORAGE_FULL_MESSAGE, STORAGE_LIMIT_BYTES, cloudUsageBytes, deleteAllUserStorage } from "./storageQuota";
 
 /**
  * Per-user image library. Generated images are stored in R2 under
@@ -155,7 +156,13 @@ export async function handleLibrary(request: Request, env: Env, url: URL, cors: 
       usedBytes += websites.reduce((total, site) => total + site.size, 0);
     }
     items.sort((a, b) => b.createdAt - a.createdAt);
-    return json({ items, cursor: listed.truncated ? listed.cursor : null, usedBytes }, 200, cors);
+    return json({ items, cursor: listed.truncated ? listed.cursor : null, usedBytes, limitBytes: STORAGE_LIMIT_BYTES }, 200, cors);
+  }
+
+  // DELETE /api/storage — wipe every cloud file, thumbnail, and published website.
+  if (rest === "" && request.method === "DELETE" && storageApi) {
+    const deleted = await deleteAllUserStorage(bucket, auth.uid);
+    return json({ ok: true, deleted }, 200, cors);
   }
 
   // POST /api/library or /api/storage — multipart: image/file, thumb (optional), metadata.
@@ -181,6 +188,9 @@ export async function handleLibrary(request: Request, env: Env, url: URL, cors: 
     const replacing = existing.objects.some((o) => Object.values(EXT_BY_TYPE).some((oldExt) => o.key === `${prefix}${id}.${oldExt}`));
     if (!replacing && (count >= MAX_ITEMS_PER_USER || existing.truncated)) {
       return json({ error: `Your storage is full (${MAX_ITEMS_PER_USER} files). Delete some to save more.` }, 409, cors);
+    }
+    if (!replacing && (await cloudUsageBytes(bucket, auth.uid)) + file.size > STORAGE_LIMIT_BYTES) {
+      return json({ error: STORAGE_FULL_MESSAGE, code: "storage_full" }, 413, cors);
     }
     const meta = (value: unknown, max: number): string => {
       const encoded = encodeURIComponent(typeof value === "string" ? value.slice(0, max) : "");

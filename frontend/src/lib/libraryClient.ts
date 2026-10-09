@@ -115,6 +115,16 @@ export async function listStorage(cursor?: string | null): Promise<{ items: Libr
   return (await res.json()) as { items: LibraryItem[]; cursor: string | null; usedBytes?: number };
 }
 
+/** Permanently deletes every cloud file, thumbnail, and published website on the account. */
+export async function deleteAllStorage(): Promise<void> {
+  const res = await fetch(`${workerBase()}/api/storage`, { method: "DELETE", headers: await authHeader() });
+  if (!res.ok) throw await errorFrom(res, "Could not delete your cloud storage");
+  for (const [key, url] of blobUrls) {
+    void url.then((u) => URL.revokeObjectURL(u)).catch(() => undefined);
+    blobUrls.delete(key);
+  }
+}
+
 /** Admin-only: list one account's private cloud library. The Worker verifies the
  * caller's Firebase token before allowing this; this is not a client-side-only gate. */
 export async function listAdminStorage(uid: string): Promise<{ items: LibraryItem[]; cursor: string | null }> {

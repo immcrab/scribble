@@ -53,7 +53,8 @@ import type { ModelDef } from "../types";
 import type { LofinSettings, McpServerConfig } from "../lib/storage";
 import { clearAllLocalData } from "../lib/storage";
 import type { Attachment } from "../types";
-import { libraryImageUrl, listStorage, type LibraryItem } from "../lib/libraryClient";
+import { deleteAllStorage, libraryImageUrl, listStorage, type LibraryItem } from "../lib/libraryClient";
+import { STORAGE_FULL_MESSAGE, STORAGE_LIMIT_BYTES, invalidateStorageUsage, localStorageBytes } from "../lib/storageQuota";
 
 function SectionLabel({ children }: { children: string }) {
   return <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">{children}</h3>;
@@ -468,8 +469,6 @@ function MemorySection() {
   );
 }
 
-const INCLUDED_STORAGE_BYTES = 70 * 1024 * 1024;
-
 function formatStorage(bytes: number): string {
   if (bytes <= 0) return "0 KB";
   if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
@@ -515,13 +514,39 @@ function CloudWebsiteRow({ item }: { item: LibraryItem }) {
 }
 
 function StorageSection() {
-  const { chats, memories, projects, deleteAllChats } = useChatStore();
+  const { chats, memories, projects, deleteAllChats, patchChat } = useChatStore();
   const user = useAuthStore((s) => s.user);
   const [confirmingDeleteChats, setConfirmingDeleteChats] = useState(false);
   const [view, setView] = useState<"files" | "images" | "cloud-files" | "cloud-images" | "cloud-websites" | null>(null);
   const [confirmingClear, setConfirmingClear] = useState(false);
   const [cloudItems, setCloudItems] = useState<LibraryItem[] | null>(null);
   const [cloudBytes, setCloudBytes] = useState(0);
+  const [confirmingDeleteCloud, setConfirmingDeleteCloud] = useState(false);
+  const [deletingCloud, setDeletingCloud] = useState(false);
+  const [deleteCloudError, setDeleteCloudError] = useState<string | null>(null);
+  const deleteCloudStorage = async () => {
+    setDeletingCloud(true);
+    setDeleteCloudError(null);
+    try {
+      await deleteAllStorage();
+      // Drop attachment copies from chats too, otherwise the sign-in backfill
+      // would upload them straight back. Chat text is kept.
+      for (const chat of useChatStore.getState().chats) {
+        if (chat.messages.some((message) => message.attachments?.length)) {
+          patchChat(chat.id, { messages: chat.messages.map((message) => message.attachments?.length ? { ...message, attachments: undefined } : message) });
+        }
+      }
+      invalidateStorageUsage();
+      setCloudItems([]);
+      setCloudBytes(0);
+      setView(null);
+      setConfirmingDeleteCloud(false);
+    } catch (err) {
+      setDeleteCloudError(err instanceof Error ? err.message : "Could not delete your cloud storage.");
+    } finally {
+      setDeletingCloud(false);
+    }
+  };
   useEffect(() => {
     if (!user) { setCloudItems(null); setCloudBytes(0); return; }
     let cancelled = false;
@@ -546,10 +571,9 @@ function StorageSection() {
   const localBytes = [chats, memories, projects].reduce((total, value) => total + encoder.encode(JSON.stringify(value, (key, field) => key === "dataUrl" ? undefined : field)).length, 0);
   // Attachments already backed up to the cloud (same stable id) are covered by cloudBytes.
   const cloudIds = new Set(cloudItems?.map((item) => item.id) ?? []);
-  const localOnlyAttachmentBytes = [...new Map(attachments.filter((attachment) => !cloudIds.has(attachment.id)).map((attachment) => [attachment.id, attachment])).values()]
-    .reduce((total, attachment) => total + (attachment.size || encoder.encode(attachment.dataUrl).length), 0);
-  const usedBytes = localBytes + localOnlyAttachmentBytes + cloudBytes;
-  const usedPercent = Math.min(100, (usedBytes / INCLUDED_STORAGE_BYTES) * 100);
+  const usedBytes = localStorageBytes(chats, memories, projects, cloudIds) + cloudBytes;
+  const usedPercent = Math.min(100, (usedBytes / STORAGE_LIMIT_BYTES) * 100);
+  const storageFull = usedBytes >= STORAGE_LIMIT_BYTES;
   const cloudImages = cloudItems?.filter((item) => !item.kind && item.type.startsWith("image/")) ?? [];
   const cloudFiles = cloudItems?.filter((item) => !item.kind && !item.type.startsWith("image/")) ?? [];
   const cloudWebsites = cloudItems?.filter((item) => item.kind === "website") ?? [];
@@ -568,7 +592,8 @@ function StorageSection() {
     <div className="mx-auto max-w-2xl">
       <h3 className="text-base font-semibold text-white">Storage</h3>
       <p className="mt-5 text-sm font-semibold text-slate-200">{formatStorage(usedBytes)} of 70 MB used</p>
-      <div className="mt-3 h-3 overflow-hidden rounded-full bg-base-700/80"><div className="h-full min-w-1 rounded-full bg-accent-400 transition-all" style={{ width: `${Math.max(usedPercent, usedBytes ? 0.4 : 0)}%` }} /></div>
+      <div className="mt-3 h-3 overflow-hidden rounded-full bg-base-700/80"><div className={`h-full min-w-1 rounded-full transition-all ${storageFull ? "bg-red-500" : "bg-accent-400"}`} style={{ width: `${Math.max(usedPercent, usedBytes ? 0.4 : 0)}%` }} /></div>
+      {storageFull && <p role="alert" data-testid="storage-full" className="mt-3 rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-200">{STORAGE_FULL_MESSAGE}</p>}
       <div className="mt-10">
         {user && (
           <div className="mb-5 overflow-hidden rounded-2xl border border-accent-500/25 bg-accent-500/[0.04]">
@@ -600,7 +625,12 @@ function StorageSection() {
           )}
         </div>
       )}
-      <div className="mt-5 rounded-xl border border-red-500/25 bg-red-500/[0.04] p-3">
+      {user && (
+        <div className="mt-5 rounded-xl border border-red-500/25 bg-red-500/[0.04] p-3">
+          {!confirmingDeleteCloud ? <button onClick={() => setConfirmingDeleteCloud(true)} data-testid="delete-all-cloud-storage" className="flex w-full items-center gap-2 text-left text-sm text-red-300 hover:text-red-200"><Trash2 size={15} /><span><span className="block font-medium">Delete all cloud storage</span><span className="block text-xs text-red-300/70">Permanently remove every cloud file, image, and published website ({formatStorage(cloudBytes)}), plus attachments in your chats so they aren't uploaded again. Chat text is kept.</span></span></button> : <div><p className="text-xs text-red-200">Delete everything in your cloud storage? Published websites will stop working. This cannot be undone.</p>{deleteCloudError && <p className="mt-2 text-xs text-red-300">{deleteCloudError}</p>}<div className="mt-3 flex gap-2"><button onClick={() => { setConfirmingDeleteCloud(false); setDeleteCloudError(null); }} disabled={deletingCloud} className="flex-1 rounded-lg px-3 py-1.5 text-xs text-slate-300 hover:bg-base-700/60 disabled:opacity-50">Cancel</button><button onClick={() => void deleteCloudStorage()} disabled={deletingCloud} className="flex-1 rounded-lg bg-red-500/90 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-500 disabled:opacity-60">{deletingCloud ? "Deleting…" : "Yes, delete everything"}</button></div></div>}
+        </div>
+      )}
+      <div className={`${user ? "mt-3" : "mt-5"} rounded-xl border border-red-500/25 bg-red-500/[0.04] p-3`}>
         {!confirmingDeleteChats ? <button onClick={() => setConfirmingDeleteChats(true)} data-testid="delete-all-chats" className="flex w-full items-center gap-2 text-left text-sm text-red-300 hover:text-red-200"><Trash2 size={15} /><span><span className="block font-medium">Delete all chats</span><span className="block text-xs text-red-300/70">Remove every chat ({chats.filter((c) => c.messages.length > 0).length}) from this browser{user ? " and your synced account" : ""}. Projects, memories, and settings are kept.</span></span></button> : <div><p className="text-xs text-red-200">Delete all chats? This cannot be undone.</p><div className="mt-3 flex gap-2"><button onClick={() => setConfirmingDeleteChats(false)} className="flex-1 rounded-lg px-3 py-1.5 text-xs text-slate-300 hover:bg-base-700/60">Cancel</button><button onClick={() => { deleteAllChats(); setConfirmingDeleteChats(false); }} className="flex-1 rounded-lg bg-red-500/90 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-500">Yes, delete all chats</button></div></div>}
       </div>
       <div className="mt-3 rounded-xl border border-red-500/25 bg-red-500/[0.04] p-3">
