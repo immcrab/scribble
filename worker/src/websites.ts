@@ -81,8 +81,10 @@ function storageId(slug: string): string {
 function siteUrl(origin: string, uid: string, slug: string): string {
   // A local/custom Worker deployment has no api.lofin.dev route. In that case
   // returning the Worker origin keeps this feature testable without DNS setup.
+  // The trailing slash matters: without it, relative links such as
+  // "style.css" resolve against the uid segment and drop the slug.
   const base = origin.replace(/\/$/, "");
-  return `${base}/${encodeURIComponent(uid)}/${encodeURIComponent(slug)}`;
+  return `${base}${sitePath(uid, slug)}`;
 }
 
 function sitePath(uid: string, slug: string): string {
@@ -287,6 +289,12 @@ export async function serveWebsite(request: Request, env: Env, url: URL, executi
   if (Date.now() >= manifest.expiresAt) {
     execution.waitUntil(deleteManifestSite(bucket, manifest));
     return new Response("This temporary Lofin website has expired.", { status: 410, headers: { "Cache-Control": "no-store" } });
+  }
+
+  // Links shared before the trailing-slash fix point at /uid/slug. Redirect so
+  // the page's relative CSS, JS and page links resolve inside the site folder.
+  if (!path.length && !url.pathname.endsWith("/")) {
+    return Response.redirect(`${url.origin}${sitePath(uid, slug)}${url.search}`, 301);
   }
 
   const requested = path.join("/") || "index.html";
