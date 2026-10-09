@@ -68,7 +68,7 @@ async function planToolCall(groqKey: string, query: string, history: string, can
     body: JSON.stringify({
       model: PLANNER_MODEL,
       stream: false,
-      max_tokens: 700,
+      max_tokens: 2000,
       temperature: 0,
       reasoning_effort: "low",
       response_format: { type: "json_object" },
@@ -80,7 +80,13 @@ async function planToolCall(groqKey: string, query: string, history: string, can
             "(send or read email, create repositories or issues, post messages, edit documents, calendar) using one of the tools below. " +
             "If it does, choose exactly one tool and fill in its arguments using only information the user gave (never invent addresses, ids, or external account names). " +
             "When the user asks to make an artifact about a subject (such as a document or presentation), assume they want a useful completed artifact, not an empty container: write sensible content for that subject using the content field accepted by the chosen tool. Do not ask for a title or outline unless the tool truly requires missing information. Never invent recipients, external account names, IDs, or facts the user did not give. " +
-            "If the available tool is Create Slides from Markdown, use it to make a complete deck by default: a title slide plus roughly five concise, well-structured content slides. " +
+            "If the available tool is Create Slides from Markdown, use it to make a complete, presentation-ready deck by default. Follow these deck instructions: " +
+            "(1) Length: a title slide plus 5 to 7 content slides, unless the user asks for a different number, in which case match it exactly. " +
+            "(2) Structure: title slide (deck title and a one-line subtitle) -> overview or agenda -> body slides that each cover one idea in a logical order (background, key points, examples, data or comparisons, implications) -> a closing slide with a summary or key takeaways and, when it fits, next steps or a question for discussion. " +
+            "(3) Each content slide: a short, specific heading (under about 8 words) followed by 3 to 5 bullet points; each bullet is one clear phrase or short sentence (under about 15 words) with concrete facts, examples, numbers, or definitions rather than vague filler. Do not repeat the same point across slides. " +
+            "(4) Format: valid Markdown; start every slide with a '# ' heading; separate slides with a line containing only '---'; use '- ' bullets, **bold** for key terms sparingly, and no tables, images, HTML, code fences, or emoji unless the user asks. " +
+            "(5) Fit the audience and purpose the user describes (for example a school class, a pitch, a team update) in tone and depth; default to clear, neutral, informative language. Use only well-established facts; when unsure of a specific figure or date, describe it generally instead of guessing. " +
+            "(6) Set the presentation title argument to a concise, descriptive title, and include any specific points, sections, or facts the user asked for. " +
             'If the tool needs a required detail the user has not given, still choose the tool and list those details in "missing" as short plain phrases (for example "repository name"). ' +
             "If it is an ordinary question or conversation, choose no tool. " +
             'Reply with only JSON: {"tool": "<tool id or null>", "arguments": {}, "missing": []}.\n\nTools:\n' +
