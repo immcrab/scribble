@@ -46,14 +46,14 @@ export function sendDirectMessage(chatId: string, text: string, attachments: Att
   };
   store.addMessage(chat.id, assistantMsg);
 
-  const wireAttachments = attachments.map((a) => ({ name: a.name, type: a.type, dataUrl: a.dataUrl }));
+  const wireAttachments = attachments.map((a) => ({ name: a.name, type: a.type, dataUrl: a.dataUrl, metadata: a.metadata }));
   const history: WireMessage[] = [
     ...chat.messages
       .filter((m) => m.role === "user" || m.role === "assistant")
       .map((m) => ({
         role: m.role as "user" | "assistant",
         content: m.content,
-        attachments: m.attachments?.map((a) => ({ name: a.name, type: a.type, dataUrl: a.dataUrl })),
+        attachments: m.attachments?.map((a) => ({ name: a.name, type: a.type, dataUrl: a.dataUrl, metadata: a.metadata })),
       })),
     { role: "user", content: text, attachments: wireAttachments },
   ];

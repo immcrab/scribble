@@ -1,9 +1,10 @@
 import { useRef, useState } from "react";
 import { checkPromptEgg } from "../lib/easterEggs";
-import { Paperclip, ArrowUp, Square, X, FileText, Code2, Image as ImageIcon, AlertTriangle, Mic, Sparkles } from "lucide-react";
+import { Paperclip, ArrowUp, Square, X, FileText, Code2, Image as ImageIcon, AlertTriangle, Mic, Sparkles, MapPin } from "lucide-react";
 import { Dropdown } from "./Dropdown";
 import type { Attachment, ModelDef } from "../types";
 import { uid } from "../lib/id";
+import { readImageMetadata, hasGpsMetadata } from "../lib/imageMetadata";
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10MB
 const PROMPT_TEMPLATES = [
@@ -70,8 +71,11 @@ export function Composer({
       let dataUrl: string;
       let storedSize = file.size;
       let storedType = file.type || "application/octet-stream";
+      let metadata: string | undefined;
 
       if (isImage) {
+        // Read EXIF from the original bytes first — the canvas re-encode below strips it.
+        metadata = await readImageMetadata(file);
         // Keep base64 requests small enough for the Worker/provider while
         // preserving enough detail for vision and OCR.
         const prepared = await prepareImage(file);
@@ -93,6 +97,7 @@ export function Composer({
         type: storedType,
         size: storedSize,
         dataUrl,
+        ...(metadata ? { metadata } : {}),
       });
     }
     if (next.length > 0) {
@@ -260,8 +265,13 @@ export function Composer({
                 )}
                 <div className="min-w-0 max-w-[130px] pr-5">
                   <span className="block truncate font-medium text-slate-200">{a.name}</span>
-                  <span className="text-[10px] text-slate-500">
+                  <span className="flex items-center gap-1 text-[10px] text-slate-500">
                     {a.size ? `${(a.size / 1024).toFixed(0)} KB` : isImage ? "Image" : "File"}
+                    {a.metadata && (
+                      <span title={`Metadata the AI can read:\n${a.metadata}`} className="inline-flex items-center gap-0.5 text-accent-400">
+                        <MapPin size={10} /> {hasGpsMetadata(a.metadata) ? "Location" : "EXIF"}
+                      </span>
+                    )}
                   </span>
                 </div>
                 <button

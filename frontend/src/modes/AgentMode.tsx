@@ -98,7 +98,7 @@ export function AgentMode({
       .map((m) => ({
         role: m.role as "user" | "assistant",
         content: m.content,
-        attachments: m.attachments?.map((a) => ({ name: a.name, type: a.type, dataUrl: a.dataUrl })),
+        attachments: m.attachments?.map((a) => ({ name: a.name, type: a.type, dataUrl: a.dataUrl, metadata: a.metadata })),
       }));
   };
 
@@ -131,6 +131,7 @@ export function AgentMode({
       name: a.name,
       type: a.type,
       dataUrl: a.dataUrl,
+      metadata: a.metadata,
     }));
     const history: WireMessage[] = [
       ...previousHistory,
@@ -194,7 +195,7 @@ export function AgentMode({
     // buildHistory(messageId) stops before the edited message — append the new text
     // explicitly so the model actually sees the edit (and the first message isn't
     // sent as an empty history).
-    const wireAttachments = msg.attachments?.map((a) => ({ name: a.name, type: a.type, dataUrl: a.dataUrl }));
+    const wireAttachments = msg.attachments?.map((a) => ({ name: a.name, type: a.type, dataUrl: a.dataUrl, metadata: a.metadata }));
     const history: WireMessage[] = [
       ...buildHistory(messageId),
       { role: "user", content: newText, attachments: wireAttachments },

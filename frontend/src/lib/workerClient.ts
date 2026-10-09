@@ -3,7 +3,7 @@ import type { ModelDef, Attachment, ClientContext, Effort, ToolCallRecord } from
 export interface WireMessage {
   role: "user" | "assistant" | "system";
   content: string;
-  attachments?: Pick<Attachment, "name" | "type" | "dataUrl">[];
+  attachments?: Pick<Attachment, "name" | "type" | "dataUrl" | "metadata">[];
 }
 
 interface StreamChatParams {

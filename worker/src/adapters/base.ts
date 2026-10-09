@@ -215,9 +215,10 @@ function decodeDataUrlText(dataUrl: string): string | null {
 function describeAttachment(att: WireAttachment, visionCapable: boolean): { imagePart?: { type: "image_url"; image_url: { url: string } }; textAppend?: string } {
   const type = att.type || "";
   const name = att.name || "attachment";
+  const meta = describeImageMetadata(att);
 
   if (visionCapable && type.startsWith("image/") && att.dataUrl) {
-    return { imagePart: { type: "image_url", image_url: { url: att.dataUrl } } };
+    return { imagePart: { type: "image_url", image_url: { url: att.dataUrl } }, textAppend: meta || undefined };
   }
 
   if (isTextDecodable(type) && att.dataUrl) {
@@ -228,7 +229,18 @@ function describeAttachment(att: WireAttachment, visionCapable: boolean): { imag
   }
 
   const reason = type.startsWith("image/") ? "this model can't see images" : "not readable by this model";
-  return { textAppend: `\n\n[Attached file "${name}" (${type || "unknown type"}) — ${reason}]` };
+  return { textAppend: `\n\n[Attached file "${name}" (${type || "unknown type"}) — ${reason}]${meta}` };
+}
+
+/**
+ * The EXIF summary the client read from an attached image (GPS, capture time,
+ * camera). Images are re-encoded before upload, so this text is the only way
+ * the model can know where or when a photo was taken. Bounded and type-checked
+ * because it comes straight from the request body.
+ */
+export function describeImageMetadata(att: WireAttachment): string {
+  if (typeof att.metadata !== "string" || !att.metadata.trim()) return "";
+  return `\n\n[Embedded photo metadata (EXIF) for "${att.name || "image"}" — use this to answer questions about where/when it was taken:\n${att.metadata.slice(0, 1500)}]`;
 }
 
 /**

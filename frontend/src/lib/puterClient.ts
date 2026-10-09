@@ -120,7 +120,8 @@ function describeAttachment(att: NonNullable<WireMessage["attachments"]>[number]
     }
   }
 
-  return `\n\n[Attached file "${name}" (${type || "unknown type"}) — not readable by this model]`;
+  const meta = att.metadata ? `\n\n[Embedded photo metadata (EXIF) for "${name}":\n${att.metadata}]` : "";
+  return `\n\n[Attached file "${name}" (${type || "unknown type"}) — not readable by this model]${meta}`;
 }
 
 function buildMessages(messages: WireMessage[], effort?: Effort, clientContext?: ClientContext): { role: string; content: string }[] {

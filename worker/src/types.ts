@@ -51,6 +51,8 @@ export interface WireAttachment {
   name?: string;
   type?: string;
   dataUrl: string;
+  /** EXIF summary read client-side from the original image (GPS, capture time, camera). */
+  metadata?: string;
 }
 
 export interface WireMessage {

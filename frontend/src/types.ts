@@ -162,6 +162,9 @@ export interface Attachment {
   size: number;
   /** data URL, kept small — this is a local-first demo, not a file store */
   dataUrl: string;
+  /** EXIF summary (GPS, capture time, camera) read from the original image before
+   * re-encoding strips it — see lib/imageMetadata.ts. Sent to the model as text. */
+  metadata?: string;
   /**
    * Private-storage details for output created by a Lofin mode.  This stays
    * out of provider payloads, but lets the cloud library distinguish a

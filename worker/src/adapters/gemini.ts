@@ -1,5 +1,5 @@
 import type { AdapterParams, Effort, WireMessage } from "../types";
-import { ndjsonLine, buildSystemPrompt, sanitizeDelta, MAX_OUTPUT_TOKENS } from "./base";
+import { ndjsonLine, buildSystemPrompt, sanitizeDelta, MAX_OUTPUT_TOKENS, describeImageMetadata } from "./base";
 
 interface GeminiPart {
   text?: string;
@@ -74,6 +74,7 @@ function buildGeminiContents(messages: WireMessage[], visionCapable: boolean) {
           if (visionCapable && type.startsWith("image/")) {
             const { mimeType, data } = parseDataUrl(att.dataUrl, type || "image/jpeg");
             parts.push({ inlineData: { mimeType, data } });
+            text += describeImageMetadata(att);
             continue;
           }
 
@@ -86,7 +87,7 @@ function buildGeminiContents(messages: WireMessage[], visionCapable: boolean) {
           }
 
           const reason = type.startsWith("image/") ? "this model can't see images" : "not readable by this model";
-          text += `\n\n[Attached file "${name}" (${type || "unknown type"}) — ${reason}]`;
+          text += `\n\n[Attached file "${name}" (${type || "unknown type"}) — ${reason}]` + describeImageMetadata(att);
         }
       }
 

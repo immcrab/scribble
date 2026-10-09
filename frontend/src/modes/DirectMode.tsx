@@ -49,7 +49,7 @@ export function DirectMode({
       .map((m) => ({
         role: m.role as "user" | "assistant",
         content: m.content,
-        attachments: m.attachments?.map((a) => ({ name: a.name, type: a.type, dataUrl: a.dataUrl })),
+        attachments: m.attachments?.map((a) => ({ name: a.name, type: a.type, dataUrl: a.dataUrl, metadata: a.metadata })),
       }));
   };
 
@@ -114,7 +114,7 @@ export function DirectMode({
     // *before* the edited message, so the new text has to be appended explicitly —
     // otherwise the model answers without ever seeing the edit (and an edit to the
     // first message sends an empty history, which the Worker rejects).
-    const wireAttachments = msg.attachments?.map((a) => ({ name: a.name, type: a.type, dataUrl: a.dataUrl }));
+    const wireAttachments = msg.attachments?.map((a) => ({ name: a.name, type: a.type, dataUrl: a.dataUrl, metadata: a.metadata }));
     const history: WireMessage[] = [
       ...buildHistory(messageId),
       { role: "user", content: newText, attachments: wireAttachments },

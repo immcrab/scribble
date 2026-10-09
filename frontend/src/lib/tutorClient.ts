@@ -113,7 +113,7 @@ function briefExchange(profile: StyleProfile | null, task: TutorTask): WireMessa
 }
 
 function toWireAttachments(attachments?: Attachment[]) {
-  return attachments?.map((a) => ({ name: a.name, type: a.type, dataUrl: a.dataUrl }));
+  return attachments?.map((a) => ({ name: a.name, type: a.type, dataUrl: a.dataUrl, metadata: a.metadata }));
 }
 
 /**
