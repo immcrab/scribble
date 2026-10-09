@@ -407,6 +407,7 @@ function MemorySection() {
 const INCLUDED_STORAGE_BYTES = 70 * 1024 * 1024;
 
 function formatStorage(bytes: number): string {
+  if (bytes <= 0) return "0 KB";
   if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(bytes < 10 * 1024 * 1024 ? 1 : 0)} MB`;
 }
@@ -456,10 +457,15 @@ function StorageSection() {
   const [view, setView] = useState<"files" | "images" | "cloud-files" | "cloud-images" | "cloud-websites" | null>(null);
   const [confirmingClear, setConfirmingClear] = useState(false);
   const [cloudItems, setCloudItems] = useState<LibraryItem[] | null>(null);
+  const [cloudBytes, setCloudBytes] = useState(0);
   useEffect(() => {
-    if (!user) { setCloudItems(null); return; }
+    if (!user) { setCloudItems(null); setCloudBytes(0); return; }
     let cancelled = false;
-    void listStorage().then((page) => { if (!cancelled) setCloudItems(page.items); }).catch(() => { if (!cancelled) setCloudItems([]); });
+    void listStorage().then((page) => {
+      if (cancelled) return;
+      setCloudItems(page.items);
+      setCloudBytes(page.usedBytes ?? page.items.reduce((total, item) => total + item.size, 0));
+    }).catch(() => { if (!cancelled) { setCloudItems([]); setCloudBytes(0); } });
     return () => { cancelled = true; };
   }, [user]);
   const encoder = new TextEncoder();
@@ -472,8 +478,13 @@ function StorageSection() {
   const fileAttachments = attachments.filter((attachment) => !images.includes(attachment));
   const imageBytes = images.reduce((total, attachment) => total + (attachment.size || encoder.encode(attachment.dataUrl).length), 0);
   const fileBytes = fileAttachments.reduce((total, attachment) => total + (attachment.size || encoder.encode(attachment.dataUrl).length), 0);
-  const localBytes = [chats, memories, projects].reduce((total, value) => total + encoder.encode(JSON.stringify(value)).length, 0);
-  const usedBytes = Math.max(localBytes, imageBytes + fileBytes);
+  // Attachments are counted on their own, so leave their data URLs out of the chat text size.
+  const localBytes = [chats, memories, projects].reduce((total, value) => total + encoder.encode(JSON.stringify(value, (key, field) => key === "dataUrl" ? undefined : field)).length, 0);
+  // Attachments already backed up to the cloud (same stable id) are covered by cloudBytes.
+  const cloudIds = new Set(cloudItems?.map((item) => item.id) ?? []);
+  const localOnlyAttachmentBytes = [...new Map(attachments.filter((attachment) => !cloudIds.has(attachment.id)).map((attachment) => [attachment.id, attachment])).values()]
+    .reduce((total, attachment) => total + (attachment.size || encoder.encode(attachment.dataUrl).length), 0);
+  const usedBytes = localBytes + localOnlyAttachmentBytes + cloudBytes;
   const usedPercent = Math.min(100, (usedBytes / INCLUDED_STORAGE_BYTES) * 100);
   const cloudImages = cloudItems?.filter((item) => !item.kind && item.type.startsWith("image/")) ?? [];
   const cloudFiles = cloudItems?.filter((item) => !item.kind && !item.type.startsWith("image/")) ?? [];
@@ -497,7 +508,7 @@ function StorageSection() {
       <div className="mt-10">
         {user && (
           <div className="mb-5 overflow-hidden rounded-2xl border border-accent-500/25 bg-accent-500/[0.04]">
-            <div className="px-4 py-3"><h4 className="text-sm font-semibold text-slate-100">Private cloud storage</h4><p className="mt-0.5 text-xs text-slate-400">Uploads, generated images, and temporary published websites are backed up to your account.</p></div>
+            <div className="px-4 py-3"><h4 className="text-sm font-semibold text-slate-100">Private cloud storage{cloudItems !== null && <span className="ml-2 text-xs font-normal text-slate-400">{formatStorage(cloudBytes)} used</span>}</h4><p className="mt-0.5 text-xs text-slate-400">Uploads, generated images, and temporary published websites are backed up to your account.</p></div>
             <Item label="Cloud images" detail={cloudItems === null ? "Loading…" : `${cloudImages.length} ${cloudImages.length === 1 ? "image" : "images"} saved`} onView={cloudItems === null ? undefined : () => setView(view === "cloud-images" ? null : "cloud-images")} />
             <Item label="Cloud files" detail={cloudItems === null ? "Loading…" : `${cloudFiles.length} ${cloudFiles.length === 1 ? "file" : "files"} saved`} onView={cloudItems === null ? undefined : () => setView(view === "cloud-files" ? null : "cloud-files")} />
             <Item label="Published websites" detail={cloudItems === null ? "Loading…" : `${cloudWebsites.length} ${cloudWebsites.length === 1 ? "website" : "websites"} active`} onView={cloudItems === null ? undefined : () => setView(view === "cloud-websites" ? null : "cloud-websites")} />

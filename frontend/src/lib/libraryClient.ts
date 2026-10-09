@@ -106,11 +106,13 @@ export async function saveAttachmentToStorage(
   );
 }
 
-export async function listStorage(cursor?: string | null): Promise<{ items: LibraryItem[]; cursor: string | null }> {
+/** `usedBytes` is the account's whole cloud footprint (files, thumbnails, and
+ * published websites); older Workers omit it. */
+export async function listStorage(cursor?: string | null): Promise<{ items: LibraryItem[]; cursor: string | null; usedBytes?: number }> {
   const qs = cursor ? `?cursor=${encodeURIComponent(cursor)}` : "";
   const res = await fetch(`${workerBase()}/api/storage${qs}`, { headers: await authHeader() });
   if (!res.ok) throw await errorFrom(res, "Could not load your storage");
-  return (await res.json()) as { items: LibraryItem[]; cursor: string | null };
+  return (await res.json()) as { items: LibraryItem[]; cursor: string | null; usedBytes?: number };
 }
 
 /** Admin-only: list one account's private cloud library. The Worker verifies the

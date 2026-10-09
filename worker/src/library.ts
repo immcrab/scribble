@@ -121,7 +121,11 @@ export async function handleLibrary(request: Request, env: Env, url: URL, cors: 
     const cursor = url.searchParams.get("cursor") || undefined;
     const listed = await bucket.list({ prefix, limit: 1000, cursor, include: ["customMetadata"] } as R2ListOptions);
     const items: LibraryItem[] = [];
+    // Every byte under the user's prefix counts toward their storage, including
+    // thumbnails and files the list below hides from this view.
+    let usedBytes = 0;
     for (const obj of listed.objects) {
+      usedBytes += obj.size;
       const name = obj.key.slice(prefix.length);
       if (name.includes(".thumb.")) continue;
       const dot = name.lastIndexOf(".");
@@ -148,9 +152,10 @@ export async function handleLibrary(request: Request, env: Env, url: URL, cors: 
       const origin = env.PUBLIC_WEBSITE_ORIGIN?.trim() || url.origin;
       const websites = await listStoredWebsites(bucket, auth.uid, origin);
       items.push(...websites.map((site): LibraryItem => ({ ...site, prompt: "", model: "" })));
+      usedBytes += websites.reduce((total, site) => total + site.size, 0);
     }
     items.sort((a, b) => b.createdAt - a.createdAt);
-    return json({ items, cursor: listed.truncated ? listed.cursor : null }, 200, cors);
+    return json({ items, cursor: listed.truncated ? listed.cursor : null, usedBytes }, 200, cors);
   }
 
   // POST /api/library or /api/storage — multipart: image/file, thumb (optional), metadata.
