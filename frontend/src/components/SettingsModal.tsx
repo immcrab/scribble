@@ -450,8 +450,9 @@ function CloudWebsiteRow({ item }: { item: LibraryItem }) {
 }
 
 function StorageSection() {
-  const { chats, memories, projects } = useChatStore();
+  const { chats, memories, projects, deleteAllChats } = useChatStore();
   const user = useAuthStore((s) => s.user);
+  const [confirmingDeleteChats, setConfirmingDeleteChats] = useState(false);
   const [view, setView] = useState<"files" | "images" | "cloud-files" | "cloud-images" | "cloud-websites" | null>(null);
   const [confirmingClear, setConfirmingClear] = useState(false);
   const [cloudItems, setCloudItems] = useState<LibraryItem[] | null>(null);
@@ -525,6 +526,9 @@ function StorageSection() {
         </div>
       )}
       <div className="mt-5 rounded-xl border border-red-500/25 bg-red-500/[0.04] p-3">
+        {!confirmingDeleteChats ? <button onClick={() => setConfirmingDeleteChats(true)} data-testid="delete-all-chats" className="flex w-full items-center gap-2 text-left text-sm text-red-300 hover:text-red-200"><Trash2 size={15} /><span><span className="block font-medium">Delete all chats</span><span className="block text-xs text-red-300/70">Remove every chat ({chats.filter((c) => c.messages.length > 0).length}) from this browser{user ? " and your synced account" : ""}. Projects, memories, and settings are kept.</span></span></button> : <div><p className="text-xs text-red-200">Delete all chats? This cannot be undone.</p><div className="mt-3 flex gap-2"><button onClick={() => setConfirmingDeleteChats(false)} className="flex-1 rounded-lg px-3 py-1.5 text-xs text-slate-300 hover:bg-base-700/60">Cancel</button><button onClick={() => { deleteAllChats(); setConfirmingDeleteChats(false); }} className="flex-1 rounded-lg bg-red-500/90 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-500">Yes, delete all chats</button></div></div>}
+      </div>
+      <div className="mt-3 rounded-xl border border-red-500/25 bg-red-500/[0.04] p-3">
         {!confirmingClear ? <button onClick={() => setConfirmingClear(true)} className="flex w-full items-center gap-2 text-left text-sm text-red-300 hover:text-red-200"><Trash2 size={15} /><span><span className="block font-medium">Clear all local data</span><span className="block text-xs text-red-300/70">Remove saved files, images, chats, memories, projects, and settings from this browser.</span></span></button> : <div><p className="text-xs text-red-200">This cannot be undone. Synced cloud data is not affected.</p><div className="mt-3 flex gap-2"><button onClick={() => setConfirmingClear(false)} className="flex-1 rounded-lg px-3 py-1.5 text-xs text-slate-300 hover:bg-base-700/60">Cancel</button><button onClick={() => { clearAllLocalData(); window.location.reload(); }} className="flex-1 rounded-lg bg-red-500/90 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-500">Yes, clear all</button></div></div>}
       </div>
       <p className="mt-4 text-xs leading-5 text-slate-500">Attachments are saved with their chats on this device. Files and images can be viewed or downloaded here; chats and memories remain summary-only.</p>

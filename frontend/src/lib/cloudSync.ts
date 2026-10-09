@@ -392,18 +392,24 @@ export function pushChatsPublic(chats: Chat[]): void {
  * never cleans up since it only ever writes chats that still exist.
  */
 export function deleteChatFromCloud(chatId: string, remainingChats: Chat[]): void {
+  deleteChatsFromCloud([chatId], remainingChats);
+}
 
-  const publicTimer = publicPushTimers.get(chatId);
-  if (publicTimer) {
-    clearTimeout(publicTimer);
-    publicPushTimers.delete(chatId);
-  }
-  lastPublicJson.delete(chatId);
-  void loadFirestore().then((fs) => fs?.deleteDoc(fs.doc(fs.db, "publicChats", chatId)).catch(() => {}));
-  // Remove the previous public RTDB copy too, so an old share link can't
-  // continue serving a chat that was deleted after the migration.
+/** Batch form of deleteChatFromCloud — one user-doc write for any number of chats. */
+export function deleteChatsFromCloud(chatIds: string[], remainingChats: Chat[]): void {
   const rtdb = getRtdb();
-  if (rtdb) dbSet(ref(rtdb, `publicChats/${chatId}`), null).catch(() => {});
+  for (const chatId of chatIds) {
+    const publicTimer = publicPushTimers.get(chatId);
+    if (publicTimer) {
+      clearTimeout(publicTimer);
+      publicPushTimers.delete(chatId);
+    }
+    lastPublicJson.delete(chatId);
+    void loadFirestore().then((fs) => fs?.deleteDoc(fs.doc(fs.db, "publicChats", chatId)).catch(() => {}));
+    // Remove the previous public RTDB copy too, so an old share link can't
+    // continue serving a chat that was deleted after the migration.
+    if (rtdb) dbSet(ref(rtdb, `publicChats/${chatId}`), null).catch(() => {});
+  }
 
   if (!activeUid) return;
   const uid = activeUid;

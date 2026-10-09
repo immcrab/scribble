@@ -190,6 +190,21 @@ function UsageMeter({ onOpen }: { onOpen: () => void }) {
   );
 }
 
+/** Short creation date for a History row: "Today", "Yesterday", "Oct 3", or "Oct 3, 2025". */
+function formatChatDate(ts: number): string {
+  const d = new Date(ts);
+  const now = new Date();
+  const startOfDay = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const days = Math.round((startOfDay(now) - startOfDay(d)) / 86_400_000);
+  if (days === 0) return "Today";
+  if (days === 1) return "Yesterday";
+  return d.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    ...(d.getFullYear() !== now.getFullYear() ? { year: "numeric" } : {}),
+  });
+}
+
 export function Sidebar({
   onOpenSettings,
   onOpenAnnouncements,
@@ -325,9 +340,11 @@ export function Sidebar({
   // History list. A brand-new zero-message chat is also kept out until it has a first
   // message — except the one currently on screen, so the fresh compose screen still
   // shows a highlighted row.
-  const historyChats = chats.filter(
-    (c) => !c.projectId && (c.messages.length > 0 || c.id === activeChatId)
-  );
+  // Newest activity first — stored order is insertion order, which leaves a reused
+  // or continued chat stuck wherever it was first created.
+  const historyChats = chats
+    .filter((c) => !c.projectId && (c.messages.length > 0 || c.id === activeChatId))
+    .sort((a, b) => (b.updatedAt || b.createdAt || 0) - (a.updatedAt || a.createdAt || 0));
 
   const modelForChat = (chat: Chat) => {
     // Battle models stay anonymous, and Image / Speech chats don't run the chat model
@@ -639,6 +656,11 @@ export function Sidebar({
                             {rowModel && <ModelFavicon model={rowModel} size={10} />}
                             <span className="truncate">{rowModel?.displayName ?? MODE_LABEL[chat.mode]}</span>
                             {rowModel && <span className="shrink-0 opacity-60">· {MODE_LABEL[chat.mode]}</span>}
+                            {chat.createdAt > 0 && (
+                              <span className="ml-auto shrink-0 pl-1 opacity-70" title={`Created ${new Date(chat.createdAt).toLocaleString()}`}>
+                                {formatChatDate(chat.createdAt)}
+                              </span>
+                            )}
                           </span>
                         )}
                       </button>

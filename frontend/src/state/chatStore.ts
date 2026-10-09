@@ -22,6 +22,7 @@ import {
   pushMemoriesToCloud,
   pushProjectsToCloud,
   deleteChatFromCloud,
+  deleteChatsFromCloud,
 } from "../lib/cloudSync";
 import { generateChatTitle } from "../lib/workerClient";
 import { uid } from "../lib/id";
@@ -164,6 +165,7 @@ interface ChatStore {
   setChatMode: (id: string, mode: Mode) => void;
   setActiveChat: (id: string) => void;
   deleteChat: (id: string) => void;
+  deleteAllChats: () => void;
   undoDeleteChat: () => void;
   dismissDeletedChat: () => void;
   renameChat: (id: string, title: string) => void;
@@ -338,6 +340,22 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       };
     });
     setTimeout(() => persist?.(), 0);
+  },
+
+  deleteAllChats: () => {
+    if (persistTimer) {
+      clearTimeout(persistTimer);
+      persistTimer = null;
+    }
+    for (const controller of get().abortControllers.values()) controller.abort();
+    get().abortControllers.clear();
+    const ids = get().chats.map((c) => c.id);
+    const fresh = createInitialChat("direct");
+    set({ chats: [fresh], activeChatId: fresh.id, activeProjectId: null, lastDeletedChat: null });
+    setTimeout(() => {
+      saveChats([fresh]);
+      deleteChatsFromCloud(ids, [fresh]);
+    }, 0);
   },
 
   renameChat: (id, title) => {
