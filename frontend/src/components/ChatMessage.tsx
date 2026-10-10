@@ -553,7 +553,7 @@ export function ChatMessage({
         {/* Message bubble — always editable/visible, never suppressed by hover */}
         {!attachmentsOnly && (
         <div
-          className={`rounded-2xl break-words transition-all duration-200 ${compact ? "px-3 py-1.5" : "px-4 py-2.5"} ${
+          className={`min-w-0 max-w-full rounded-2xl break-words transition-all duration-200 ${compact ? "px-3 py-1.5" : "px-4 py-2.5"} ${
             isUser
               ? "bg-accent-600/90 text-base-950"
               : "border border-base-700/60 bg-base-850/70 text-slate-100"
