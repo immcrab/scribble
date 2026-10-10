@@ -141,8 +141,8 @@ function gateFor(model: ModelDef): string | null {
 
 /** Credit accounting, identical in shape to runStream.ts's so the two can't drift. */
 function recordUsage(model: ModelDef, messages: WireMessage[], reply: string) {
-  recordModelUsage(model);
   const promptTokens = messages.reduce((n, m) => n + estimateTokenCount(m.content ?? ""), 0);
+  recordModelUsage(model, { tokens: promptTokens + estimateTokenCount(reply) });
   recordCreditUsage(model, promptTokens + estimateTokenCount(reply));
 }
 

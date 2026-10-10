@@ -1,6 +1,11 @@
 [
   {
     "date": "2026-10-09",
+    "title": "Live status page",
+    "summary": "A new Status page shows how many chats have been saved, total tokens processed, and the most used models, updating in real time."
+  },
+  {
+    "date": "2026-10-09",
     "title": "Search-friendly pages, model directory and comparisons",
     "summary": "Added a public AI model directory with a page for every model, head-to-head comparison pages, guides for the free AI playground, image generator, text to speech and live web search, plus this changelog."
   },

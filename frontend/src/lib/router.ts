@@ -80,6 +80,7 @@ export function isKnownAppLocation(): boolean {
   if (parseDocsSlugFromLocation() !== null) return true;
   if (isAdminLocation()) return true;
   if (isUsageLocation()) return true;
+  if (isStatusLocation()) return true;
   if (isTutorLocation()) return true;
   if (isConnectionsLocation()) return true;
   if (isLibraryLocation()) return true;
@@ -132,6 +133,18 @@ export function isUsageLocation(): boolean {
 export function usagePath(): string {
   const base = import.meta.env.BASE_URL.replace(/\/$/, "");
   return `${base}/usage`;
+}
+
+/** "<base>/status" — public live stats: chats saved, tokens, most-used models (see pages/StatusPage.tsx). */
+export function isStatusLocation(): boolean {
+  const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+  const path = window.location.pathname;
+  return path === `${base}/status` || path === `${base}/status/`;
+}
+
+export function statusPath(): string {
+  const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+  return `${base}/status`;
 }
 
 /** "<base>/admin" — the shared-catalog editor (see pages/AdminPage.tsx). The page itself

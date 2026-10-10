@@ -26,6 +26,7 @@ import {
   Bell,
   Menu,
   Info,
+  Activity,
 } from "lucide-react";
 import { LogoMark } from "./Logo";
 import { useMediaQuery } from "../lib/useMediaQuery";
@@ -36,7 +37,7 @@ import { Dropdown } from "./Dropdown";
 import { ModelFavicon } from "./ProviderIcon";
 import { findModel } from "../config/models";
 import { useUsageStore, creditStatus } from "../lib/usage";
-import { docsUrl, adminPath, usagePath, tutorPath, connectionsPath, libraryPath } from "../lib/router";
+import { docsUrl, adminPath, usagePath, tutorPath, connectionsPath, libraryPath, statusPath } from "../lib/router";
 import { isAdmin } from "../lib/admin";
 import type { SettingsTab } from "./SettingsModal";
 import type { Chat, Mode } from "../types";
@@ -789,6 +790,7 @@ export function Sidebar({
                 { label: "Docs", icon: <BookOpen size={16} />, onSelect: () => window.location.assign(docsUrl()) },
                 { label: "About", icon: <Info size={16} />, onSelect: () => window.location.assign("/about") },
                 { label: "Connections", icon: <Globe size={16} />, onSelect: () => goTo(connectionsPath()) },
+                { label: "Status", icon: <Activity size={16} />, onSelect: () => goTo(statusPath()) },
                 ...(user ? [
                   { label: "Library", icon: <Images size={16} />, onSelect: () => goTo(libraryPath()) },
                   { label: "Usage", icon: <Gauge size={16} />, onSelect: () => goTo(usagePath()) },

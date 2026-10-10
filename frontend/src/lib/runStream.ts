@@ -283,11 +283,12 @@ export async function runAssistantStream(params: {
         }
 
         useChatStore.getState().updateMessage(chatId, messageId, { streaming: false, truncated, retryNotice: undefined });
-        recordModelUsage(model);
         // Credit accounting: prompt tokens (everything we sent) + this reply's tokens.
-        const finalMsg = useChatStore.getState().chats.find((c) => c.id === chatId)?.messages.find((m) => m.id === messageId);
+        const finalChat = useChatStore.getState().chats.find((c) => c.id === chatId);
+        const finalMsg = finalChat?.messages.find((m) => m.id === messageId);
         const promptTokens = history.reduce((n, m) => n + estimateTokenCount(m.content ?? ""), 0);
         const replyTokens = estimateTokenCount(finalMsg?.content ?? "") + estimateTokenCount(finalMsg?.reasoning ?? "");
+        recordModelUsage(model, { tokens: promptTokens + replyTokens, mode: finalChat?.mode });
         recordCreditUsage(model, promptTokens + replyTokens);
 
         // Auto-continue: reply hit the output-token limit — resume it in place, same shape as

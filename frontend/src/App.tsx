@@ -25,6 +25,7 @@ import {
   isKnownAppLocation,
   isAdminLocation,
   isUsageLocation,
+  isStatusLocation,
   isTutorLocation,
   isConnectionsLocation,
   isLibraryLocation,
@@ -47,6 +48,7 @@ const named = <K extends string>(load: () => Promise<Record<K, React.ComponentTy
 const DocsPage = named(() => import("./pages/DocsPage"), "DocsPage");
 const AdminPage = named(() => import("./pages/AdminPage"), "AdminPage");
 const UsagePage = named(() => import("./pages/UsagePage"), "UsagePage");
+const StatusPage = named(() => import("./pages/StatusPage"), "StatusPage");
 const TutorPage = named(() => import("./pages/TutorPage"), "TutorPage");
 const ConnectionsPage = named(() => import("./pages/ConnectionsPage"), "ConnectionsPage");
 const LibraryPage = named(() => import("./pages/LibraryPage"), "LibraryPage");
@@ -100,6 +102,7 @@ export default function App() {
   const [docsSlug, setDocsSlug] = useState<string | null>(() => parseDocsSlugFromLocation());
   const [adminRoute, setAdminRoute] = useState(() => isAdminLocation());
   const [usageRoute, setUsageRoute] = useState(() => isUsageLocation());
+  const [statusRoute, setStatusRoute] = useState(() => isStatusLocation());
   const [tutorRoute, setTutorRoute] = useState(() => isTutorLocation());
   const [connectionsRoute, setConnectionsRoute] = useState(() => isConnectionsLocation());
   const [libraryRoute, setLibraryRoute] = useState(() => isLibraryLocation());
@@ -190,6 +193,8 @@ export default function App() {
       document.title = "Model catalog admin — Lofin";
     } else if (usageRoute) {
       document.title = "Usage — Lofin";
+    } else if (statusRoute) {
+      document.title = "Status — Lofin";
     } else if (tutorRoute) {
       document.title = "Tutor — Lofin";
     } else if (connectionsRoute) {
@@ -205,7 +210,7 @@ export default function App() {
     } else {
       document.title = "Lofin — Free AI Playground: Chat, Compare & Battle 110+ AI Models";
     }
-  }, [docsSlug, adminRoute, usageRoute, tutorRoute, connectionsRoute, libraryRoute, notFound, shareState, activeChat?.title, freshCompose]);
+  }, [docsSlug, adminRoute, usageRoute, statusRoute, tutorRoute, connectionsRoute, libraryRoute, notFound, shareState, activeChat?.title, freshCompose]);
 
   // Kick off the fetch for a shared chat this browser doesn't have locally
   // (deferred out of useState's initializer, which must stay side-effect-free).
@@ -305,6 +310,13 @@ export default function App() {
     return () => window.removeEventListener("popstate", listener);
   }, []);
 
+  // "/status" — public live stats page, same standalone-page treatment as "/usage".
+  useEffect(() => {
+    const listener = () => setStatusRoute(isStatusLocation());
+    window.addEventListener("popstate", listener);
+    return () => window.removeEventListener("popstate", listener);
+  }, []);
+
   // "/tutor" — same standalone-page treatment as "/admin" and "/usage".
   useEffect(() => {
     const listener = () => setTutorRoute(isTutorLocation());
@@ -332,16 +344,16 @@ export default function App() {
   // 404 page (the URL there must stay exactly what the visitor typed/followed, not get
   // silently swapped for whatever chat happens to still be active underneath).
   useEffect(() => {
-    if (shareState.status !== "idle" || !activeChatId || docsSlug !== null || freshCompose || notFound || activeProjectId || adminRoute || usageRoute || tutorRoute || connectionsRoute || libraryRoute || settingsTab) return;
+    if (shareState.status !== "idle" || !activeChatId || docsSlug !== null || freshCompose || notFound || activeProjectId || adminRoute || usageRoute || statusRoute || tutorRoute || connectionsRoute || libraryRoute || settingsTab) return;
     syncUrlToChat(activeChatId);
-  }, [activeChatId, shareState.status, docsSlug, freshCompose, notFound, activeProjectId, adminRoute, usageRoute, tutorRoute, connectionsRoute, libraryRoute, settingsTab]);
+  }, [activeChatId, shareState.status, docsSlug, freshCompose, notFound, activeProjectId, adminRoute, usageRoute, statusRoute, tutorRoute, connectionsRoute, libraryRoute, settingsTab]);
 
   // A project's own "/p/{id}" URL — takes precedence over the per-chat URL above
   // while a project is open (its chats don't get their own address bar entry).
   useEffect(() => {
-    if (shareState.status !== "idle" || docsSlug !== null || notFound || adminRoute || usageRoute || tutorRoute || connectionsRoute || libraryRoute || settingsTab || !activeProjectId) return;
+    if (shareState.status !== "idle" || docsSlug !== null || notFound || adminRoute || usageRoute || statusRoute || tutorRoute || connectionsRoute || libraryRoute || settingsTab || !activeProjectId) return;
     syncUrlToProject(activeProjectId);
-  }, [activeProjectId, shareState.status, docsSlug, notFound, adminRoute, usageRoute, tutorRoute, connectionsRoute, libraryRoute, settingsTab]);
+  }, [activeProjectId, shareState.status, docsSlug, notFound, adminRoute, usageRoute, statusRoute, tutorRoute, connectionsRoute, libraryRoute, settingsTab]);
 
   // Picking a chat from the sidebar (or starting a new one) while viewing a shared/unresolved
   // chat should always drop back into the normal app — those actions only ever fire from
@@ -468,6 +480,19 @@ export default function App() {
           onExit={() => {
             window.history.pushState(null, "", import.meta.env.BASE_URL);
             setUsageRoute(false);
+          }}
+        />
+      </Suspense>
+    );
+  }
+
+  if (statusRoute) {
+    return (
+      <Suspense fallback={<RouteFallback full />}>
+        <StatusPage
+          onExit={() => {
+            window.history.pushState(null, "", import.meta.env.BASE_URL);
+            setStatusRoute(false);
           }}
         />
       </Suspense>

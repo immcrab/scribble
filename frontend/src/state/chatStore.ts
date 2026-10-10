@@ -27,6 +27,7 @@ import {
 import { generateChatTitle } from "../lib/workerClient";
 import { uid } from "../lib/id";
 import { estimateTokenCount } from "../lib/tokenCount";
+import { recordChatSaved } from "../lib/modelStats";
 
 /** Stored memory list is capped so it stays cheap to ship with every chat request
  * (see lib/clientContext.ts) and doesn't grow unbounded. */
@@ -531,6 +532,8 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   },
 
   addMessage: (chatId, message) => {
+    // A chat only counts toward the public /status total once, when it stops being an empty draft.
+    if (get().chats.find((c) => c.id === chatId)?.messages.length === 0) recordChatSaved();
     set((s) => {
       const chats = s.chats.map((c) =>
         c.id === chatId
