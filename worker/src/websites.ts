@@ -189,33 +189,52 @@ async function deleteManifestSite(bucket: R2Bucket, manifest: WebsiteManifest): 
   await bucket.delete([manifestKey(manifest.uid, manifest.slug), ...manifest.files.map((file) => keyFor(manifest.uid, manifest.slug, file.name))]);
 }
 
-/** POST /api/websites: persist a completed HTML artifact as a seven-day public site. */
+async function readManifest(bucket: R2Bucket, uid: string, slug: string): Promise<WebsiteManifest | null> {
+  const raw = await bucket.get(manifestKey(uid, slug));
+  const manifest = raw ? await raw.json<WebsiteManifest>().catch(() => null) : null;
+  if (!manifest || manifest.uid !== uid || manifest.slug !== slug || !Array.isArray(manifest.files)) return null;
+  return manifest;
+}
+
+/**
+ * POST /api/websites: persist a completed HTML artifact as a seven-day public site.
+ * Passing the `slug` of a site the caller already owns updates that site in
+ * place, so follow-up edits in the same chat keep one stable link instead of
+ * publishing a new site for every revision.
+ */
 export async function handleWebsiteApi(request: Request, env: Env, url: URL, cors: HeadersInit, json: Json): Promise<Response> {
   if (request.method !== "POST") return json({ error: "Method not allowed." }, 405, cors);
   if (!env.ANNOUNCEMENT_ASSETS) return json({ error: "Website publishing storage is not configured." }, 503, cors);
   const uid = await authenticatedUid(request, env);
   if (!uid) return json({ error: "Sign in to publish a website." }, 401, cors);
 
-  const body = await request.json().catch(() => null) as { files?: unknown } | null;
+  const body = await request.json().catch(() => null) as { files?: unknown; slug?: unknown } | null;
   const files = parseFiles(body?.files);
   if (!files) return json({ error: "Publish an index.html file with up to 100 safe text files (10 MB total)." }, 400, cors);
 
+  const bucket = env.ANNOUNCEMENT_ASSETS;
+  const requestedSlug = typeof body?.slug === "string" && validSlug(body.slug) ? body.slug : null;
+  // Slugs live under the caller's own uid prefix, so reusing one can only ever
+  // touch that user's site. An expired or deleted site is simply recreated at
+  // the same address.
+  const previous = requestedSlug ? await readManifest(bucket, uid, requestedSlug) : null;
+  const previousBytes = previous?.files.reduce((total, file) => total + (file.size ?? 0), 0) ?? 0;
+
   const siteBytes = files.reduce((total, file) => total + new TextEncoder().encode(file.content).byteLength, 0);
-  if ((await cloudUsageBytes(env.ANNOUNCEMENT_ASSETS, uid)) + siteBytes > STORAGE_LIMIT_BYTES) {
+  if ((await cloudUsageBytes(bucket, uid)) - previousBytes + siteBytes > STORAGE_LIMIT_BYTES) {
     return json({ error: STORAGE_FULL_MESSAGE, code: "storage_full" }, 413, cors);
   }
 
-  const slug = createSlug();
+  const slug = requestedSlug ?? createSlug();
   const now = Date.now();
   const manifest: WebsiteManifest = {
-    uid, slug, createdAt: now, expiresAt: now + TTL_MS,
+    uid, slug, createdAt: previous?.createdAt ?? now, expiresAt: now + TTL_MS,
     files: files.map((file) => ({
       name: file.name,
       contentType: contentType(file.name),
       size: new TextEncoder().encode(file.content).byteLength,
     })),
   };
-  const bucket = env.ANNOUNCEMENT_ASSETS;
   try {
     await Promise.all(files.map((file) => bucket.put(keyFor(uid, slug, file.name), file.content, {
       httpMetadata: { contentType: contentType(file.name), cacheControl: "public, max-age=60, s-maxage=60" },
@@ -224,14 +243,21 @@ export async function handleWebsiteApi(request: Request, env: Env, url: URL, cor
       httpMetadata: { contentType: "application/json; charset=utf-8", cacheControl: "no-store" },
     });
   } catch {
-    // Do not leave a half-published site accessible if one of the R2 writes fails.
-    await deleteManifestSite(bucket, manifest).catch(() => undefined);
+    // A fresh site must not stay half-published. An update keeps its previous
+    // manifest, which still lists only files that exist, so leave it alone.
+    if (!previous) await deleteManifestSite(bucket, manifest).catch(() => undefined);
     return json({ error: "Could not save this website. Please try again." }, 502, cors);
+  }
+
+  if (previous) {
+    const kept = new Set(files.map((file) => file.name));
+    const removed = previous.files.filter((file) => !kept.has(file.name)).map((file) => keyFor(uid, slug, file.name));
+    if (removed.length) await bucket.delete(removed).catch(() => undefined);
   }
 
   const configuredOrigin = env.PUBLIC_WEBSITE_ORIGIN?.trim();
   const origin = configuredOrigin || url.origin;
-  return json({ url: siteUrl(origin, uid, slug), expiresAt: manifest.expiresAt, slug }, 201, cors);
+  return json({ url: siteUrl(origin, uid, slug), expiresAt: manifest.expiresAt, slug }, previous ? 200 : 201, cors);
 }
 
 /**

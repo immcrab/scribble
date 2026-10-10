@@ -8,14 +8,25 @@
  * from its `capabilities` — but a hand-written one-liner reads much better.
  */
 export const MODEL_DOCS: Record<string, string> = {
-  // Mistral (La Plateforme free "Experiment" tier — every chat model is free)
-  "mistral-large-latest": "Mistral's flagship — Mistral Large 3, a multimodal model with the strongest reasoning and code in their lineup and a 262K context window.",
+  // Mistral (the configured Studio free tier; Labs entries are free experimental models)
+  "mistral-large-4-0": "Mistral Large 4 is Mistral's current open-weight, multimodal generalist model with a 512K-token context window.",
+  "zai-glm-5-3": "Z.ai GLM 5.3 is a third-party open-weight text reasoning model available through Mistral's platform with a 1M-token context window.",
+  "mistral-large-latest": "Mistral's flagship legacy alias — multimodal with a 262K-token context window when available to the connected Studio account.",
   "mistral-medium-latest": "Mistral Medium 3.5 — frontier-class multimodal model at mid-tier cost, tuned for agentic and coding work.",
   "mistral-small-latest": "Mistral Small 4 — the compact hybrid model that unifies instruct, reasoning, and coding; fast and cheap for everyday tasks, still reads images.",
-  "ministral-3-14b-latest": "Ministral 3 14B — best-in-class efficiency for its size, multimodal, handles code.",
-  "ministral-3-8b-latest": "Ministral 3 8B — powerful and efficient, multimodal, good for low-latency general use.",
-  "ministral-3-3b-latest": "Ministral 3 3B — Mistral's tiny model, lowest latency, still reads images.",
+  "ministral-14b-latest": "Ministral 3 14B — Mistral's capable, efficient multimodal model for general and coding work.",
+  "ministral-8b-latest": "Ministral 3 8B — compact, multimodal, and suited to lower-latency everyday tasks.",
+  "ministral-3b-latest": "Ministral 3 3B — Mistral's smallest current chat model, optimized for low latency and image understanding.",
   "codestral-latest": "Mistral's dedicated coding model (25.08) — trained specifically for code generation and completion, 256K context.",
+  "mistral-code-latest": "Mistral's current code model for repository work, code generation, and completion.",
+  "mistral-code-fim-latest": "Mistral Code with fill-in-the-middle support, useful for precise edits and code completion.",
+  "labs-leanstral-1-5-1": "Leanstral 1.5.1 is Mistral's free Labs model for Lean formal proof engineering; Labs models can change without notice.",
+  "magistral-medium-latest": "Magistral Medium is Mistral's reasoning-focused multimodal model for complex analysis.",
+  "magistral-small-latest": "Magistral Small is the faster compact option in Mistral's reasoning model family.",
+  "mistral-vibe-cli-latest": "Mistral Vibe CLI is a tool-aware coding and agentic chat model exposed by Mistral Studio.",
+  "mistral-vibe-cli-with-tools": "Mistral Vibe CLI Tools is the tool-enabled Vibe deployment for coding and agent workflows.",
+  "mistral-vibe-cli-fast": "Mistral Vibe CLI Fast prioritizes lower-latency coding and agentic chat.",
+  "voxtral-small-latest": "Voxtral Small is Mistral's compact conversational audio family model; Lofin currently uses its chat capability for text prompts.",
 
   // Gemini (free API tier — 3.x Flash and Flash-Lite only)
   "gemini-3.7-flash": "Google's latest Flash tier — 1M-token context, tuned for complex coding and agentic workflows, reads text, images, and code.",

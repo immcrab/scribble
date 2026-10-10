@@ -9,7 +9,7 @@ import { EffortSelector } from "../components/EffortSelector";
 import { EmptyState } from "../components/EmptyState";
 import { ArtifactWorkspace } from "../components/ArtifactWorkspace";
 import { ChatWorkspaceSplit } from "../components/ChatWorkspaceSplit";
-import { isCodingRequest } from "../lib/codeArtifact";
+import { isCodingRequest, mergeWebsiteEdits } from "../lib/codeArtifact";
 import { useLiveArtifact, liveArtifactFor } from "../lib/useLiveArtifact";
 import { runAssistantStream, CONTINUE_NUDGE } from "../lib/runStream";
 import { sendDirectMessage } from "../lib/sendDirect";
@@ -152,7 +152,7 @@ export function DirectMode({
   const lastIsStreaming = lastMsg?.role === "assistant" && lastMsg.streaming;
   const liveArtifact = useLiveArtifact(lastIsStreaming ? lastMsg : undefined);
   const hasWorkspace = completedArtifacts.length > 0 || eagerWorkspace || !!liveArtifact;
-  const latestArtifact = liveArtifact ?? completedArtifacts[completedArtifacts.length - 1] ?? null;
+  const latestArtifact = liveArtifact ?? mergeWebsiteEdits(completedArtifacts);
 
   return (
     <div className="flex h-full flex-col">
@@ -216,6 +216,7 @@ export function DirectMode({
         }
         workspace={
           <ArtifactWorkspace
+            siteId={chat.id}
             panes={[{ key: "single", label: model.displayName, model, artifact: latestArtifact, streaming: !!lastIsStreaming }]}
           />
         }

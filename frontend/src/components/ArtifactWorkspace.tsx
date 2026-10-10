@@ -72,6 +72,20 @@ function artifactKey(artifact: Artifact): string {
   return `lofin:website:${(hash >>> 0).toString(36)}`;
 }
 
+/** Where a chat pane remembers the slug of the site it published, so edits update that site. */
+function siteSlugKey(siteId: string, paneKey: WorkspacePane["key"]): string {
+  return `lofin:site-slug:${siteId}:${paneKey}`;
+}
+
+function readSiteSlug(siteId: string | undefined, paneKey: WorkspacePane["key"] | undefined): string | undefined {
+  if (!siteId || !paneKey) return undefined;
+  try {
+    return localStorage.getItem(siteSlugKey(siteId, paneKey)) ?? undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 function artifactFileType(name: string): string {
   const ext = name.split(".").pop()?.toLowerCase();
   if (ext === "html" || ext === "htm") return "text/html";
@@ -210,10 +224,13 @@ export interface WorkspacePane {
 
 export function ArtifactWorkspace({
   panes,
+  siteId,
   vote,
   onVote,
 }: {
   panes: WorkspacePane[];
+  /** Stable id (the chat's) so every revision of a pane's website reuses one published link. */
+  siteId?: string;
   vote?: Vote;
   onVote?: (winner: Vote["winner"]) => void;
 }) {
@@ -289,8 +306,11 @@ export function ArtifactWorkspace({
     try {
       const full = await storageFullReason(artifact.files.reduce((total, file) => total + new TextEncoder().encode(file.content).length, 0));
       if (full) throw new Error(full);
-      const site = await publishWebsite(artifact.files);
+      const site = await publishWebsite(artifact.files, readSiteSlug(siteId, pane?.key));
       setPublished(site);
+      if (siteId && pane) {
+        try { localStorage.setItem(siteSlugKey(siteId, pane.key), site.slug); } catch { /* non-essential */ }
+      }
       try { sessionStorage.setItem(key, JSON.stringify(site)); } catch { /* non-essential */ }
     } catch (err) {
       setPublishError(err instanceof Error ? err.message : "Could not publish website.");

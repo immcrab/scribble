@@ -647,16 +647,6 @@ const XKIRO_MODELS: ModelDef[] = [
   },
 ];
 
-/**
- * Mistral models — La Plateforme free "Experiment" tier (phone-verified, no
- * card, ~1B tokens/month, rate-limited): every La Plateforme chat model is
- * usable on it, so this list mirrors Mistral's full current chat lineup.
- * Endpoint is OpenAI-compatible: https://api.mistral.ai/v1/chat/completions
- * Re-verified against Mistral's live model list (Aug 2026): the pixtral/nemo
- * aliases are gone, the Ministral line is now "Ministral 3" (14B/8B/3B), and
- * Small/Medium/Large are all multimodal hybrid-reasoning models. Refresh from
- * https://docs.mistral.ai/models/overview + GET /v1/models.
- */
 /** Cloudflare Workers AI models covered by the Workers Free daily allocation. */
 const CLOUDFLARE_MODELS: ModelDef[] = [
   { provider: "cloudflare", modelId: "@cf/meta/llama-3.1-8b-instruct-fp8", displayName: "Llama 3.1 8B", icon: "Cloud", contextLength: 32000, capabilities: ["text"], free: true, supportsStreaming: true, supportsVision: false },
@@ -672,7 +662,43 @@ const CLOUDFLARE_MODELS: ModelDef[] = [
   { provider: "cloudflare", modelId: "@cf/ibm-granite/granite-4.0-h-micro", displayName: "Granite 4.0 H Micro", icon: "Cloud", contextLength: 131000, capabilities: ["text", "reasoning"], free: true, supportsStreaming: true, supportsVision: false },
   { provider: "cloudflare", modelId: "@cf/zai-org/glm-4.7-flash", displayName: "GLM 4.7 Flash", icon: "Cloud", contextLength: 131072, capabilities: ["text", "reasoning"], free: true, supportsStreaming: true, supportsVision: false },
 ];
+
+/**
+ * Mistral — distinct chat-capable models available to the configured free
+ * Mistral Studio account (verified against GET /v1/models, Oct 2026). Mistral
+ * exposes several aliases for the same deployment; this catalog deliberately
+ * uses one current alias per model so the picker stays useful rather than
+ * listing identical aliases repeatedly. Non-chat APIs (embeddings, OCR,
+ * moderation, transcription, and TTS) are intentionally excluded because the
+ * chat endpoint cannot serve them.
+ *
+ * Labs are included when Mistral lists them: Labs models are free of charge,
+ * but experimental and subject to silent updates or retirement.
+ */
 const MISTRAL_MODELS: ModelDef[] = [
+  {
+    provider: "mistral",
+    modelId: "mistral-large-4-0",
+    displayName: "Mistral Large 4",
+    icon: "Wind",
+    contextLength: 524288,
+    capabilities: ["text", "vision", "code", "reasoning"],
+    free: true,
+    supportsStreaming: true,
+    supportsVision: true,
+    knownBroken: "Mistral currently returns 403 for the configured key; enable Large 4 access in Mistral Studio to use it directly.",
+  },
+  {
+    provider: "mistral",
+    modelId: "zai-glm-5-3",
+    displayName: "Z.ai GLM 5.3",
+    icon: "Wind",
+    contextLength: 1000000,
+    capabilities: ["text", "reasoning"],
+    free: true,
+    supportsStreaming: true,
+    supportsVision: false,
+  },
   {
     provider: "mistral",
     modelId: "mistral-large-latest",
@@ -708,7 +734,7 @@ const MISTRAL_MODELS: ModelDef[] = [
   },
   {
     provider: "mistral",
-    modelId: "ministral-3-14b-latest",
+    modelId: "ministral-14b-latest",
     displayName: "Ministral 3 14B",
     icon: "Wind",
     contextLength: 256000,
@@ -719,7 +745,7 @@ const MISTRAL_MODELS: ModelDef[] = [
   },
   {
     provider: "mistral",
-    modelId: "ministral-3-8b-latest",
+    modelId: "ministral-8b-latest",
     displayName: "Ministral 3 8B",
     icon: "Wind",
     contextLength: 256000,
@@ -730,7 +756,7 @@ const MISTRAL_MODELS: ModelDef[] = [
   },
   {
     provider: "mistral",
-    modelId: "ministral-3-3b-latest",
+    modelId: "ministral-3b-latest",
     displayName: "Ministral 3 3B",
     icon: "Wind",
     contextLength: 128000,
@@ -746,6 +772,105 @@ const MISTRAL_MODELS: ModelDef[] = [
     icon: "Wind",
     contextLength: 256000,
     capabilities: ["text", "code"],
+    free: true,
+    supportsStreaming: true,
+    supportsVision: false,
+  },
+  {
+    provider: "mistral",
+    modelId: "mistral-code-latest",
+    displayName: "Mistral Code",
+    icon: "Wind",
+    contextLength: 256000,
+    capabilities: ["text", "code"],
+    free: true,
+    supportsStreaming: true,
+    supportsVision: false,
+  },
+  {
+    provider: "mistral",
+    modelId: "mistral-code-fim-latest",
+    displayName: "Mistral Code FIM",
+    icon: "Wind",
+    contextLength: 256000,
+    capabilities: ["text", "code"],
+    free: true,
+    supportsStreaming: true,
+    supportsVision: false,
+  },
+  {
+    provider: "mistral",
+    modelId: "labs-leanstral-1-5-1",
+    displayName: "Leanstral 1.5.1 (Labs)",
+    icon: "Wind",
+    contextLength: 262144,
+    capabilities: ["text", "vision", "code", "reasoning"],
+    free: true,
+    supportsStreaming: true,
+    supportsVision: true,
+  },
+  {
+    provider: "mistral",
+    modelId: "magistral-medium-latest",
+    displayName: "Magistral Medium",
+    icon: "Wind",
+    contextLength: 262144,
+    capabilities: ["text", "vision", "reasoning"],
+    free: true,
+    supportsStreaming: true,
+    supportsVision: true,
+  },
+  {
+    provider: "mistral",
+    modelId: "magistral-small-latest",
+    displayName: "Magistral Small",
+    icon: "Wind",
+    contextLength: 262144,
+    capabilities: ["text", "vision", "reasoning"],
+    free: true,
+    supportsStreaming: true,
+    supportsVision: true,
+  },
+  {
+    provider: "mistral",
+    modelId: "mistral-vibe-cli-latest",
+    displayName: "Mistral Vibe CLI",
+    icon: "Wind",
+    contextLength: 262144,
+    capabilities: ["text", "vision", "code"],
+    free: true,
+    supportsStreaming: true,
+    supportsVision: true,
+  },
+  {
+    provider: "mistral",
+    modelId: "mistral-vibe-cli-with-tools",
+    displayName: "Mistral Vibe CLI Tools",
+    icon: "Wind",
+    contextLength: 262144,
+    capabilities: ["text", "vision", "code"],
+    free: true,
+    supportsStreaming: true,
+    supportsVision: true,
+  },
+  {
+    provider: "mistral",
+    modelId: "mistral-vibe-cli-fast",
+    displayName: "Mistral Vibe CLI Fast",
+    icon: "Wind",
+    contextLength: 262144,
+    capabilities: ["text", "vision", "code"],
+    free: true,
+    supportsStreaming: true,
+    supportsVision: true,
+  },
+  {
+    provider: "mistral",
+    modelId: "voxtral-small-latest",
+    displayName: "Voxtral Small",
+    icon: "Wind",
+    contextLength: 32768,
+    capabilities: ["text"],
     free: true,
     supportsStreaming: true,
     supportsVision: false,

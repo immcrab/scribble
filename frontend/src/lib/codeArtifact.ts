@@ -190,6 +190,33 @@ export function extractArtifact(content: string): Artifact | null {
   return { files, previewHtml: buildPreviewHtml(files), remainingText };
 }
 
+const WEB_FILE_RE = /\.(?:html?|css|m?js)$/i;
+
+/**
+ * Folds a chat's completed artifacts into the website the user is currently
+ * editing. A follow-up such as "make the header blue" often comes back as just
+ * the changed file (say, style.css); merging it over the previous site's files
+ * keeps the preview and the published site whole instead of starting over.
+ * A reply that isn't purely web files (a Python script, say) starts fresh.
+ */
+export function mergeWebsiteEdits(history: Artifact[]): Artifact | null {
+  let current: Artifact | null = null;
+  for (const next of history) {
+    if (!current?.previewHtml || !next.files.every((file) => WEB_FILE_RE.test(file.name))) {
+      current = next;
+      continue;
+    }
+    const files: ArtifactFile[] = [...current.files];
+    for (const file of next.files) {
+      const index = files.findIndex((existing) => existing.name === file.name);
+      if (index >= 0) files[index] = file;
+      else files.push(file);
+    }
+    current = { files, previewHtml: buildPreviewHtml(files), remainingText: next.remainingText };
+  }
+  return current;
+}
+
 /** Heuristic: only worth a dedicated artifact panel for real files, not one-line inline snippets. */
 export function isArtifactWorthy(artifact: Artifact): boolean {
   if (artifact.previewHtml) return true;

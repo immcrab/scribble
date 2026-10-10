@@ -8,7 +8,7 @@ import { EffortSelector } from "../components/EffortSelector";
 import { EmptyState } from "../components/EmptyState";
 import { ArtifactWorkspace } from "../components/ArtifactWorkspace";
 import { ChatWorkspaceSplit } from "../components/ChatWorkspaceSplit";
-import { isCodingRequest } from "../lib/codeArtifact";
+import { isCodingRequest, mergeWebsiteEdits } from "../lib/codeArtifact";
 import { useLiveArtifact, liveArtifactFor } from "../lib/useLiveArtifact";
 import { runAssistantStream } from "../lib/runStream";
 import { useAutoScroll } from "../lib/useAutoScroll";
@@ -223,8 +223,8 @@ export function SideBySideMode({
     !!liveArtifactB ||
     rounds.some((r) => !!artifactFor(r.a) || !!artifactFor(r.b));
 
-  const lastArtifactA = liveArtifactA ?? artifactFor(lastRound?.a);
-  const lastArtifactB = liveArtifactB ?? artifactFor(lastRound?.b);
+  const lastArtifactA = liveArtifactA ?? mergeWebsiteEdits(rounds.map((r) => artifactFor(r.a)).filter((a): a is NonNullable<typeof a> => !!a));
+  const lastArtifactB = liveArtifactB ?? mergeWebsiteEdits(rounds.map((r) => artifactFor(r.b)).filter((a): a is NonNullable<typeof a> => !!a));
 
   return (
     <div className="flex h-full flex-col">
@@ -312,6 +312,7 @@ export function SideBySideMode({
         }
         workspace={
           <ArtifactWorkspace
+            siteId={chat.id}
             panes={[
               { key: "a", label: modelA?.displayName ?? "Model A", model: modelA, artifact: lastArtifactA, streaming: !!lastRound?.a?.streaming },
               { key: "b", label: modelB?.displayName ?? "Model B", model: modelB, artifact: lastArtifactB, streaming: !!lastRound?.b?.streaming },
