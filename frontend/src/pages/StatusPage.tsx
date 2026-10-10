@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
-import { onValue, ref } from "firebase/database";
-import { Activity, ArrowLeft, Cpu, MessageSquare, Sigma, Zap } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { limitToLast, onValue, orderByChild, query, ref } from "firebase/database";
+import { Activity, ArrowLeft, CheckCircle2, Cpu, MessageSquare, Radio, Sigma, Zap } from "lucide-react";
 import { getRtdb } from "../lib/firebase";
-import { monthKey } from "../lib/modelStats";
-import { formatCount, lastDays, rankModels, type Counter, type SiteStats } from "../lib/statusSummary";
+import { monthKey, type RecentRequest } from "../lib/modelStats";
+import { formatCount, lastDays, rankModels, timeAgo, type Counter, type SiteStats } from "../lib/statusSummary";
 import { useCatalogStore } from "../lib/catalogSync";
 import { getAllModels, PROVIDER_LABELS } from "../config/models";
 import { modelSlug } from "../lib/modelSlug";
@@ -83,6 +83,96 @@ function useTween(target: number): number {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [target]);
   return shown;
+}
+
+const RECENT_LIMIT = 8;
+const TOP_MODELS = 5;
+
+interface RecentItem extends RecentRequest {
+  id: string;
+}
+
+/** The newest few ticker entries, newest first. `null` until the first snapshot lands. */
+function useRecentRequests(): RecentItem[] | null {
+  const [items, setItems] = useState<RecentItem[] | null>(null);
+  useEffect(() => {
+    const db = getRtdb();
+    if (!db) return;
+    return onValue(
+      query(ref(db, "stats/recent"), orderByChild("t"), limitToLast(RECENT_LIMIT)),
+      (snap) => {
+        const next: RecentItem[] = [];
+        snap.forEach((child) => {
+          const v = child.val() as RecentRequest | null;
+          if (v && typeof v.m === "string" && typeof v.t === "number") next.push({ ...v, id: `${child.key}-${v.t}` });
+        });
+        setItems(next.sort((a, b) => b.t - a.t));
+      },
+      () => setItems([])
+    );
+  }, []);
+  return items;
+}
+
+/** A live ticker: each new request pops in at the top as it happens. */
+function RecentRequests({ items, bySlug }: { items: RecentItem[] | null; bySlug: Map<string, ModelDef> }) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  // Rows present on the first snapshot just appear; only ones that arrive afterwards animate.
+  const seen = useRef<Set<string> | null>(null);
+  const fresh = new Set<string>();
+  if (items && seen.current) for (const it of items) if (!seen.current.has(it.id)) fresh.add(it.id);
+  useEffect(() => {
+    if (!items) return;
+    seen.current ??= new Set();
+    for (const it of items) seen.current.add(it.id);
+  }, [items]);
+
+  const rows = (items ?? []).filter((it) => bySlug.has(it.m));
+
+  return (
+    <div className="rounded-xl border border-base-700/60 bg-base-900/40">
+      <style>{`@keyframes status-pop{from{opacity:0;transform:translateY(-10px) scale(.98);background:rgb(var(--accent-500)/.18)}to{opacity:1;transform:none;background:transparent}}.status-pop{animation:status-pop .6s ease-out}@media (prefers-reduced-motion:reduce){.status-pop{animation:none}}.motion-reduce-force .status-pop{animation:none}`}</style>
+      {items === null ? (
+        <p className="px-4 py-6 text-center text-sm text-slate-500">Loading…</p>
+      ) : rows.length === 0 ? (
+        <p className="px-4 py-6 text-center text-sm text-slate-500">Waiting for the next request…</p>
+      ) : (
+        <ul className="divide-y divide-base-700/50">
+          {rows.map((it) => {
+            const model = bySlug.get(it.m)!;
+            const live = now - it.t < 15_000;
+            return (
+              <li key={it.id} className={`flex items-center gap-3 px-3 py-2.5 ${fresh.has(it.id) ? "status-pop" : ""}`}>
+                <ModelFavicon model={model} size={20} />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-white">{model.displayName}</p>
+                  <p className="truncate text-[11px] text-slate-500">
+                    {PROVIDER_LABELS[model.provider] ?? model.provider}
+                    {it.mode && <> · {MODE_LABELS[it.mode] ?? it.mode}</>}
+                  </p>
+                </div>
+                <div className="shrink-0 text-right">
+                  <p className={`flex items-center justify-end gap-1 text-xs ${live ? "text-emerald-300" : "text-slate-400"}`}>
+                    {live ? <Radio size={12} className="animate-pulse" /> : <CheckCircle2 size={12} />}
+                    {live ? "Just answered" : "Completed"}
+                  </p>
+                  <p className="text-[11px] tabular-nums text-slate-500">
+                    {it.k ? `~${formatCount(it.k)} tok · ` : ""}
+                    {timeAgo(it.t, now)}
+                  </p>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
 }
 
 function StatCard({
@@ -201,7 +291,7 @@ export function StatusPage({ onExit }: { onExit: () => void }) {
   const { stats, monthly, connection, updatedAt } = useLiveStats(month);
   const catalog = useCatalogStore((s) => s.catalog);
   const [range, setRange] = useState<Range>("all");
-  const [showAll, setShowAll] = useState(false);
+  const recent = useRecentRequests();
 
   const models = useMemo(() => getAllModels(), [catalog]);
   const bySlug = useMemo(() => new Map(models.map((m) => [modelSlug(m.modelId), m])), [models]);
@@ -215,7 +305,7 @@ export function StatusPage({ onExit }: { onExit: () => void }) {
     () => rankModels<ModelDef>(range === "all" ? stats?.models : monthly, bySlug),
     [range, stats, monthly, bySlug]
   );
-  const visible = showAll ? ranked : ranked.slice(0, 10);
+  const visible = ranked.slice(0, TOP_MODELS);
 
   const modeRows = useMemo(
     () =>
@@ -310,7 +400,8 @@ export function StatusPage({ onExit }: { onExit: () => void }) {
           />
         </section>
 
-        <section className="mt-8">
+        <div className="mt-8 grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)]">
+        <section>
           <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
             <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Most used models</h2>
             <div className="flex rounded-lg border border-base-700/60 bg-base-900/40 p-0.5 text-xs">
@@ -340,20 +431,22 @@ export function StatusPage({ onExit }: { onExit: () => void }) {
               No replies recorded {range === "month" ? "this month" : "yet"}.
             </p>
           ) : (
-            <>
-              <ol className="divide-y divide-base-700/50 overflow-hidden rounded-xl border border-base-700/60 bg-base-900/40">
-                {visible.map((row) => (
-                  <ModelRow key={row.slug} row={row} range={range} />
-                ))}
-              </ol>
-              {ranked.length > 10 && (
-                <button onClick={() => setShowAll((v) => !v)} className="mt-2 text-xs text-slate-400 hover:text-white">
-                  {showAll ? "Show top 10" : `Show all ${ranked.length} models`}
-                </button>
-              )}
-            </>
+            <ol className="divide-y divide-base-700/50 overflow-hidden rounded-xl border border-base-700/60 bg-base-900/40">
+              {visible.map((row) => (
+                <ModelRow key={row.slug} row={row} range={range} />
+              ))}
+            </ol>
           )}
         </section>
+
+        <section>
+          <h2 className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Recent requests
+            {connection === "live" && <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />}
+          </h2>
+          <RecentRequests items={recent} bySlug={bySlug} />
+        </section>
+        </div>
 
         <div className="mt-8 grid gap-6 md:grid-cols-2">
           <section>

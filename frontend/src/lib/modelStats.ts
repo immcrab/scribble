@@ -1,4 +1,4 @@
-import { get as dbGet, increment, ref, runTransaction, update } from "firebase/database";
+import { get as dbGet, increment, ref, runTransaction, set, update } from "firebase/database";
 import { getRtdb } from "./firebase";
 import { modelSlug } from "./modelSlug";
 import type { Mode, ModelDef } from "../types";
@@ -31,6 +31,31 @@ export function recordModelUsage(
   const counterRef = ref(db, `modelStats/${monthKey()}/${slug}`);
   runTransaction(counterRef, (current: number | null) => (current ?? 0) + 1).catch(() => {});
   recordSiteTotals({ slug, tokens: extra.tokens, mode: extra.mode });
+  recordRecentRequest({ slug, tokens: extra.tokens, mode: extra.mode });
+}
+
+/**
+ * Feeds the "Recent requests" ticker on /status: a 60-slot ring at stats/recent/{0..59},
+ * slot = the current second mod 60, so the newest entry replaces the oldest without any
+ * cleanup job. Holds only {model slug, mode, est. tokens, time} — no uid, no text. Kept
+ * as its own write so a rejected ticker entry can never drop the counters above.
+ */
+export interface RecentRequest {
+  m: string; // model slug
+  t: number; // epoch ms
+  k?: number; // estimated tokens
+  mode?: string;
+}
+
+function recordRecentRequest(event: { slug: string; tokens?: number; mode?: Mode }): void {
+  const db = getRtdb();
+  if (!db) return;
+  const now = Date.now();
+  const entry: RecentRequest = { m: event.slug, t: now };
+  const tokens = Math.round(event.tokens ?? 0);
+  if (tokens > 0) entry.k = tokens;
+  if (event.mode) entry.mode = event.mode;
+  set(ref(db, `stats/recent/${Math.floor(now / 1000) % 60}`), entry).catch(() => {});
 }
 
 /**

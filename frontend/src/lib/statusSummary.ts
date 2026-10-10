@@ -82,3 +82,13 @@ export function formatCount(n: number): string {
   if (n >= 10_000) return `${(n / 1000).toFixed(1)}k`;
   return Math.round(n).toLocaleString("en-US");
 }
+
+/** "just now", "42s ago", "5m ago", "3h ago" — for the live ticker. */
+export function timeAgo(then: number, now: number = Date.now()): string {
+  const sec = Math.max(0, Math.round((now - then) / 1000));
+  if (sec < 5) return "just now";
+  if (sec < 60) return `${sec}s ago`;
+  if (sec < 3600) return `${Math.floor(sec / 60)}m ago`;
+  if (sec < 86400) return `${Math.floor(sec / 3600)}h ago`;
+  return `${Math.floor(sec / 86400)}d ago`;
+}

@@ -64,6 +64,30 @@
             ".validate": "newData.isNumber() && newData.val() >= 0 && ($counter === 'replies' || $counter === 'tokens' || $counter === 'chats') && (!data.exists() ? newData.val() <= 1000000 : newData.val() >= data.val() && newData.val() <= data.val() + 1000000)"
           }
         }
+      },
+      "recent": {
+        ".indexOn": [
+          "t"
+        ],
+        "$slot": {
+          ".write": true,
+          ".validate": "$slot.matches(/^[0-9]{1,2}$/) && newData.hasChildren(['m','t']) && newData.child('m').isString() && newData.child('m').val().length <= 80 && newData.child('t').isNumber() && newData.child('t').val() <= now + 60000 && newData.child('t').val() >= now - 600000",
+          "m": {
+            ".validate": true
+          },
+          "t": {
+            ".validate": true
+          },
+          "k": {
+            ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000000"
+          },
+          "mode": {
+            ".validate": "newData.isString() && newData.val().length <= 20"
+          },
+          "$other": {
+            ".validate": false
+          }
+        }
       }
     }
   }
