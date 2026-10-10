@@ -22,16 +22,33 @@ export function monthKey(date: Date = new Date()): string {
 
 export function recordModelUsage(
   model: Pick<ModelDef, "modelId" | "provider">,
-  extra: { tokens?: number; mode?: Mode; request?: RecentHandle | null } = {}
+  extra: { tokens?: number; mode?: Mode; request?: RecentHandle | null; activity?: Activity } = {}
 ): void {
   if (model.provider === "custom") return;
   const db = getRtdb();
   if (!db) return;
   const slug = modelSlug(model.modelId);
-  const counterRef = ref(db, `modelStats/${monthKey()}/${slug}`);
-  runTransaction(counterRef, (current: number | null) => (current ?? 0) + 1).catch(() => {});
+  bumpMonthly(slug);
   recordSiteTotals({ slug, tokens: extra.tokens, mode: extra.mode });
-  finishRecentRequest({ slug, tokens: extra.tokens, mode: extra.mode, handle: extra.request });
+  finishRecentRequest({ slug, tokens: extra.tokens, mode: extra.mode, handle: extra.request, activity: extra.activity });
+}
+
+function bumpMonthly(slug: string): void {
+  const db = getRtdb();
+  if (!db) return;
+  runTransaction(ref(db, `modelStats/${monthKey()}/${slug}`), (current: number | null) => (current ?? 0) + 1).catch(() => {});
+}
+
+/** Stats keys for the non-chat modes: one per image model, and one for Text to Speech.
+ * The /status page maps these back to names (see pages/StatusPage.tsx). */
+export const imageStatsSlug = (imageModelId: string) => `image-${imageModelId}`;
+export const SPEECH_STATS_SLUG = "tts";
+
+/** Count one finished image or speech generation, same counters a chat reply feeds. */
+export function recordMediaUsage(kind: "image" | "speech", slug: string, request?: RecentHandle | null): void {
+  bumpMonthly(slug);
+  recordSiteTotals({ slug, mode: kind });
+  finishRecentRequest({ slug, mode: kind, handle: request, activity: kind });
 }
 
 /**
@@ -42,10 +59,14 @@ export function recordModelUsage(
  * finishes. Requests that fail or get stopped just stay "run" until the page hides them as
  * stale. Kept separate from the counters so a rejected ticker write can never drop them.
  */
+/** What a request is doing, shown on the ticker: "Coding…", "Searching the web…", etc. */
+export type Activity = "chat" | "code" | "search" | "tools" | "image" | "speech";
+
 export interface RecentRequest {
   m: string; // model slug
   t: number; // epoch ms the request was sent
   s?: "run" | "done";
+  a?: Activity;
   k?: number; // estimated tokens
   mode?: string;
 }
@@ -57,24 +78,51 @@ export interface RecentHandle {
 }
 
 /** Call when a request is sent. Returns a handle to pass to recordModelUsage when it completes. */
-export function beginRecentRequest(model: Pick<ModelDef, "modelId" | "provider">, mode?: Mode): RecentHandle | null {
+export function beginRecentRequest(
+  model: Pick<ModelDef, "modelId" | "provider">,
+  mode?: Mode,
+  activity: Activity = "chat"
+): RecentHandle | null {
   if (model.provider === "custom") return null;
+  return beginRecentBySlug(modelSlug(model.modelId), mode, activity);
+}
+
+export function beginRecentBySlug(slug: string, mode?: Mode, activity: Activity = "chat"): RecentHandle | null {
   const db = getRtdb();
   if (!db) return null;
   const t = Date.now();
   const slot = Math.floor(t / 1000) % 60;
-  const entry: RecentRequest = { m: modelSlug(model.modelId), t, s: "run" };
+  const entry: RecentRequest = { m: slug, t, s: "run", a: activity };
   if (mode) entry.mode = mode;
   set(ref(db, `stats/recent/${slot}`), entry).catch(() => {});
   return { slot, t, entry };
 }
 
-function finishRecentRequest(event: { slug: string; tokens?: number; mode?: Mode; handle?: RecentHandle | null }): void {
+/** Change what a still-running request says it is doing (e.g. chat -> coding once a code
+ * block starts streaming). Only touches our own entry. */
+export function setRecentActivity(handle: RecentHandle | null | undefined, activity: Activity): void {
+  const db = getRtdb();
+  if (!db || !handle) return;
+  handle.entry = { ...handle.entry, a: activity };
+  runTransaction(ref(db, `stats/recent/${handle.slot}`), (cur: RecentRequest | null) => {
+    if (cur === null) return handle.entry;
+    return cur.t === handle.t && cur.s !== "done" ? { ...cur, a: activity } : undefined;
+  }).catch(() => {});
+}
+
+function finishRecentRequest(event: {
+  slug: string;
+  tokens?: number;
+  mode?: Mode | "image" | "speech";
+  handle?: RecentHandle | null;
+  activity?: Activity;
+}): void {
   const db = getRtdb();
   if (!db) return;
   const tokens = Math.round(event.tokens ?? 0);
   const patch = (base: RecentRequest): RecentRequest => {
     const next: RecentRequest = { ...base, s: "done" };
+    if (event.activity) next.a = event.activity;
     if (tokens > 0) next.k = tokens;
     return next;
   };
@@ -112,7 +160,7 @@ function dayKey(date: Date = new Date()): string {
   return `${monthKey(date)}-${String(date.getUTCDate()).padStart(2, "0")}`;
 }
 
-function recordSiteTotals(event: { slug?: string; tokens?: number; mode?: Mode; chats?: number }): void {
+function recordSiteTotals(event: { slug?: string; tokens?: number; mode?: Mode | "image" | "speech"; chats?: number }): void {
   const db = getRtdb();
   if (!db) return;
   const day = dayKey();

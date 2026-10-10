@@ -15,6 +15,7 @@ import {
   type Voice,
 } from "../lib/speechClient";
 import { recordSpeechUsage, mediaUsageGate } from "../lib/usage";
+import { beginRecentBySlug, recordMediaUsage, SPEECH_STATS_SLUG } from "../lib/modelStats";
 import { auth } from "../lib/firebase";
 import { isLocalDev } from "../lib/devMode";
 import { useAutoScroll } from "../lib/useAutoScroll";
@@ -437,6 +438,7 @@ export function SpeechMode({
       return;
     }
 
+    const statsRequest = beginRecentBySlug(SPEECH_STATS_SLUG, "speech", "speech");
     try {
       const spokenText = applyPronunciations(trimmed, pronunciations);
       const dataUrl = await generateSpeech({
@@ -449,6 +451,7 @@ export function SpeechMode({
       });
       const words = spokenText.split(/\s+/).filter(Boolean).length;
       recordSpeechUsage(words, await audioDurationSeconds(dataUrl));
+      recordMediaUsage("speech", SPEECH_STATS_SLUG, statsRequest);
       rememberVoice(voice);
       updateMessage(chat.id, assistantMsg.id, {
         streaming: false,

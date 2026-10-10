@@ -4,7 +4,7 @@ import { useChatStore } from "../state/chatStore";
 import { isModelGated, getDefaultModel } from "../config/models";
 import { auth } from "./firebase";
 import { useAuthStore } from "../state/authStore";
-import { beginRecentRequest, recordModelUsage } from "./modelStats";
+import { beginRecentRequest, recordModelUsage, setRecentActivity, type Activity } from "./modelStats";
 import { recordCreditUsage, usageGate } from "./usage";
 import { estimateTokenCount } from "./tokenCount";
 import { getClientContext } from "./clientContext";
@@ -12,6 +12,11 @@ import { playNotificationSound } from "./notificationSound";
 import { notifyReplyFinished } from "./desktopNotifications";
 import { acquireRequestSlot } from "./requestQueue";
 import { replyPromisedCodeButHasNone } from "./codeArtifact";
+
+/** Asks that are almost certainly "write me some code", used to label the live ticker before
+ * the first token arrives (the reply itself corrects it once a code block shows up). */
+const CODING_ASK_RE =
+  /(code|coding|function|script|html|css|javascript|typescript|python|react|website|web ?site|landing page|webapp|web app|game|bug|debug|refactor|regex|sql|api|component|program)/i;
 
 /** An upstream failure worth riding out rather than surfacing: rate limits, per-minute or
  * per-day usage/quota caps, transient overload, network blips, and empty responses. Matched
@@ -129,7 +134,15 @@ export async function runAssistantStream(params: {
   store.registerAbort(messageId, controller);
   // Show the request on /status the moment it's sent; recordModelUsage flips it to done.
   // Continuations of a reply that already announced itself don't announce again.
-  const request = appendToExisting ? null : beginRecentRequest(model, store.chats.find((c) => c.id === chatId)?.mode);
+  const lastAsk = [...history].reverse().find((m) => m.role === "user")?.content ?? "";
+  let activity: Activity = webSearch || forceWebSearch ? "search" : CODING_ASK_RE.test(lastAsk) ? "code" : "chat";
+  const request = appendToExisting ? null : beginRecentRequest(model, store.chats.find((c) => c.id === chatId)?.mode, activity);
+  /** Re-label the ticker entry when the reply reveals what it is really doing. */
+  const noteActivity = (next: Activity) => {
+    if (next === activity) return;
+    activity = next;
+    setRecentActivity(request, next);
+  };
 
   const customProvider =
     model.provider === "custom"
@@ -255,6 +268,8 @@ export async function runAssistantStream(params: {
           }
           if (chunk.type === "toolCall") {
             sawOutput = true;
+            if (/search/i.test(chunk.toolCall.name)) noteActivity("search");
+            else if (!/memory/i.test(chunk.toolCall.name) && activity === "chat") noteActivity("tools");
             const current = useChatStore.getState().chats.find((c) => c.id === chatId)?.messages.find((m) => m.id === messageId);
             const existing = current?.toolCalls ?? [];
             const next = existing.some((t) => t.id === chunk.toolCall.id)
@@ -273,6 +288,8 @@ export async function runAssistantStream(params: {
           sawOutput = true;
           if (attempt > 0) clearNotice();
           useChatStore.getState().appendMessageContent(chatId, messageId, chunk.text);
+          // First code fence in the reply = the model is writing code.
+          if (activity !== "code" && chunk.text.includes("```")) noteActivity("code");
         }
 
         // Some providers (notably Claude models proxied through xKiro) drop the stream
@@ -291,7 +308,13 @@ export async function runAssistantStream(params: {
         const finalMsg = finalChat?.messages.find((m) => m.id === messageId);
         const promptTokens = history.reduce((n, m) => n + estimateTokenCount(m.content ?? ""), 0);
         const replyTokens = estimateTokenCount(finalMsg?.content ?? "") + estimateTokenCount(finalMsg?.reasoning ?? "");
-        recordModelUsage(model, { tokens: promptTokens + replyTokens, mode: finalChat?.mode, request });
+        const wroteCode = (finalMsg?.content ?? "").includes("```");
+        recordModelUsage(model, {
+          tokens: promptTokens + replyTokens,
+          mode: finalChat?.mode,
+          request,
+          activity: wroteCode ? "code" : activity,
+        });
         recordCreditUsage(model, promptTokens + replyTokens);
 
         // Auto-continue: reply hit the output-token limit — resume it in place, same shape as

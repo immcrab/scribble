@@ -36,6 +36,7 @@ import { IMAGE_STYLES, findImageStyle, applyImageStyle } from "../config/imageSt
 import { recordImageUsage, mediaUsageGate } from "../lib/usage";
 import { useAuthStore } from "../state/authStore";
 import { storageFullReason } from "../lib/storageQuota";
+import { beginRecentBySlug, imageStatsSlug, recordMediaUsage } from "../lib/modelStats";
 import { isLocalDev } from "../lib/devMode";
 import { useAutoScroll } from "../lib/useAutoScroll";
 import { uid } from "../lib/id";
@@ -210,6 +211,8 @@ export function ImageMode({
       return;
     }
 
+    const statsSlug = imageStatsSlug((editingSource ? EDIT_IMAGE_MODEL : imageModel).id);
+    const statsRequest = beginRecentBySlug(statsSlug, "image", "image");
     try {
       const canvas = opts.size && imageModel.provider === "cloudflare" ? CLOUDFLARE_SIZES[aspectRatio.id] : undefined;
       const rawUrl = editingSource
@@ -237,6 +240,7 @@ export function ImageMode({
       const wm = watermarkConfig();
       const dataUrl = wm.enabled ? await watermarkImage(rawUrl, wm) : rawUrl;
       recordImageUsage(editingSource ? EDIT_IMAGE_MODEL.billing : imageModel.billing);
+      recordMediaUsage("image", statsSlug, statsRequest);
       // updateMessage mirrors the generated attachment into the signed-in
       // user's private storage without delaying the result.
       updateMessage(chat.id, assistantMsg.id, {

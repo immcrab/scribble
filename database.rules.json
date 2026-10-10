@@ -89,6 +89,9 @@
           },
           "s": {
             ".validate": "newData.isString() && (newData.val() === 'run' || newData.val() === 'done')"
+          },
+          "a": {
+            ".validate": "newData.isString() && newData.val().matches(/^(chat|code|search|tools|image|speech)$/)"
           }
         }
       }

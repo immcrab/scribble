@@ -1,5 +1,10 @@
 [
   {
+    "date": "2026-10-10",
+    "title": "Status page covers images and speech, with live activity",
+    "summary": "Image generations and text to speech now count on the Status page, and the live Recent requests feed shows what each request is doing, such as coding, searching the web or generating an image."
+  },
+  {
     "date": "2026-10-09",
     "title": "Live status page",
     "summary": "A new Status page shows how many chats have been saved, total tokens processed, and the most used models, updating in real time."

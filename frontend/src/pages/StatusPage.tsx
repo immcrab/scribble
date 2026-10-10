@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { limitToLast, onValue, orderByChild, query, ref } from "firebase/database";
-import { Activity, ArrowLeft, CheckCircle2, Cpu, Loader2, MessageSquare, Radio, Sigma, Zap } from "lucide-react";
+import { Activity, ArrowLeft, AudioLines, CheckCircle2, Code2, Cpu, Image as ImageIcon, Loader2, MessageSquare, Radio, Search, Sigma, Wrench, Zap } from "lucide-react";
 import { getRtdb } from "../lib/firebase";
-import { monthKey, type RecentRequest } from "../lib/modelStats";
+import { imageStatsSlug, monthKey, SPEECH_STATS_SLUG, type Activity as ActivityKind, type RecentRequest } from "../lib/modelStats";
 import { formatCount, lastDays, rankModels, timeAgo, type Counter, type SiteStats } from "../lib/statusSummary";
 import { useCatalogStore } from "../lib/catalogSync";
 import { getAllModels, PROVIDER_LABELS } from "../config/models";
+import { EDIT_IMAGE_MODEL, IMAGE_MODELS } from "../config/imageModels";
 import { modelSlug } from "../lib/modelSlug";
 import { ModelFavicon } from "../components/ProviderIcon";
 import { LogoMark } from "../components/Logo";
@@ -18,6 +19,31 @@ const MODE_LABELS: Record<string, string> = {
   "side-by-side": "Side by Side",
   image: "Image",
   speech: "Text to Speech",
+};
+
+/** Anything that can appear in the rankings or the ticker: a chat model, an image model, or
+ * Text to Speech. */
+interface Listed {
+  displayName: string;
+  providerLabel: string;
+  model?: ModelDef;
+  kind?: "image" | "speech";
+}
+
+function ListedIcon({ item, size }: { item: Listed; size: number }) {
+  if (item.model) return <ModelFavicon model={item.model} size={size} />;
+  const Icon = item.kind === "speech" ? AudioLines : ImageIcon;
+  return <Icon size={size} className="shrink-0 text-slate-400" />;
+}
+
+/** Ticker wording per activity: what it's doing now, what it did, and its icon. */
+const ACTIVITY: Record<ActivityKind, { doing: string; did: string; Icon: typeof Search }> = {
+  chat: { doing: "Answering…", did: "Answered", Icon: MessageSquare },
+  code: { doing: "Coding…", did: "Wrote code", Icon: Code2 },
+  search: { doing: "Searching the web…", did: "Searched the web", Icon: Search },
+  tools: { doing: "Using tools…", did: "Used tools", Icon: Wrench },
+  image: { doing: "Generating an image…", did: "Generated an image", Icon: ImageIcon },
+  speech: { doing: "Generating speech…", did: "Generated speech", Icon: AudioLines },
 };
 
 type Connection = "connecting" | "live" | "offline";
@@ -116,7 +142,7 @@ function useRecentRequests(): RecentItem[] | null {
 }
 
 /** A live ticker: each new request pops in at the top as it happens. */
-function RecentRequests({ items, bySlug }: { items: RecentItem[] | null; bySlug: Map<string, ModelDef> }) {
+function RecentRequests({ items, bySlug }: { items: RecentItem[] | null; bySlug: Map<string, Listed> }) {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 1000);
@@ -149,20 +175,22 @@ function RecentRequests({ items, bySlug }: { items: RecentItem[] | null; bySlug:
             const model = bySlug.get(it.m)!;
             const running = it.s === "run";
             const live = !running && now - it.t < 15_000;
+            const act = ACTIVITY[it.a ?? "chat"] ?? ACTIVITY.chat;
             return (
               <li key={it.id} className={`flex items-center gap-3 px-3 py-2.5 ${fresh.has(it.id) ? "status-pop" : ""}`}>
-                <ModelFavicon model={model} size={20} />
+                <ListedIcon item={model} size={20} />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium text-white">{model.displayName}</p>
                   <p className="truncate text-[11px] text-slate-500">
-                    {PROVIDER_LABELS[model.provider] ?? model.provider}
+                    {model.providerLabel}
                     {it.mode && <> · {MODE_LABELS[it.mode] ?? it.mode}</>}
                   </p>
                 </div>
                 <div className="shrink-0 text-right">
                   <p className={`flex items-center justify-end gap-1 text-xs ${running ? "text-amber-300" : live ? "text-emerald-300" : "text-slate-400"}`}>
                     {running ? <Loader2 size={12} className="animate-spin" /> : live ? <Radio size={12} className="animate-pulse" /> : <CheckCircle2 size={12} />}
-                    {running ? "Answering…" : live ? "Just answered" : "Completed"}
+                    <act.Icon size={12} className="opacity-70" />
+                    {running ? act.doing : act.did}
                   </p>
                   <p className="text-[11px] tabular-nums text-slate-500">
                     {!running && it.k ? `~${formatCount(it.k)} tok · ` : ""}
@@ -262,13 +290,13 @@ function DailyChart({ days }: { days: ReturnType<typeof lastDays> }) {
   );
 }
 
-function ModelRow({ row, range }: { row: ReturnType<typeof rankModels<ModelDef>>[number]; range: Range }) {
+function ModelRow({ row, range }: { row: ReturnType<typeof rankModels<Listed>>[number]; range: Range }) {
   return (
     <li className="flex items-center gap-3 px-3 py-2.5">
       <span className={`w-6 shrink-0 text-center text-sm font-semibold tabular-nums ${row.rank <= 3 ? "text-accent-400" : "text-slate-500"}`}>
         {row.rank}
       </span>
-      <ModelFavicon model={row.model} size={20} />
+      <ListedIcon item={row.model} size={20} />
       <div className="min-w-0 flex-1">
         <div className="flex items-baseline justify-between gap-2">
           <p className="truncate text-sm font-medium text-white">{row.model.displayName}</p>
@@ -281,7 +309,7 @@ function ModelRow({ row, range }: { row: ReturnType<typeof rankModels<ModelDef>>
           <span className="w-9 shrink-0 text-right text-[11px] tabular-nums text-slate-500">{(row.share * 100).toFixed(row.share < 0.1 ? 1 : 0)}%</span>
         </div>
         <p className="mt-0.5 truncate text-[11px] text-slate-500">
-          {PROVIDER_LABELS[row.model.provider] ?? row.model.provider}
+          {row.model.providerLabel}
           {range === "all" && row.tokens > 0 && <> · {formatCount(row.tokens)} tokens</>}
         </p>
       </div>
@@ -297,7 +325,20 @@ export function StatusPage({ onExit }: { onExit: () => void }) {
   const recent = useRecentRequests();
 
   const models = useMemo(() => getAllModels(), [catalog]);
-  const bySlug = useMemo(() => new Map(models.map((m) => [modelSlug(m.modelId), m])), [models]);
+  const bySlug = useMemo(() => {
+    const map = new Map<string, Listed>(
+      models.map((m) => [modelSlug(m.modelId), { displayName: m.displayName, providerLabel: PROVIDER_LABELS[m.provider] ?? m.provider, model: m }])
+    );
+    for (const m of [...IMAGE_MODELS, EDIT_IMAGE_MODEL]) {
+      map.set(imageStatsSlug(m.id), {
+        displayName: m.displayName,
+        providerLabel: m.provider === "xkiro" ? PROVIDER_LABELS.xkiro : "Cloudflare",
+        kind: "image",
+      });
+    }
+    map.set(SPEECH_STATS_SLUG, { displayName: "Text to Speech", providerLabel: PROVIDER_LABELS.xkiro, kind: "speech" });
+    return map;
+  }, [models]);
 
   const loading = stats === null;
   const totals: Counter = stats?.totals ?? {};
@@ -305,7 +346,7 @@ export function StatusPage({ onExit }: { onExit: () => void }) {
   const today = days14[days14.length - 1];
 
   const ranked = useMemo(
-    () => rankModels<ModelDef>(range === "all" ? stats?.models : monthly, bySlug),
+    () => rankModels<Listed>(range === "all" ? stats?.models : monthly, bySlug),
     [range, stats, monthly, bySlug]
   );
   const visible = ranked.slice(0, TOP_MODELS);
@@ -321,8 +362,8 @@ export function StatusPage({ onExit }: { onExit: () => void }) {
 
   const providerRows = useMemo(() => {
     const byProvider = new Map<string, number>();
-    for (const r of rankModels<ModelDef>(stats?.models, bySlug)) {
-      const label = PROVIDER_LABELS[r.model.provider] ?? r.model.provider;
+    for (const r of rankModels<Listed>(stats?.models, bySlug)) {
+      const label = r.model.providerLabel;
       byProvider.set(label, (byProvider.get(label) ?? 0) + r.replies);
     }
     return [...byProvider.entries()].map(([label, value]) => ({ key: label, label, value })).sort((a, b) => b.value - a.value).slice(0, 8);
