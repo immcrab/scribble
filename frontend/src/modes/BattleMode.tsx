@@ -175,7 +175,7 @@ export function BattleMode({
                 <EmptyState mode="battle" heading="Battle two anonymous models" onPick={(p) => send(p, [])} />
               </div>
             ) : (
-              <div className="flex-1 overflow-y-auto px-4 py-5 sm:px-8" ref={chatEndRef}>
+              <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-5 sm:px-8" ref={chatEndRef}>
                 <div className={`mx-auto flex flex-col gap-6 ${hasWorkspace ? "" : "max-w-5xl"}`}>
                   {rounds.map((round, i) => {
                     const isLast = i === rounds.length - 1;

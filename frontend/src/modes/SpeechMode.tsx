@@ -575,7 +575,7 @@ export function SpeechMode({
           </div>
         </div>
       ) : (
-        <div className="flex-1 overflow-y-auto px-4 py-5 sm:px-8" ref={chatEndRef}>
+        <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-5 sm:px-8" ref={chatEndRef}>
           <div className="mx-auto flex max-w-3xl flex-col gap-5">
             {chat.messages.map((m) =>
               m.role === "assistant" && m.streaming && !m.error ? (

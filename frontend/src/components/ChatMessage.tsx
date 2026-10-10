@@ -136,7 +136,7 @@ function SearchResultList({ toolCalls }: { toolCalls: ToolCallRecord[] }) {
   if (!searches.length) return null;
 
   return (
-    <div className="mb-2 overflow-hidden rounded-xl border border-base-700/60 bg-base-900/50">
+    <div className="mb-2 w-full max-w-full overflow-hidden rounded-xl border border-base-700/60 bg-base-900/50">
       {searches.map((search) => (
         <div key={search.id}>
           <div className="border-b border-base-700/60 px-3 py-2 text-xs font-medium text-slate-400">Web results</div>
@@ -173,7 +173,7 @@ function ConnectedAppArtifactList({ toolCalls }: { toolCalls: ToolCallRecord[] }
   return (
     <>
       {presentations.map((artifact) => <GoogleSlidesPreview key={`preview:${artifact.tool}:${artifact.url}`} url={artifact.url} label={artifact.label} />)}
-      <div className="mb-2 overflow-hidden rounded-xl border border-accent-500/30 bg-accent-500/5">
+      <div className="mb-2 w-full max-w-full overflow-hidden rounded-xl border border-accent-500/30 bg-accent-500/5">
         <div className="border-b border-accent-500/20 px-3 py-2 text-xs font-medium text-accent-200">Created with a connected app</div>
         <div className="space-y-1 p-1.5">
           {artifacts.map((artifact) => (
@@ -204,7 +204,7 @@ function ToolActivity({ toolCalls, messageId }: { toolCalls: ToolCallRecord[]; m
       <SearchResultList toolCalls={toolCalls} />
       <ConnectedAppArtifactList toolCalls={toolCalls} />
       {listed.length > 0 && (
-        <div className="mb-2 overflow-hidden rounded-xl border border-base-700/60 bg-base-900/50">
+        <div className="mb-2 w-full max-w-full overflow-hidden rounded-xl border border-base-700/60 bg-base-900/50">
           <button
             onClick={() => setOpen((o) => !o)}
             className="flex w-full items-center gap-1.5 px-3 py-2 text-left text-xs font-medium text-slate-400 hover:text-slate-200"
@@ -312,7 +312,7 @@ function ThinkingBlock({ message, suppressPrelude }: { message: ChatMessageType;
   }
 
   return (
-    <div className="mb-2 overflow-hidden rounded-xl border border-base-700/60 bg-base-900/50">
+    <div className="mb-2 w-full max-w-full overflow-hidden rounded-xl border border-base-700/60 bg-base-900/50">
       <button
         onClick={() => setExpanded((o) => !o)}
         className="flex w-full items-center gap-1.5 px-3 py-2 text-left text-xs font-medium text-slate-400 hover:text-slate-200"

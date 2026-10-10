@@ -273,7 +273,7 @@ export function AgentMode({
                 </div>
               </div>
             ) : (
-              <div className="flex-1 overflow-y-auto px-4 py-5 sm:px-8" ref={chatEndRef}>
+              <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-5 sm:px-8" ref={chatEndRef}>
                 <div className={`mx-auto flex flex-col gap-5 ${hasWorkspace ? "" : "max-w-3xl"}`}>
                   {chat.messages.map((m, idx) => (
                     <ChatMessage
