@@ -432,7 +432,7 @@ export function ChatMessage({
           isUser
             ? "bg-base-700 text-slate-300"
             : "border border-base-700/60 bg-base-900/90 shadow-sm"
-        } ${!isUser && message.streaming ? "animate-avatar-glow shadow-glow border-accent-500/60" : ""}`}
+        } ${!isUser && message.streaming ? "border-accent-500/60" : ""}`}
       >
         {isUser ? (
           <User size={14} />

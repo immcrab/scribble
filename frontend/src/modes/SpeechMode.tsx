@@ -580,7 +580,7 @@ export function SpeechMode({
             {chat.messages.map((m) =>
               m.role === "assistant" && m.streaming && !m.error ? (
                 <div key={m.id} className="flex animate-fade-in-up gap-3">
-                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-accent-500/60 bg-base-900/90 shadow-glow">
+                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-accent-500/60 bg-base-900/90">
                     <AudioLines size={14} className="text-accent-400" />
                   </div>
                   <SpeechGeneratingLoader startedAt={m.thinkingStartedAt} />

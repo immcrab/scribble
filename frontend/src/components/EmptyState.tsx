@@ -80,7 +80,7 @@ export function EmptyState({ heading, mode = "direct", onPick }: { heading?: str
             key={s.label}
             onClick={() => onPick(s.prompt)}
             style={{ animationDelay: `${120 + i * 50}ms` }}
-            className={`group flex animate-fade-in-up items-start gap-3 rounded-xl border border-base-700/60 bg-base-850/50 p-3.5 text-left transition-all duration-200 hover:-translate-y-0.5 hover:border-accent-500/50 hover:bg-base-800/70 hover:shadow-glow active:translate-y-0 active:scale-[0.98] ${
+            className={`group flex animate-fade-in-up items-start gap-3 rounded-xl border border-base-700/60 bg-base-850/50 p-3.5 text-left transition-all duration-200 hover:-translate-y-0.5 hover:border-accent-500/50 hover:bg-base-800/70active:translate-y-0 active:scale-[0.98] ${
               odd && i === suggestions.length - 1 ? "sm:col-span-2 sm:mx-auto sm:w-[calc(50%-0.3125rem)]" : ""
             }`}
           >

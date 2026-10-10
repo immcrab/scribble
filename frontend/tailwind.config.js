@@ -44,7 +44,6 @@ export default {
         // Layered, theme-aware elevation. --shadow-rgb flips between the dark and
         // light palettes (src/styles/index.css) so light mode gets soft warm shadows
         // instead of heavy black ones.
-        glow: "0 0 0 1px rgb(var(--accent-500) / 0.14), 0 8px 28px -10px rgb(var(--accent-500) / 0.3)",
         panel: "0 1px 2px rgb(var(--shadow-rgb) / 0.16), 0 12px 32px -10px rgb(var(--shadow-rgb) / 0.42)",
         lift: "0 2px 4px rgb(var(--shadow-rgb) / 0.14), 0 14px 28px -12px rgb(var(--shadow-rgb) / 0.4)",
         pop: "0 2px 6px rgb(var(--shadow-rgb) / 0.2), 0 24px 56px -14px rgb(var(--shadow-rgb) / 0.55)",
@@ -82,12 +81,6 @@ export default {
           "0%, 100%": { opacity: 0.25, transform: "scale(0.85)" },
           "50%": { opacity: 1, transform: "scale(1.1)" },
         },
-        // A soft ripple/glow that radiates from the assistant avatar while a
-        // turn is streaming, signalling "alive" at a glance.
-        "avatar-glow": {
-          "0%, 100%": { boxShadow: "0 0 0 0px rgba(245,240,235,0)" },
-          "50%": { boxShadow: "0 0 0 6px rgba(245,240,235,0.1)" },
-        },
         // Menu / popover entrance: small rise + scale from the trigger side.
         "menu-in": {
           "0%": { opacity: 0, transform: "translateY(-4px) scale(0.97)" },
@@ -111,11 +104,6 @@ export default {
         "slide-in-right": {
           "0%": { opacity: 0, transform: "translateX(12px)" },
           "100%": { opacity: 1, transform: "translateX(0)" },
-        },
-        // Expanding soft ring — "listening / playing" affordance.
-        "ring-pulse": {
-          "0%": { boxShadow: "0 0 0 0 rgb(var(--accent-500) / 0.35)" },
-          "100%": { boxShadow: "0 0 0 10px rgb(var(--accent-500) / 0)" },
         },
         // Solid-color breathing used instead of a gradient sweep for skeletons/labels.
         breathe: {
@@ -174,7 +162,6 @@ export default {
         "sheet-in": "sheet-in 0.28s cubic-bezier(0.16, 1, 0.3, 1) backwards",
         "pop-in": "pop-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) backwards",
         "slide-in-right": "slide-in-right 0.32s cubic-bezier(0.16, 1, 0.3, 1) backwards",
-        "ring-pulse": "ring-pulse 1.6s ease-out infinite",
         breathe: "breathe 1.8s ease-in-out infinite",
         "fade-in": "fade-in 0.2s ease-out",
         "pop-up": "pop-up 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)",
@@ -183,7 +170,6 @@ export default {
         "pulse-dot-a": "pulse-dot 1.4s ease-in-out 0ms infinite",
         "pulse-dot-b": "pulse-dot 1.4s ease-in-out 220ms infinite",
         "pulse-dot-c": "pulse-dot 1.4s ease-in-out 440ms infinite",
-        "avatar-glow": "avatar-glow 2.2s ease-in-out infinite",
         shimmer: "shimmer 1.8s linear infinite",
         "thinking-shimmer": "thinking-shimmer 2.2s ease-in-out infinite",
         "image-reveal": "image-reveal 0.7s cubic-bezier(0.16, 1, 0.3, 1) backwards",

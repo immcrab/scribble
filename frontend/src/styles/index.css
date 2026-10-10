@@ -408,7 +408,7 @@ select {
   }
 }
 
-/* Breathing, gently glowing cursor that latches onto the tail of streamed
+/* Breathing cursor that latches onto the tail of streamed
    content. Feels alive but calm — no harsh on/off flicker. */
 .stream-cursor::after {
   content: "▍";
@@ -417,7 +417,6 @@ select {
   color: rgb(var(--accent-400));
   opacity: 0.9;
   animation: cursor-breathe 1.2s ease-in-out infinite;
-  filter: drop-shadow(0 0 3px rgb(var(--accent-400)));
   animation-delay: 0ms;
 }
 
@@ -641,10 +640,6 @@ select {
     opacity: 1;
   }
 }
-@keyframes ring-pulse {
-  0% { box-shadow: 0 0 0 0 rgb(var(--accent-500) / 0.35), inset 0 1px rgb(255 255 255 / 0.06); }
-  100% { box-shadow: 0 0 0 14px rgb(var(--accent-500) / 0), inset 0 1px rgb(255 255 255 / 0.06); }
-}
 @keyframes breathe {
   0%, 100% { opacity: 0.55; }
   50% { opacity: 1; }
@@ -710,7 +705,7 @@ select {
   color: rgb(var(--accent-400));
   background: rgb(var(--base-850));
   box-shadow: inset 0 1px rgb(255 255 255 / 0.06), 0 10px 30px -10px rgb(var(--shadow-rgb) / 0.5);
-  animation: studio-float 4s ease-in-out infinite, ring-pulse 2.4s ease-out infinite;
+  animation: studio-float 4s ease-in-out infinite;
 }
 .image-composer {
   transition: border-color var(--dur-base) var(--ease-out), box-shadow var(--dur-base) var(--ease-out);
@@ -718,7 +713,6 @@ select {
 }
 .image-composer:focus-within {
   border-color: rgb(var(--accent-500) / 0.62);
-  box-shadow: 0 0 0 3px rgb(var(--accent-500) / 0.11), 0 12px 38px -12px rgb(var(--shadow-rgb) / 0.3);
 }
 
 /* Search cards show xKiro's result thumbnails in the chat itself. They are a

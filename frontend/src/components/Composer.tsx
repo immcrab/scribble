@@ -248,7 +248,7 @@ export function Composer({
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
-      className={`relative rounded-2xl border bg-base-800/70 shadow-panel backdrop-blur-xl transition-all focus-within:border-accent-500/60 focus-within:shadow-glow ${
+      className={`relative rounded-2xl border bg-base-800/70 shadow-panel backdrop-blur-xl transition-all focus-within:border-accent-500/60${
         isDragging ? "border-accent-500 bg-accent-500/10" : "border-base-600/60"
       }`}
     >
