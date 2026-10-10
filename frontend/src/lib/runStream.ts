@@ -4,7 +4,7 @@ import { useChatStore } from "../state/chatStore";
 import { isModelGated, getDefaultModel } from "../config/models";
 import { auth } from "./firebase";
 import { useAuthStore } from "../state/authStore";
-import { recordModelUsage } from "./modelStats";
+import { beginRecentRequest, recordModelUsage } from "./modelStats";
 import { recordCreditUsage, usageGate } from "./usage";
 import { estimateTokenCount } from "./tokenCount";
 import { getClientContext } from "./clientContext";
@@ -127,6 +127,9 @@ export async function runAssistantStream(params: {
 
   const controller = new AbortController();
   store.registerAbort(messageId, controller);
+  // Show the request on /status the moment it's sent; recordModelUsage flips it to done.
+  // Continuations of a reply that already announced itself don't announce again.
+  const request = appendToExisting ? null : beginRecentRequest(model, store.chats.find((c) => c.id === chatId)?.mode);
 
   const customProvider =
     model.provider === "custom"
@@ -288,7 +291,7 @@ export async function runAssistantStream(params: {
         const finalMsg = finalChat?.messages.find((m) => m.id === messageId);
         const promptTokens = history.reduce((n, m) => n + estimateTokenCount(m.content ?? ""), 0);
         const replyTokens = estimateTokenCount(finalMsg?.content ?? "") + estimateTokenCount(finalMsg?.reasoning ?? "");
-        recordModelUsage(model, { tokens: promptTokens + replyTokens, mode: finalChat?.mode });
+        recordModelUsage(model, { tokens: promptTokens + replyTokens, mode: finalChat?.mode, request });
         recordCreditUsage(model, promptTokens + replyTokens);
 
         // Auto-continue: reply hit the output-token limit — resume it in place, same shape as

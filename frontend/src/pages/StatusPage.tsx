@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { limitToLast, onValue, orderByChild, query, ref } from "firebase/database";
-import { Activity, ArrowLeft, CheckCircle2, Cpu, MessageSquare, Radio, Sigma, Zap } from "lucide-react";
+import { Activity, ArrowLeft, CheckCircle2, Cpu, Loader2, MessageSquare, Radio, Sigma, Zap } from "lucide-react";
 import { getRtdb } from "../lib/firebase";
 import { monthKey, type RecentRequest } from "../lib/modelStats";
 import { formatCount, lastDays, rankModels, timeAgo, type Counter, type SiteStats } from "../lib/statusSummary";
@@ -87,6 +87,7 @@ function useTween(target: number): number {
 
 const RECENT_LIMIT = 8;
 const TOP_MODELS = 5;
+const STALE_RUN_MS = 120_000;
 
 interface RecentItem extends RecentRequest {
   id: string;
@@ -132,7 +133,8 @@ function RecentRequests({ items, bySlug }: { items: RecentItem[] | null; bySlug:
     for (const it of items) seen.current.add(it.id);
   }, [items]);
 
-  const rows = (items ?? []).filter((it) => bySlug.has(it.m));
+  // A request that errored or was stopped never flips to "done"; drop it once it's clearly stale.
+  const rows = (items ?? []).filter((it) => bySlug.has(it.m) && !(it.s === "run" && now - it.t > STALE_RUN_MS));
 
   return (
     <div className="rounded-xl border border-base-700/60 bg-base-900/40">
@@ -145,7 +147,8 @@ function RecentRequests({ items, bySlug }: { items: RecentItem[] | null; bySlug:
         <ul className="divide-y divide-base-700/50">
           {rows.map((it) => {
             const model = bySlug.get(it.m)!;
-            const live = now - it.t < 15_000;
+            const running = it.s === "run";
+            const live = !running && now - it.t < 15_000;
             return (
               <li key={it.id} className={`flex items-center gap-3 px-3 py-2.5 ${fresh.has(it.id) ? "status-pop" : ""}`}>
                 <ModelFavicon model={model} size={20} />
@@ -157,13 +160,13 @@ function RecentRequests({ items, bySlug }: { items: RecentItem[] | null; bySlug:
                   </p>
                 </div>
                 <div className="shrink-0 text-right">
-                  <p className={`flex items-center justify-end gap-1 text-xs ${live ? "text-emerald-300" : "text-slate-400"}`}>
-                    {live ? <Radio size={12} className="animate-pulse" /> : <CheckCircle2 size={12} />}
-                    {live ? "Just answered" : "Completed"}
+                  <p className={`flex items-center justify-end gap-1 text-xs ${running ? "text-amber-300" : live ? "text-emerald-300" : "text-slate-400"}`}>
+                    {running ? <Loader2 size={12} className="animate-spin" /> : live ? <Radio size={12} className="animate-pulse" /> : <CheckCircle2 size={12} />}
+                    {running ? "Answering…" : live ? "Just answered" : "Completed"}
                   </p>
                   <p className="text-[11px] tabular-nums text-slate-500">
-                    {it.k ? `~${formatCount(it.k)} tok · ` : ""}
-                    {timeAgo(it.t, now)}
+                    {!running && it.k ? `~${formatCount(it.k)} tok · ` : ""}
+                    {running ? `${Math.max(0, Math.floor((now - it.t) / 1000))}s` : timeAgo(it.t, now)}
                   </p>
                 </div>
               </li>

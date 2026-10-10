@@ -22,7 +22,7 @@ export function monthKey(date: Date = new Date()): string {
 
 export function recordModelUsage(
   model: Pick<ModelDef, "modelId" | "provider">,
-  extra: { tokens?: number; mode?: Mode } = {}
+  extra: { tokens?: number; mode?: Mode; request?: RecentHandle | null } = {}
 ): void {
   if (model.provider === "custom") return;
   const db = getRtdb();
@@ -31,31 +31,67 @@ export function recordModelUsage(
   const counterRef = ref(db, `modelStats/${monthKey()}/${slug}`);
   runTransaction(counterRef, (current: number | null) => (current ?? 0) + 1).catch(() => {});
   recordSiteTotals({ slug, tokens: extra.tokens, mode: extra.mode });
-  recordRecentRequest({ slug, tokens: extra.tokens, mode: extra.mode });
+  finishRecentRequest({ slug, tokens: extra.tokens, mode: extra.mode, handle: extra.request });
 }
 
 /**
  * Feeds the "Recent requests" ticker on /status: a 60-slot ring at stats/recent/{0..59},
  * slot = the current second mod 60, so the newest entry replaces the oldest without any
- * cleanup job. Holds only {model slug, mode, est. tokens, time} — no uid, no text. Kept
- * as its own write so a rejected ticker entry can never drop the counters above.
+ * cleanup job. Holds only {model slug, mode, est. tokens, time, state} — no uid, no text.
+ * A request shows up as "run" the moment it is sent and flips to "done" when the reply
+ * finishes. Requests that fail or get stopped just stay "run" until the page hides them as
+ * stale. Kept separate from the counters so a rejected ticker write can never drop them.
  */
 export interface RecentRequest {
   m: string; // model slug
-  t: number; // epoch ms
+  t: number; // epoch ms the request was sent
+  s?: "run" | "done";
   k?: number; // estimated tokens
   mode?: string;
 }
 
-function recordRecentRequest(event: { slug: string; tokens?: number; mode?: Mode }): void {
+export interface RecentHandle {
+  slot: number;
+  t: number;
+  entry: RecentRequest;
+}
+
+/** Call when a request is sent. Returns a handle to pass to recordModelUsage when it completes. */
+export function beginRecentRequest(model: Pick<ModelDef, "modelId" | "provider">, mode?: Mode): RecentHandle | null {
+  if (model.provider === "custom") return null;
+  const db = getRtdb();
+  if (!db) return null;
+  const t = Date.now();
+  const slot = Math.floor(t / 1000) % 60;
+  const entry: RecentRequest = { m: modelSlug(model.modelId), t, s: "run" };
+  if (mode) entry.mode = mode;
+  set(ref(db, `stats/recent/${slot}`), entry).catch(() => {});
+  return { slot, t, entry };
+}
+
+function finishRecentRequest(event: { slug: string; tokens?: number; mode?: Mode; handle?: RecentHandle | null }): void {
   const db = getRtdb();
   if (!db) return;
-  const now = Date.now();
-  const entry: RecentRequest = { m: event.slug, t: now };
   const tokens = Math.round(event.tokens ?? 0);
-  if (tokens > 0) entry.k = tokens;
+  const patch = (base: RecentRequest): RecentRequest => {
+    const next: RecentRequest = { ...base, s: "done" };
+    if (tokens > 0) next.k = tokens;
+    return next;
+  };
+  const h = event.handle;
+  if (h) {
+    // Only complete our own entry — if the ring has wrapped and the slot now belongs to a
+    // newer request, leave it alone.
+    runTransaction(ref(db, `stats/recent/${h.slot}`), (cur: RecentRequest | null) => {
+      if (cur === null) return patch(h.entry);
+      return cur.t === h.t ? patch(cur) : undefined;
+    }).catch(() => {});
+    return;
+  }
+  const t = Date.now();
+  const entry: RecentRequest = { m: event.slug, t };
   if (event.mode) entry.mode = event.mode;
-  set(ref(db, `stats/recent/${Math.floor(now / 1000) % 60}`), entry).catch(() => {});
+  set(ref(db, `stats/recent/${Math.floor(t / 1000) % 60}`), patch(entry)).catch(() => {});
 }
 
 /**

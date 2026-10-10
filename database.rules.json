@@ -71,7 +71,7 @@
         ],
         "$slot": {
           ".write": true,
-          ".validate": "$slot.matches(/^[0-9]{1,2}$/) && newData.hasChildren(['m','t']) && newData.child('m').isString() && newData.child('m').val().length <= 80 && newData.child('t').isNumber() && newData.child('t').val() <= now + 60000 && newData.child('t').val() >= now - 600000",
+          ".validate": "$slot.matches(/^[0-9]{1,2}$/) && newData.hasChildren(['m','t']) && newData.child('m').isString() && newData.child('m').val().length <= 80 && newData.child('t').isNumber() && newData.child('t').val() <= now + 60000 && newData.child('t').val() >= now - 3600000",
           "m": {
             ".validate": true
           },
@@ -86,6 +86,9 @@
           },
           "$other": {
             ".validate": false
+          },
+          "s": {
+            ".validate": "newData.isString() && (newData.val() === 'run' || newData.val() === 'done')"
           }
         }
       }
