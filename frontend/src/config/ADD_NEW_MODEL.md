@@ -26,11 +26,24 @@ Several places advertise the catalog size as a rounded-down `"N+"` string
 `catalogSizeLabel()` from `models.ts` (the docs pages already do). Two places
 **cannot** and hold the number as static text:
 
-- `frontend/index.html` — the `<meta name="description">`, `og:description`,
-  and `twitter:description` tags.
+- `frontend/index.html` — the `<title>`, `<meta name="description">`,
+  `og:title`/`og:description`, `twitter:*` tags and the JSON-LD `featureList`, plus
+  the matching `document.title` string in `src/App.tsx` and the tagline drawn into
+  `public/og-image.png`.
 - any marketing copy in `frontend/public/*/index.html` that cites a count.
 
 **Rule:** whenever adding/removing models makes `getAllModels().length` cross
 the next multiple of 10 (up or down), update those static `"N+ models"` strings
 to match `catalogSizeLabel()`. In practice: re-check them on every batch of ~10
-model changes. Keep the wording identical across all three `index.html` tags.
+model changes. Keep the wording identical across those places.
+
+## Search pages are generated from the catalog
+
+`frontend/seo/` runs during `npm run build` (the `lofin-seo` Vite plugin) and
+emits a crawlable page at `/ai-models/<slug>` for every distinct display name
+in `ALL_MODELS`, plus the directory, comparison pages, `sitemap.xml` and
+`llms-full.txt`. So a model added here is published automatically — a good
+`modelDocs.ts` blurb is what keeps its page from being generic. Only data in
+the catalog is stated on those pages, so keep `contextLength`, `capabilities`
+and `free` accurate. To add a head-to-head page, add a pair of display names to
+`COMPARE_PAIRS` in `frontend/seo/catalog.mjs` (unknown names are skipped).

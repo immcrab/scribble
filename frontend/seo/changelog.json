@@ -1,0 +1,37 @@
+[
+  {
+    "date": "2026-10-09",
+    "title": "Search-friendly pages, model directory and comparisons",
+    "summary": "Added a public AI model directory with a page for every model, head-to-head comparison pages, guides for the free AI playground, image generator, text to speech and live web search, plus this changelog."
+  },
+  {
+    "date": "2026-10-09",
+    "title": "Mistral catalog refresh and reusable published site links",
+    "summary": "Updated the Mistral model list, and websites published from chat now keep the same link across edits."
+  },
+  {
+    "date": "2026-10-09",
+    "title": "Lofin knows about itself",
+    "summary": "The assistant now has product knowledge about Lofin's modes and features, so it can answer questions about how to use them. The composer and interface also lost their glow effects for a cleaner look."
+  },
+  {
+    "date": "2026-10-08",
+    "title": "Cloudflare Workers AI models and larger context handling",
+    "summary": "Added free Cloudflare Workers AI chat models and fit requests to each model's context window."
+  },
+  {
+    "date": "2026-10-08",
+    "title": "Image search and YouTube video search in chat",
+    "summary": "Ask for pictures and they appear as an inline gallery; ask for a video and it plays in a small window inside the conversation."
+  },
+  {
+    "date": "2026-10-08",
+    "title": "New composer, chat history upgrades and cloud storage limits",
+    "summary": "The message box is now a single-row pill with rotating suggestions. Chat history sorts by recent activity and shows creation dates, with delete-all options, and cloud storage has a clear 70 MB cap."
+  },
+  {
+    "date": "2026-10-07",
+    "title": "Google Slides connector",
+    "summary": "Connect Google Slides to create complete slide decks from a conversation."
+  }
+]

@@ -289,6 +289,24 @@ The Cloudflare rule prevents framing before any page JavaScript can run.
   Additional tools would emit more `toolCall` events in the NDJSON stream, read
   into `ChatMessage.toolCalls` in the mode component.
 
+## SEO and discoverability
+
+Search and AI-answer-engine visibility is handled at build time, not in the React app:
+
+- `frontend/index.html` — title, description, Open Graph/Twitter tags and JSON-LD for the home page.
+- `frontend/seo/` — generator run by the `lofin-seo` Vite plugin. It writes the landing pages
+  (`/free-ai-playground`, `/compare-ai-models`, …), the model directory and one page per model
+  (`/ai-models/<slug>`), head-to-head pages (`/compare/<a>-vs-<b>`), `/changelog` + `changelog.xml`,
+  `sitemap.xml` (with `lastmod` from git history) and `llms-full.txt` into `dist/`.
+  Landing copy lives in `seo/pages.mjs`; recent user-facing changes go in `seo/changelog.json`.
+- `public/robots.txt`, `public/llms.txt`, `public/og-image.png` (1200×630) are hand-maintained.
+- After each Worker deploy, CI runs `scripts/indexnow.mjs`, which pings IndexNow (Bing and others)
+  with URLs whose `lastmod` is recent. The key file is `public/<key>.txt` (public by design).
+
+One-time manual steps that no code can do: verify `lofin.dev` in Google Search Console
+(Domain property, DNS TXT record) and submit `https://lofin.dev/sitemap.xml`; import the site
+into Bing Webmaster Tools; then request indexing for the home page.
+
 ## Versioning
 
 The sidebar shows the app version next to the Lofin logo. It comes from

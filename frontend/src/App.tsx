@@ -203,7 +203,7 @@ export default function App() {
     } else if (!freshCompose && activeChat?.title) {
       document.title = `${activeChat.title} — Lofin`;
     } else {
-      document.title = "Lofin — Multi-Model AI Chat";
+      document.title = "Lofin — Free AI Playground: Chat, Compare & Battle 110+ AI Models";
     }
   }, [docsSlug, adminRoute, usageRoute, tutorRoute, connectionsRoute, libraryRoute, notFound, shareState, activeChat?.title, freshCompose]);
 

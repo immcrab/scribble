@@ -1,7 +1,8 @@
 {
-  "name": "Lofin.Dev — Multi-Model AI Chat",
+  "name": "Lofin — Free AI Playground",
   "short_name": "Lofin",
-  "description": "Battle, compare, and chat with AI models.",
+  "description": "A free AI playground: chat with, compare, and battle AI models, generate images and speech, and search the live web.",
+  "categories": ["productivity", "utilities"],
   "start_url": "/",
   "display": "standalone",
   "background_color": "#1b1a18",

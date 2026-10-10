@@ -3,6 +3,7 @@ import react from "@vitejs/plugin-react";
 import { readFile, writeFile } from "node:fs/promises";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 
 // Single source of truth for the version shown in the sidebar: frontend/package.json.
 const appVersion: string = JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf8")).version;
@@ -32,6 +33,27 @@ function configureSpa404() {
   };
 }
 
+/**
+ * Emits the crawlable pages (landing pages, per-model and comparison pages, changelog),
+ * sitemap.xml and llms-full.txt into dist/ — see frontend/seo/. Skipped for the docs
+ * deployment (own sitemap, avoids duplicate content) and for sub-path builds.
+ */
+function lofinSeo() {
+  return {
+    name: "lofin-seo",
+    apply: "build" as const,
+    async closeBundle() {
+      if (process.env.VITE_DOCS_SITE === "true") return;
+      // The GitHub Pages fallback is built under a sub-path; these pages assume the site root.
+      if (process.env.VITE_BASE && process.env.VITE_BASE !== "/") return;
+      const entry = pathToFileURL(resolve(process.cwd(), "seo/generate.mjs")).href;
+      const { generateSeo } = await import(/* @vite-ignore */ entry);
+      const result = await generateSeo({ root: process.cwd(), distDir: resolve(process.cwd(), "dist") });
+      console.log(`[lofin-seo] ${result.pages.length} pages (${result.models} models, ${result.comparisons} comparisons)`);
+    },
+  };
+}
+
 // Deployed at the lofin.dev custom-domain root, so base is "/". Override with
 // VITE_BASE at build time if you ever deploy under a GitHub Pages subpath instead
 // (e.g. "/lofin/") — also update the matching segmentCount in public/404.html.
@@ -39,12 +61,16 @@ export default defineConfig({
   plugins: [
     react(),
     configureSpa404(),
+    lofinSeo(),
     // Vite warns for an unset %VITE_*% HTML replacement. This token has a
     // stable app-build default while preserving the docs deployment's opt-in.
     {
       name: "lofin-docs-static-fallback",
       transformIndexHtml(html) {
-        return html.replace("__LOFIN_DOCS_SITE__", process.env.VITE_DOCS_SITE === "true" ? "true" : "false");
+        const docs = process.env.VITE_DOCS_SITE === "true";
+        // The home page's JSON-LD describes lofin.dev; the docs host must not carry it.
+        const out = docs ? html.replace(/<script type="application\/ld\+json">[\s\S]*?<\/script>\s*/, "") : html;
+        return out.replace("__LOFIN_DOCS_SITE__", docs ? "true" : "false");
       },
     },
   ],

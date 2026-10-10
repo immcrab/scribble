@@ -18,11 +18,14 @@
     </script>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=yes, maximum-scale=5, minimum-scale=1" />
-    <title>Lofin.Dev — Multi-Model AI Chat</title>
+    <title>Lofin — Free AI Playground: Chat, Compare &amp; Battle 110+ AI Models</title>
     <!-- "100+" tracks the built-in model catalog (frontend/src/config/models.ts).
          Bump it here whenever the count crosses the next multiple of 10 — see
          frontend/src/config/ADD_NEW_MODEL.md. -->
-    <meta name="description" content="Chat with, compare, and battle 100+ free AI models in one place. Start instantly with no sign-up, then sign in free to unlock every mode." />
+    <meta name="description" content="Free AI playground: chat with 110+ AI models, compare them side by side, battle them blind, generate images and use live web search. Start instantly — no sign-up." />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+    <link rel="alternate" type="text/plain" href="https://lofin.dev/llms.txt" title="Lofin information for AI systems" />
+    <link rel="alternate" type="application/atom+xml" href="https://lofin.dev/changelog.xml" title="Lofin changelog" />
     <link rel="canonical" href="https://lofin.dev/" />
     <script>
       // The docs deployment uses the same React bundle as the app. Set the
@@ -37,18 +40,22 @@
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://lofin.dev/" />
     <meta property="og:site_name" content="Lofin.Dev" />
-    <meta property="og:title" content="Lofin.Dev — Multi-Model AI Chat" />
-    <meta property="og:description" content="Chat with, compare, and battle 100+ free AI models in one place. Start instantly with no sign-up, then sign in free to unlock every mode." />
-    <!-- Social-card image must be a real raster file — an SVG doesn't render as an
-         OG/Twitter preview on most platforms. pwa-512.png is the 512×512 logo. -->
-    <meta property="og:image" content="https://lofin.dev/pwa-512.png" />
-    <meta property="og:image:width" content="512" />
-    <meta property="og:image:height" content="512" />
+    <meta property="og:title" content="Lofin — Free AI Playground: Chat, Compare &amp; Battle 110+ AI Models" />
+    <meta property="og:description" content="Free AI playground: chat with 110+ AI models, compare them side by side, battle them blind, generate images and use live web search. Start instantly — no sign-up." />
+    <!-- Social-card image: a real 1200×630 raster file (SVG doesn't render as an OG/Twitter
+         preview on most platforms). Regenerate public/og-image.png if the tagline changes. -->
+    <meta property="og:image" content="https://lofin.dev/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
     <meta property="og:image:type" content="image/png" />
-    <meta name="twitter:card" content="summary" />
-    <meta name="twitter:title" content="Lofin.Dev — Multi-Model AI Chat" />
-    <meta name="twitter:description" content="Chat with, compare, and battle 100+ free AI models in one place. Start instantly with no sign-up, then sign in free to unlock every mode." />
-    <meta name="twitter:image" content="https://lofin.dev/pwa-512.png" />
+    <meta property="og:image:alt" content="Lofin — free AI playground to chat with, compare and battle AI models" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Lofin — Free AI Playground: Chat, Compare &amp; Battle 110+ AI Models" />
+    <meta name="twitter:description" content="Free AI playground: chat with 110+ AI models, compare them side by side, battle them blind, generate images and use live web search. Start instantly — no sign-up." />
+    <meta name="twitter:image" content="https://lofin.dev/og-image.png" />
+    <script type="application/ld+json">
+      {"@context":"https://schema.org","@graph":[{"@type":"WebSite","@id":"https://lofin.dev/#website","url":"https://lofin.dev/","name":"Lofin","description":"Free AI playground: chat with 110+ AI models, compare them side by side, battle them blind, generate images and use live web search. Start instantly — no sign-up.","inLanguage":"en","publisher":{"@id":"https://lofin.dev/about/creator#owen-lee"}},{"@type":"WebApplication","@id":"https://lofin.dev/#app","name":"Lofin","url":"https://lofin.dev/","alternateName":["Lofin.Dev","Lofin AI Playground"],"applicationCategory":"ProductivityApplication","operatingSystem":"Web","browserRequirements":"Requires JavaScript","description":"A free, independently run multi-model AI playground for chatting with, comparing, and battling AI models, generating images and speech, and searching the live web.","isAccessibleForFree":true,"offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"featureList":["Chat with 110+ AI models","Side by Side model comparison","Anonymous Battle mode with voting","Agent mode with live web search","AI image generation and editing","Text to speech with downloadable audio"],"creator":{"@id":"https://lofin.dev/about/creator#owen-lee"},"sameAs":["https://docs.lofin.dev/"]},{"@type":"Person","@id":"https://lofin.dev/about/creator#owen-lee","name":"Owen Lee","description":"Independent creator of Lofin.","url":"https://lofin.dev/about/creator"}]}
+    </script>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="icon" href="/favicon.ico" sizes="48x48" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
@@ -57,10 +64,8 @@
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3679522337620689" crossorigin="anonymous"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Lora:wght@400;500;600;700&family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=Source+Serif+4:opsz,wght@8..60,300;8..60,500;8..60,600&family=Space+Grotesk:wght@400;500;600;700&display=swap"
-      rel="stylesheet"
-    />
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Lora:wght@400;500;600;700&family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=Source+Serif+4:opsz,wght@8..60,300;8..60,500;8..60,600&family=Space+Grotesk:wght@400;500;600;700&display=swap" onload="this.onload=null;this.rel='stylesheet'" />
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Lora:wght@400;500;600;700&family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=Source+Serif+4:opsz,wght@8..60,300;8..60,500;8..60,600&family=Space+Grotesk:wght@400;500;600;700&display=swap" /></noscript>
     <!-- Cloudflare Web Analytics — production hosts only; local dev just logs CORS errors. -->
     <script>
       if (!/^(localhost|127\.0\.0\.1|\[::1\])$|\.(test|localhost)$/.test(location.hostname)) {
@@ -82,20 +87,30 @@
       <!-- Static fallback for crawlers and no-JS visitors. React clears this on mount. -->
       <main class="app-static-fallback" style="max-width: 720px; margin: 0 auto; padding: 56px 24px 96px; font-family: 'Inter', ui-sans-serif, system-ui, sans-serif; line-height: 1.65; color: #c7c2bc;">
         <h1 style="font-family: 'Source Serif 4', ui-serif, Georgia, serif; font-weight: 300; font-size: 2.4rem; letter-spacing: -0.02em; margin: 0 0 12px; color: #f5f0eb;">
-          Lofin.Dev — Multi-Model AI Chat
+          Lofin — a free AI playground
         </h1>
         <p>
           Lofin is a free, independently run AI playground. Chat with, compare, and
-          battle 100+ third-party AI models side by side in one interface. Start instantly
-          with no sign-up; sign in free to unlock every mode.
+          battle 110+ third-party AI models side by side in one interface, generate images
+          and speech, and get up-to-date answers with built-in live web search. Start
+          instantly with no sign-up; sign in free to unlock every mode.
         </p>
         <ul>
           <li><strong>Direct</strong> — one-on-one chat with a model of your choice.</li>
           <li><strong>Battle</strong> — two anonymous models answer the same prompt; you vote.</li>
           <li><strong>Side by Side</strong> — compare two named models on one prompt.</li>
-          <li><strong>Agent</strong> — a chat mode built for tool-using workflows, with an optional live web search.</li>
+          <li><strong>Agent</strong> — a chat mode built for tool-using workflows, with live web search for current information.</li>
           <li><strong>Image</strong> — generate images from a text prompt, or edit one you upload.</li>
           <li><strong>Text to Speech</strong> — turn text into spoken audio.</li>
+        </ul>
+        <h2 style="color: #f5f0eb; font-size: 1.15rem; margin-top: 2rem;">Explore</h2>
+        <ul>
+          <li><a href="/free-ai-playground" style="color: #f5f0eb;">Free AI playground</a> — what Lofin offers and what “free” means.</li>
+          <li><a href="/ai-models" style="color: #f5f0eb;">AI model directory</a> — every model with context length and capabilities.</li>
+          <li><a href="/compare" style="color: #f5f0eb;">Compare AI models</a> — head-to-head comparisons you can run side by side.</li>
+          <li><a href="/ai-chat-with-web-search" style="color: #f5f0eb;">AI chat with live web search</a> — up-to-date answers with links.</li>
+          <li><a href="/free-ai-image-generator" style="color: #f5f0eb;">Free AI image generator</a> and <a href="/free-text-to-speech" style="color: #f5f0eb;">text to speech</a>.</li>
+          <li><a href="/changelog" style="color: #f5f0eb;">What's new</a> — recent updates.</li>
         </ul>
         <p>
           <a href="/about" style="color: #f5f0eb;">About</a> &nbsp;·&nbsp;

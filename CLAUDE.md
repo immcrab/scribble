@@ -35,3 +35,12 @@ it as `__APP_VERSION__`. Every time you make a change to this repo, bump that
 version before finishing: patch (`1.0.0` -> `1.0.1`) for fixes and small tweaks,
 minor for new features, major for breaking changes. Never leave a change
 un-bumped, and don't hardcode the version anywhere else.
+
+## Log user-facing changes in the changelog
+
+The public `/changelog` page and its Atom feed are built from
+`frontend/seo/changelog.json`. When a change is something visitors would notice
+(new model or mode, new tool, meaningful fix), add an entry at the top with
+today's date, a short plain-language title, and a one-sentence summary. Skip
+purely internal changes. A fresh dated entry is also the signal that keeps the
+site's sitemap and search listings current.

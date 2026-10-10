@@ -15,7 +15,7 @@
 - Direct: one-on-one chat with a selected AI model.
 - Battle: anonymous model responses to the same prompt, followed by a user vote.
 - Side by Side: compare two named models on one prompt.
-- Agent: tool-oriented conversations with optional live web search and memory features.
+- Agent: tool-oriented conversations with live web search for up-to-date answers, plus memory features.
 - Image: text-to-image generation and image editing.
 - Text to Speech: convert text into playable and downloadable audio.
 - Tutor: writing assistance that can derive a style profile from a user's own submitted work.
@@ -31,6 +31,17 @@ By default, chat history and preferences are stored in the visitor's browser. Si
 
 ## Important pages
 
+- Free AI playground: https://lofin.dev/free-ai-playground
+- How to compare AI models: https://lofin.dev/compare-ai-models
+- Free ChatGPT alternatives: https://lofin.dev/chatgpt-alternatives-free
+- AI model arena (Battle mode): https://lofin.dev/ai-model-arena
+- Free AI image generator: https://lofin.dev/free-ai-image-generator
+- Free text to speech: https://lofin.dev/free-text-to-speech
+- AI chat with live web search: https://lofin.dev/ai-chat-with-web-search
+- AI model directory (one page per model): https://lofin.dev/ai-models
+- Model comparisons: https://lofin.dev/compare
+- Changelog / what's new: https://lofin.dev/changelog (Atom feed: https://lofin.dev/changelog.xml)
+- Full machine-readable reference: https://lofin.dev/llms-full.txt
 - Home: https://lofin.dev/
 - About: https://lofin.dev/about
 - Creator: https://lofin.dev/about/creator
