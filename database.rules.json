@@ -1,0 +1,70 @@
+{
+  "rules": {
+    "users": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid"
+      }
+    },
+    "publicChats": {
+      "$chatId": {
+        ".read": true,
+        ".write": "!data.exists() || newData.val() === null"
+      }
+    },
+    "modelStats": {
+      "$month": {
+        "$modelSlug": {
+          ".read": true,
+          ".write": true,
+          ".validate": "newData.isNumber() && newData.val() >= 0"
+        },
+        ".read": true
+      }
+    },
+    "catalog": {
+      ".read": true,
+      ".write": "auth != null && auth.token.email === 'imcrabfr@gmail.com' && auth.token.email_verified === true"
+    },
+    "usage": {
+      ".read": "auth != null && auth.token.email === 'imcrabfr@gmail.com' && auth.token.email_verified === true",
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && (auth.uid === $uid || (auth.token.email === 'imcrabfr@gmail.com' && auth.token.email_verified === true))"
+      }
+    },
+    "stats": {
+      ".read": true,
+      "totals": {
+        "$counter": {
+          ".write": true,
+          ".validate": "newData.isNumber() && newData.val() >= 0 && ($counter === 'replies' || $counter === 'tokens' || $counter === 'chats') && (!data.exists() ? newData.val() <= 1000000 : newData.val() >= data.val() && newData.val() <= data.val() + 1000000)"
+        }
+      },
+      "models": {
+        "$slug": {
+          "$counter": {
+            ".write": true,
+            ".validate": "newData.isNumber() && newData.val() >= 0 && ($counter === 'replies' || $counter === 'tokens' || $counter === 'chats') && (!data.exists() ? newData.val() <= 1000000 : newData.val() >= data.val() && newData.val() <= data.val() + 1000000)"
+          }
+        }
+      },
+      "modes": {
+        "$mode": {
+          "$counter": {
+            ".write": true,
+            ".validate": "newData.isNumber() && newData.val() >= 0 && ($counter === 'replies' || $counter === 'tokens' || $counter === 'chats') && (!data.exists() ? newData.val() <= 1000000 : newData.val() >= data.val() && newData.val() <= data.val() + 1000000)"
+          }
+        }
+      },
+      "daily": {
+        "$day": {
+          "$counter": {
+            ".write": true,
+            ".validate": "newData.isNumber() && newData.val() >= 0 && ($counter === 'replies' || $counter === 'tokens' || $counter === 'chats') && (!data.exists() ? newData.val() <= 1000000 : newData.val() >= data.val() && newData.val() <= data.val() + 1000000)"
+          }
+        }
+      }
+    }
+  }
+}
