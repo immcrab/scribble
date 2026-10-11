@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { formatCount, lastDays, rankModels, timeAgo } from "../../src/lib/statusSummary";
+import { centralClock, centralDayKey, centralZoneName, formatCount, lastDays, rankModels, timeAgo } from "../../src/lib/statusSummary";
 
 test("rankModels orders by replies, shares ties, and drops unknown slugs", () => {
   const bySlug = new Map([
@@ -26,6 +26,16 @@ test("lastDays pads missing days with zeros, oldest first", () => {
   expect(days.map((d) => d.replies)).toEqual([0, 0, 4]);
 });
 
+test("days roll over at midnight Central, not UTC", () => {
+  // 02:00 UTC on Oct 10 is 9 PM CDT on Oct 9.
+  const late = new Date("2026-10-10T02:00:00Z");
+  expect(centralDayKey(late)).toBe("2026-10-09");
+  expect(lastDays({}, 2, late).map((d) => d.day)).toEqual(["2026-10-08", "2026-10-09"]);
+  expect(centralClock(late.getTime(), true)).toBe("9:00:00 PM CDT");
+  expect(centralZoneName(late.getTime())).toBe("CDT");
+  expect(centralZoneName(new Date("2026-01-15T18:00:00Z").getTime())).toBe("CST");
+});
+
 test("formatCount abbreviates large numbers", () => {
   expect(formatCount(987)).toBe("987");
   expect(formatCount(12_345)).toBe("12.3k");
@@ -40,4 +50,6 @@ test("timeAgo reads like a ticker", () => {
   expect(timeAgo(now - 5 * 60_000, now)).toBe("5m ago");
   expect(timeAgo(now - 3 * 3_600_000, now)).toBe("3h ago");
   expect(timeAgo(now + 5_000, now)).toBe("just now");
+  // Floors like the running counter does, so the two never disagree by a second.
+  expect(timeAgo(now - 59_900, now)).toBe("59s ago");
 });

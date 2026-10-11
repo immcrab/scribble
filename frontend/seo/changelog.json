@@ -1,6 +1,11 @@
 [
   {
     "date": "2026-10-10",
+    "title": "More accurate Status timers, in Central time",
+    "summary": "The Recent requests timers on the Status page now follow the server clock so they stay accurate, and times and daily totals use Central time (CDT)."
+  },
+  {
+    "date": "2026-10-10",
     "title": "Status page covers images and speech, with live activity",
     "summary": "Image generations and text to speech now count on the Status page, and the live Recent requests feed shows what each request is doing, such as coding, searching the web or generating an image."
   },

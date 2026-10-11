@@ -2,8 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { limitToLast, onValue, orderByChild, query, ref } from "firebase/database";
 import { Activity, ArrowLeft, AudioLines, CheckCircle2, Code2, Cpu, Image as ImageIcon, Loader2, MessageSquare, Radio, Search, Sigma, Wrench, Zap } from "lucide-react";
 import { getRtdb } from "../lib/firebase";
-import { imageStatsSlug, monthKey, SPEECH_STATS_SLUG, type Activity as ActivityKind, type RecentRequest } from "../lib/modelStats";
-import { formatCount, lastDays, rankModels, timeAgo, type Counter, type SiteStats } from "../lib/statusSummary";
+import { imageStatsSlug, monthKey, serverNow, SPEECH_STATS_SLUG, type Activity as ActivityKind, type RecentRequest } from "../lib/modelStats";
+import { centralClock, centralZoneName, formatCount, lastDays, rankModels, timeAgo, type Counter, type SiteStats } from "../lib/statusSummary";
 import { useCatalogStore } from "../lib/catalogSync";
 import { getAllModels, PROVIDER_LABELS } from "../config/models";
 import { EDIT_IMAGE_MODEL, IMAGE_MODELS } from "../config/imageModels";
@@ -143,9 +143,11 @@ function useRecentRequests(): RecentItem[] | null {
 
 /** A live ticker: each new request pops in at the top as it happens. */
 function RecentRequests({ items, bySlug }: { items: RecentItem[] | null; bySlug: Map<string, Listed> }) {
-  const [now, setNow] = useState(() => Date.now());
+  // Server-synced clock, ticked at 4Hz so the seconds counter flips within ~250ms of the real
+  // second instead of lagging up to a full second behind a 1s interval.
+  const [now, setNow] = useState(() => serverNow());
   useEffect(() => {
-    const t = setInterval(() => setNow(Date.now()), 1000);
+    const t = setInterval(() => setNow(serverNow()), 250);
     return () => clearInterval(t);
   }, []);
 
@@ -192,8 +194,9 @@ function RecentRequests({ items, bySlug }: { items: RecentItem[] | null; bySlug:
                     <act.Icon size={12} className="opacity-70" />
                     {running ? act.doing : act.did}
                   </p>
-                  <p className="text-[11px] tabular-nums text-slate-500">
+                  <p className="text-[11px] tabular-nums text-slate-500" title={centralClock(it.t, true)}>
                     {!running && it.k ? `~${formatCount(it.k)} tok · ` : ""}
+                    {!running && <>{centralClock(it.t)} · </>}
                     {running ? `${Math.max(0, Math.floor((now - it.t) / 1000))}s` : timeAgo(it.t, now)}
                   </p>
                 </div>
@@ -395,7 +398,7 @@ export function StatusPage({ onExit }: { onExit: () => void }) {
                 ? "border-red-500/30 bg-red-500/10 text-red-300"
                 : "border-base-600/60 bg-base-800/60 text-slate-400"
           }`}
-          title={updatedAt ? `Last update ${new Date(updatedAt).toLocaleTimeString()}` : undefined}
+          title={updatedAt ? `Last update ${centralClock(updatedAt, true)}` : undefined}
         >
           <span
             className={`h-1.5 w-1.5 rounded-full ${
@@ -486,6 +489,7 @@ export function StatusPage({ onExit }: { onExit: () => void }) {
         <section>
           <h2 className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
             Recent requests
+            <span className="font-normal normal-case tracking-normal text-slate-600">· times in {centralZoneName()}</span>
             {connection === "live" && <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />}
           </h2>
           <RecentRequests items={recent} bySlug={bySlug} />

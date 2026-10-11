@@ -1,5 +1,6 @@
-import { get as dbGet, increment, ref, runTransaction, set, update } from "firebase/database";
+import { get as dbGet, increment, onValue, ref, runTransaction, set, update } from "firebase/database";
 import { getRtdb } from "./firebase";
+import { centralDayKey } from "./statusSummary";
 import { modelSlug } from "./modelSlug";
 import type { Mode, ModelDef } from "../types";
 
@@ -15,6 +16,26 @@ import type { Mode, ModelDef } from "../types";
  * "publicChats" (see cloudSync.ts). If the path isn't allowed, the increment
  * just fails silently and the feature has no data to show yet.
  */
+
+let serverOffset = 0;
+let watchingOffset = false;
+
+/** Epoch ms on the Firebase server's clock. Ticker timestamps are written and read with this, so
+ * a viewer's or sender's skewed system clock can't make "12s ago" wrong (or get the write rejected
+ * by the rules' `now` window). Falls back to the local clock until the offset arrives. */
+export function serverNow(): number {
+  if (!watchingOffset) {
+    watchingOffset = true;
+    const db = getRtdb();
+    if (db) {
+      onValue(ref(db, ".info/serverTimeOffset"), (snap) => {
+        const v = snap.val();
+        if (typeof v === "number" && Number.isFinite(v)) serverOffset = v;
+      });
+    }
+  }
+  return Date.now() + serverOffset;
+}
 
 export function monthKey(date: Date = new Date()): string {
   return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
@@ -90,7 +111,7 @@ export function beginRecentRequest(
 export function beginRecentBySlug(slug: string, mode?: Mode, activity: Activity = "chat"): RecentHandle | null {
   const db = getRtdb();
   if (!db) return null;
-  const t = Date.now();
+  const t = serverNow();
   const slot = Math.floor(t / 1000) % 60;
   const entry: RecentRequest = { m: slug, t, s: "run", a: activity };
   if (mode) entry.mode = mode;
@@ -136,7 +157,7 @@ function finishRecentRequest(event: {
     }).catch(() => {});
     return;
   }
-  const t = Date.now();
+  const t = serverNow();
   const entry: RecentRequest = { m: event.slug, t };
   if (event.mode) entry.mode = event.mode;
   set(ref(db, `stats/recent/${Math.floor(t / 1000) % 60}`), patch(entry)).catch(() => {});
@@ -151,19 +172,15 @@ function finishRecentRequest(event: {
  *   stats/totals/{chats,replies,tokens}      all-time
  *   stats/models/{slug}/{replies,tokens}     all-time, per model
  *   stats/modes/{mode}/replies               all-time, per mode
- *   stats/daily/{YYYY-MM-DD}/{chats,replies,tokens}
+ *   stats/daily/{YYYY-MM-DD}/{chats,replies,tokens}   days roll over at midnight Central time
  *
  * Needs RTDB rules that allow public read and bounded increments on "stats" (see
  * database.rules.json). If they aren't deployed the write fails silently, like modelStats.
  */
-function dayKey(date: Date = new Date()): string {
-  return `${monthKey(date)}-${String(date.getUTCDate()).padStart(2, "0")}`;
-}
-
 function recordSiteTotals(event: { slug?: string; tokens?: number; mode?: Mode | "image" | "speech"; chats?: number }): void {
   const db = getRtdb();
   if (!db) return;
-  const day = dayKey();
+  const day = centralDayKey(new Date(serverNow()));
   const tokens = Math.max(0, Math.round(event.tokens ?? 0));
   const updates: Record<string, ReturnType<typeof increment>> = {};
   if (event.chats) {

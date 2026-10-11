@@ -56,18 +56,44 @@ function num(v: unknown): number {
 }
 
 export interface DayPoint {
-  day: string; // YYYY-MM-DD, UTC
+  day: string; // YYYY-MM-DD, Central time
   replies: number;
   tokens: number;
   chats: number;
 }
 
-/** The last `count` UTC days ending at `now`, oldest first, with zeros for days that saw no traffic. */
+/** The status page keeps time in US Central (CDT in summer, CST in winter). */
+export const STATUS_TIME_ZONE = "America/Chicago";
+
+const dayFormat = new Intl.DateTimeFormat("en-CA", { timeZone: STATUS_TIME_ZONE, year: "numeric", month: "2-digit", day: "2-digit" });
+
+/** YYYY-MM-DD for the Central-time calendar day containing `date`. Keys the daily counters. */
+export function centralDayKey(date: Date = new Date()): string {
+  return dayFormat.format(date);
+}
+
+/** "2:41:07 PM" in Central time; pass `withZone` to append "CDT" / "CST". */
+export function centralClock(ms: number, withZone = false): string {
+  return new Date(ms).toLocaleTimeString("en-US", {
+    timeZone: STATUS_TIME_ZONE,
+    hour: "numeric",
+    minute: "2-digit",
+    second: "2-digit",
+    ...(withZone ? { timeZoneName: "short" } : {}),
+  });
+}
+
+/** "CDT" or "CST", whichever applies at `ms`. */
+export function centralZoneName(ms: number = Date.now()): string {
+  return new Date(ms).toLocaleTimeString("en-US", { timeZone: STATUS_TIME_ZONE, timeZoneName: "short" }).split(" ").pop() ?? "CT";
+}
+
+/** The last `count` Central-time days ending at `now`, oldest first, with zeros for days that saw no traffic. */
 export function lastDays(daily: Record<string, Counter> | undefined, count: number, now: Date = new Date()): DayPoint[] {
   const out: DayPoint[] = [];
+  const [y, m, d0] = centralDayKey(now).split("-").map(Number);
   for (let i = count - 1; i >= 0; i--) {
-    const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - i));
-    const day = d.toISOString().slice(0, 10);
+    const day = new Date(Date.UTC(y, m - 1, d0 - i)).toISOString().slice(0, 10);
     const c = daily?.[day];
     out.push({ day, replies: num(c?.replies), tokens: num(c?.tokens), chats: num(c?.chats) });
   }
@@ -85,7 +111,7 @@ export function formatCount(n: number): string {
 
 /** "just now", "42s ago", "5m ago", "3h ago" — for the live ticker. */
 export function timeAgo(then: number, now: number = Date.now()): string {
-  const sec = Math.max(0, Math.round((now - then) / 1000));
+  const sec = Math.max(0, Math.floor((now - then) / 1000));
   if (sec < 5) return "just now";
   if (sec < 60) return `${sec}s ago`;
   if (sec < 3600) return `${Math.floor(sec / 60)}m ago`;
